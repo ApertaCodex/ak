@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "Caddyfile*": "caddyfile",
+        "*.yaml": "yaml",
+        "nginx*": "nginx",
+        "filesystem": "cpp"
+    },
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/workspace/projects/ak",
+            "binaryPath": "/workspace/projects/ak/ak",
+            "binaryArgs": []
+        }
+    ]
+}
