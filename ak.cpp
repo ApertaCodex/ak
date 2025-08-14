@@ -30,6 +30,7 @@
 #include <sys/wait.h>
 #ifdef __unix__
 #include <termios.h>
+#include <pwd.h>
 #endif
 
 using namespace std;
@@ -1031,6 +1032,50 @@ static void appendLine(const string &path, const string &line)
     ofstream out(path, ios::app);
     out << line << "\n";
 }
+// Resolve target user (handles sudo) for correct HOME and SHELL
+struct TargetUser {
+    string home;
+    string shellPath;
+    string shellName;
+};
+
+static TargetUser resolveTargetUser() {
+    TargetUser t;
+    string sudoUser = getenvs("SUDO_USER");
+#ifdef __unix__
+    if (!sudoUser.empty()) {
+        struct passwd *pw = getpwnam(sudoUser.c_str());
+        if (pw) {
+            if (pw->pw_dir) t.home = pw->pw_dir;
+            if (pw->pw_shell) t.shellPath = pw->pw_shell;
+        }
+    }
+    if (t.home.empty()) {
+        const char* h = getenv("HOME");
+        if (h) t.home = h;
+        else {
+            struct passwd* pw = getpwuid(getuid());
+            if (pw && pw->pw_dir) t.home = pw->pw_dir;
+        }
+    }
+    if (t.shellPath.empty()) {
+        const char* sh = getenv("SHELL");
+        if (sh) t.shellPath = sh;
+        else {
+            struct passwd* pw = getpwuid(getuid());
+            if (pw && pw->pw_shell) t.shellPath = pw->pw_shell;
+            else t.shellPath = "/bin/bash";
+        }
+    }
+#else
+    const char* h = getenv("HOME");
+    if (h) t.home = h; else t.home = "";
+    const char* sh = getenv("SHELL");
+    t.shellPath = sh ? sh : "/bin/bash";
+#endif
+    t.shellName = fs::path(t.shellPath).filename().string();
+    return t;
+}
 
 static void writeShellInitFile(const Config &cfg)
 {
@@ -1126,7 +1171,7 @@ ak() {
         return $?
       fi
       local output
-      output=$(command ak "$@" 2>&1)
+      output=$(AK_SHELL_WRAPPER_ACTIVE=1 command ak "$@" 2>&1)
       local exit_code=$?
       if [ $exit_code -eq 0 ] && [ -n "$output" ]; then
         # Only eval if ak succeeded and produced output
@@ -1144,7 +1189,7 @@ ak() {
         return $?
       fi
       local output
-      output=$(command ak "$@" 2>&1)
+      output=$(AK_SHELL_WRAPPER_ACTIVE=1 command ak "$@" 2>&1)
       local exit_code=$?
       if [ $exit_code -eq 0 ] && [ -n "$output" ]; then
         # Only eval if ak succeeded and produced output
@@ -1173,33 +1218,31 @@ ak() {
 
 static void ensureSourcedInRc(const Config &cfg)
 {
+    // Install into the invoking user's shell rc (handles sudo correctly)
+    TargetUser t = resolveTargetUser();
+
     string initPath = (fs::path(cfg.configDir) / "shell-init.sh").string();
     string sourceLine = "source \"" + initPath + "\"";
-    
-    // Detect current shell and determine appropriate config file
-    string shell = getenvs("SHELL", "/bin/bash");
-    string shellName = fs::path(shell).filename().string();
+
     string configFile;
-    
-    if (shellName == "zsh") {
-        configFile = string(getenv("HOME")) + "/.zshrc";
-    } else if (shellName == "bash") {
-        configFile = string(getenv("HOME")) + "/.bashrc";
-    } else if (shellName == "fish") {
-        configFile = string(getenv("HOME")) + "/.config/fish/config.fish";
-        // Create fish config directory if it doesn't exist
-        string fishConfigDir = string(getenv("HOME")) + "/.config/fish";
+    if (t.shellName == "zsh") {
+        configFile = t.home + "/.zshrc";
+    } else if (t.shellName == "bash") {
+        configFile = t.home + "/.bashrc";
+    } else if (t.shellName == "fish") {
+        string fishConfigDir = t.home + "/.config/fish";
         fs::create_directories(fishConfigDir);
+        configFile = fishConfigDir + "/config.fish";
     } else {
         // Fallback to .profile for unknown shells
-        configFile = string(getenv("HOME")) + "/.profile";
+        configFile = t.home + "/.profile";
     }
-    
+
     // Create config file if it doesn't exist
     if (!fs::exists(configFile)) {
         ofstream(configFile).close();
     }
-    
+
     // Add source line if not already present
     if (!fileContains(configFile, sourceLine)) {
         appendLine(configFile, ""); // spacer
@@ -1392,6 +1435,20 @@ int main(int argc, char **argv)
         string profile = args[1];
         bool persist = (find(args.begin() + 2, args.end(), string("--persist")) != args.end());
 
+        // If the shell wrapper didn't call us (no AK_SHELL_WRAPPER_ACTIVE) and stdout is a TTY,
+        // warn the user that this won't affect the current shell unless eval'd.
+        bool wrapperActive = (getenv("AK_SHELL_WRAPPER_ACTIVE") != nullptr);
+#ifdef __unix__
+        bool stdoutIsTTY = isatty(STDOUT_FILENO);
+#else
+        bool stdoutIsTTY = true;
+#endif
+        if (!wrapperActive && stdoutIsTTY && !cfg.json)
+        {
+            cerr << "⚠️  Not applied to current shell. Use: eval \"$(ak load " << profile
+                 << ")\" or run 'ak load " << profile << "' (no ./) after sourcing your shell init.\n";
+        }
+
         // Always print exports for eval in current shell
         string exports = makeExportsForProfile(cfg, profile);
         cout << exports; // user should: eval "$(ak load profile)"
@@ -1422,6 +1479,19 @@ int main(int argc, char **argv)
             error(cfg, "Usage: ak unload <profile> [--persist]");
         string profile = args[1];
         bool persist = (find(args.begin() + 2, args.end(), string("--persist")) != args.end());
+
+        // Warn if user is calling the binary directly in a TTY (unsets won't apply without eval)
+        bool wrapperActive = (getenv("AK_SHELL_WRAPPER_ACTIVE") != nullptr);
+#ifdef __unix__
+        bool stdoutIsTTY = isatty(STDOUT_FILENO);
+#else
+        bool stdoutIsTTY = true;
+#endif
+        if (!wrapperActive && stdoutIsTTY && !cfg.json)
+        {
+            cerr << "⚠️  Not applied to current shell. Use: eval \"$(ak unload " << profile
+                 << ")\" or run 'ak unload " << profile << "' (no ./) after sourcing your shell init.\n";
+        }
 
         // Print unset lines (eval them to drop from current shell)
         for (auto &k : readProfile(cfg, profile))
@@ -1800,24 +1870,29 @@ int main(int argc, char **argv)
     }
     else if (cmd == "install-shell")
     {
+        // Determine the target user (handles sudo) and install into their config directory
+        TargetUser t = resolveTargetUser();
+
+        // Override cfg.configDir to the target user's config dir for shell integration artifacts
+        string originalCfgDir = cfg.configDir;
+        cfg.configDir = t.home + "/.config/ak";
+        ensureSecureDir(cfg.configDir);
+
         writeShellInitFile(cfg);
         ensureSourcedInRc(cfg);
-        
+
         // Determine which config file to mention in the message
-        string shell = getenvs("SHELL", "/bin/bash");
-        string shellName = fs::path(shell).filename().string();
         string configFileMessage;
-        
-        if (shellName == "zsh") {
+        if (t.shellName == "zsh") {
             configFileMessage = "source ~/.zshrc";
-        } else if (shellName == "bash") {
+        } else if (t.shellName == "bash") {
             configFileMessage = "source ~/.bashrc";
-        } else if (shellName == "fish") {
+        } else if (t.shellName == "fish") {
             configFileMessage = "restart your terminal (fish config updated)";
         } else {
             configFileMessage = "source ~/.profile";
         }
-        
+
         cerr << "✅ Installed shell auto-load. Restart your terminal or run: " << configFileMessage << "\n";
         return 0;
     }
