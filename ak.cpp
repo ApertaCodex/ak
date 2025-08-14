@@ -1,4 +1,4 @@
-// ak.cpp - C++ rewrite of core 'ak' CLI with added commands
+// ak C++ rewrite of core 'ak' CLI with added commands
 // Storage: gpg/plain vault at ~/.config/ak/keys.env(.gpg); NO pass/secret-tool.
 // Implements: set/get/ls/rm, profiles save/env/export/import, masking, backend detection,
 // PLUS: load, unload, cp, search, run, guard, migrate exports, test, doctor, uninstall, audit.
