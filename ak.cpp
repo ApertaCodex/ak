@@ -1,7 +1,13 @@
-// ak C++ rewrite of core 'ak' CLI with added commands
-// Storage: gpg/plain vault at ~/.config/ak/keys.env(.gpg)
-// Implements: set/get/ls/rm, profiles save/env/export/import, masking, backend detection,
-// PLUS: load, unload, cp, search, run, guard, migrate exports, test, doctor, uninstall, audit.
+ // ak - Secure secret management CLI (C++ implementation)
+ //
+ // This tool provides a vault-based key/value store with optional GPG encryption.
+ // It supports setting, getting, listing, and removing secrets,
+ // profile management (save, load, unload, export, import),
+ // and utilities such as copy to clipboard, search, run, guard,
+ // testing service connectivity, and shell integration.
+ //
+ // Storage: GPG‑encrypted or plain text vault at ~/.config/ak/keys.env(.gpg)
+ // Configuration directory: ~/.config/ak
 
 #include <cstdio>
 #include <cstdlib>
@@ -36,6 +42,59 @@
 using namespace std;
 namespace fs = std::filesystem;
 extern char **environ;
+
+// -------- Colors --------
+namespace Colors {
+    static const string RESET = "\033[0m";
+    static const string BOLD = "\033[1m";
+    static const string DIM = "\033[2m";
+    
+    // Basic colors
+    static const string BLACK = "\033[30m";
+    static const string RED = "\033[31m";
+    static const string GREEN = "\033[32m";
+    static const string YELLOW = "\033[33m";
+    static const string BLUE = "\033[34m";
+    static const string MAGENTA = "\033[35m";
+    static const string CYAN = "\033[36m";
+    static const string WHITE = "\033[37m";
+    
+    // Bright colors
+    static const string BRIGHT_BLACK = "\033[90m";
+    static const string BRIGHT_RED = "\033[91m";
+    static const string BRIGHT_GREEN = "\033[92m";
+    static const string BRIGHT_YELLOW = "\033[93m";
+    static const string BRIGHT_BLUE = "\033[94m";
+    static const string BRIGHT_MAGENTA = "\033[95m";
+    static const string BRIGHT_CYAN = "\033[96m";
+    static const string BRIGHT_WHITE = "\033[97m";
+    
+    // Background colors
+    static const string BG_BLACK = "\033[40m";
+    static const string BG_RED = "\033[41m";
+    static const string BG_GREEN = "\033[42m";
+    static const string BG_YELLOW = "\033[43m";
+    static const string BG_BLUE = "\033[44m";
+    static const string BG_MAGENTA = "\033[45m";
+    static const string BG_CYAN = "\033[46m";
+    static const string BG_WHITE = "\033[47m";
+}
+
+static bool isColorSupported() {
+#ifdef __unix__
+    const char* term = getenv("TERM");
+    if (!term) return false;
+    string termStr(term);
+    return termStr != "dumb" && isatty(STDOUT_FILENO);
+#else
+    return false;
+#endif
+}
+
+static string colorize(const string& text, const string& color) {
+    if (!isColorSupported()) return text;
+    return color + text + Colors::RESET;
+}
 
 static const int MASK_PREFIX = 8;
 static const int MASK_SUFFIX = 4;
@@ -100,18 +159,18 @@ static void error(const Config &cfg, const string &msg, int code = 1)
     if (cfg.json)
         cerr << "{\"ok\":false,\"error\":\"" << msg << "\"}\n";
     else
-        cerr << "❌ " << msg << "\n";
+        cerr << colorize("❌ " + msg, Colors::BRIGHT_RED) << "\n";
     exit(code);
 }
 static void ok(const Config &cfg, const string &msg)
 {
     if (!cfg.json)
-        cerr << "✅ " << msg << "\n";
+        cerr << colorize("✅ " + msg, Colors::BRIGHT_GREEN) << "\n";
 }
 static void warn(const Config &cfg, const string &msg)
 {
     if (!cfg.json)
-        cerr << "⚠️  " << msg << "\n";
+        cerr << colorize("⚠️  " + msg, Colors::BRIGHT_YELLOW) << "\n";
 }
 
 #ifdef __unix__
@@ -559,33 +618,97 @@ static void writeProfile(const Config &cfg, const string &name, const vector<str
 }
 
 // -------- CLI help --------
+static void showLogo() {
+    if (!isColorSupported()) {
+        cout << "AK - Secret Management CLI\n\n";
+        return;
+    }
+    
+    cout << "\n";
+    cout << colorize("   ██████╗", Colors::BRIGHT_CYAN) << "     " << colorize("██╗ ██╗", Colors::BRIGHT_MAGENTA) << "\n";
+    cout << colorize("  ██╔═══██╗", Colors::BRIGHT_CYAN) << "    " << colorize("██║██╔╝", Colors::BRIGHT_MAGENTA) << "\n";
+    cout << colorize(" ██║    ██║", Colors::CYAN) << "    " << colorize("█████╔╝", Colors::MAGENTA) << "\n";
+    cout << colorize("███████████", Colors::CYAN) << "    " << colorize("██╔═██╗", Colors::MAGENTA) << "\n";
+    cout << colorize("██╔══════██", Colors::BRIGHT_CYAN) << "    " << colorize("██║ ██╗", Colors::BRIGHT_MAGENTA) << "\n";
+    cout << colorize("██║      ██", Colors::BRIGHT_CYAN) << "    " << colorize("╚═╝ ╚═╝", Colors::BRIGHT_MAGENTA) << "\n";
+    cout << colorize("╚═╝      ╚═╝", Colors::BRIGHT_CYAN) << "         " << "\n\n";
+
+    cout << colorize("    🔐 ", "") << colorize("Secure Secret Management", Colors::BRIGHT_WHITE + Colors::BOLD) << "\n";
+    cout << colorize("    ⚡ ", "") << colorize("Fast • Secure • Human-Friendly", Colors::BRIGHT_GREEN) << "\n\n";
+}
+
+static void showTips() {
+    cout << colorize("Tips for getting started:", Colors::BRIGHT_YELLOW + Colors::BOLD) << "\n";
+    cout << colorize("1. ", Colors::BRIGHT_WHITE) << colorize("Set your first secret: ", Colors::WHITE)
+         << colorize("ak set API_KEY", Colors::BRIGHT_CYAN) << "\n";
+    cout << colorize("2. ", Colors::BRIGHT_WHITE) << colorize("Create profiles to organize secrets: ", Colors::WHITE)
+         << colorize("ak save prod API_KEY DB_URL", Colors::BRIGHT_CYAN) << "\n";
+    cout << colorize("3. ", Colors::BRIGHT_WHITE) << colorize("Load secrets into your shell: ", Colors::WHITE)
+         << colorize("ak load prod", Colors::BRIGHT_CYAN) << "\n";
+    cout << colorize("4. ", Colors::BRIGHT_WHITE) << colorize("Import from .env files: ", Colors::WHITE)
+         << colorize("ak import -p dev -f env -i .env --keys", Colors::BRIGHT_CYAN) << "\n";
+    cout << colorize("5. ", Colors::BRIGHT_WHITE) << colorize("Run ", Colors::WHITE)
+         << colorize("ak help", Colors::BRIGHT_MAGENTA) << colorize(" for detailed documentation", Colors::WHITE) << "\n\n";
+}
+
 static void cmd_help()
 {
-    cout << "AK (C++ vault-based)\n"
-            "Usage:\n"
-            "  ak help\n"
-            "  ak backend\n"
-            "  ak set <NAME>\n"
-            "  ak get <NAME> [--full]\n"
-            "  ak ls [--json]\n"
-            "  ak rm <NAME>\n"
-            "  ak search <PATTERN>\n"
-            "  ak cp <NAME>\n"
-            "  ak save <profile> [NAMES...]\n"
-            "  ak env --profile <name>\n"
-            "  ak load <profile> [--persist]   # prints export lines; with --persist, also records for this directory\n"
-            "  ak unload <profile> [--persist] # prints unset lines; with --persist, also removes directory mapping\n"
-            "  ak export --profile <p> --format env|dotenv|json|yaml --output <file>\n"
-            "  ak import --profile <p> --format env|dotenv|json|yaml --file <file>\n"
-            "  ak migrate exports <file>\n"
-            "  ak profiles\n"
-            "  ak run --profile <p> -- <cmd...>\n"
-            "  ak guard enable|disable\n"
-            "  ak test <service>|--all [--json] [--fail-fast]\n"
-            "  ak doctor\n"
-            "  ak audit [N]\n"
-            "  ak install-shell            # installs auto-load snippet and sources it from your shell\n"
-            "  ak uninstall\n";
+    showLogo();
+    
+    cout << colorize("USAGE:", Colors::BRIGHT_WHITE + Colors::BOLD) << "\n";
+    cout << "  " << colorize("ak", Colors::BRIGHT_CYAN) << colorize(" <command> [options] [arguments]", Colors::WHITE) << "\n\n";
+
+    cout << colorize("SECRET MANAGEMENT:", Colors::BRIGHT_GREEN + Colors::BOLD) << "\n";
+    cout << "  " << colorize("ak set <NAME>", Colors::BRIGHT_CYAN) << "                   Set a secret (prompts for value)\n";
+    cout << "  " << colorize("ak get <NAME> [--full]", Colors::BRIGHT_CYAN) << "          Get a secret value (--full shows unmasked)\n";
+    cout << "  " << colorize("ak ls [--json]", Colors::BRIGHT_CYAN) << "                  List all secret names (--json for JSON output)\n";
+    cout << "  " << colorize("ak rm <NAME>", Colors::BRIGHT_CYAN) << "                    Remove a secret\n";
+    cout << "  " << colorize("ak rm --profile <NAME>", Colors::BRIGHT_CYAN) << "          Remove a profile\n";
+    cout << "  " << colorize("ak search <PATTERN>", Colors::BRIGHT_CYAN) << "             Search for secrets by name pattern (case-insensitive)\n";
+    cout << "  " << colorize("ak cp <NAME>", Colors::BRIGHT_CYAN) << "                    Copy secret value to clipboard\n";
+    cout << "  " << colorize("ak purge [--no-backup]", Colors::BRIGHT_CYAN) << "          Remove all secrets and profiles (creates backup by default)\n\n";
+
+    cout << colorize("PROFILE MANAGEMENT:", Colors::BRIGHT_BLUE + Colors::BOLD) << "\n";
+    cout << "  " << colorize("ak save <profile> [NAMES...]", Colors::BRIGHT_CYAN) << "    Save secrets to a profile (all secrets if no names given)\n";
+    cout << "  " << colorize("ak load <profile> [--persist]", Colors::BRIGHT_CYAN) << "   Load profile as environment variables\n";
+    cout << "                                  " << colorize("--persist: remember profile for current directory", Colors::DIM) << "\n";
+    cout << "  " << colorize("ak unload [<profile>] [--persist]", Colors::BRIGHT_CYAN) << " Unload profile environment variables\n";
+    cout << "  " << colorize("ak profiles", Colors::BRIGHT_CYAN) << "                     List all available profiles\n";
+    cout << "  " << colorize("ak env --profile|-p <name>", Colors::BRIGHT_CYAN) << "      Show profile as export statements\n\n";
+
+    cout << colorize("EXPORT/IMPORT:", Colors::BRIGHT_MAGENTA + Colors::BOLD) << "\n";
+    cout << "  " << colorize("ak export --profile|-p <p> --format|-f <fmt> --output|-o <file>", Colors::BRIGHT_CYAN) << "\n";
+    cout << "                                  Export profile to file\n";
+    cout << "  " << colorize("ak import --profile|-p <p> --format|-f <fmt> --file|-i <file> [--keys]", Colors::BRIGHT_CYAN) << "\n";
+    cout << "                                  Import secrets from file to profile\n";
+    cout << "                                  " << colorize("--keys: only import known service provider keys", Colors::BRIGHT_YELLOW) << "\n";
+    cout << "                                  \n";
+    cout << "  " << colorize("Supported formats:", Colors::WHITE) << " env, dotenv, json, yaml\n\n";
+
+    cout << colorize("UTILITIES:", Colors::BRIGHT_YELLOW + Colors::BOLD) << "\n";
+    cout << "  " << colorize("ak run --profile|-p <p> -- <cmd>", Colors::BRIGHT_CYAN) << "  Run command with profile environment loaded\n";
+    cout << "  " << colorize("ak test <service>|--all [options]", Colors::BRIGHT_CYAN) << "   Test service connectivity using stored credentials\n";
+    cout << "  " << colorize("ak guard enable|disable", Colors::BRIGHT_CYAN) << "         Enable/disable shell guard for secret protection\n";
+    cout << "  " << colorize("ak doctor", Colors::BRIGHT_CYAN) << "                       Check system configuration and dependencies\n";
+    cout << "  " << colorize("ak audit [N]", Colors::BRIGHT_CYAN) << "                    Show audit log (last N entries, default: 10)\n\n";
+    
+    cout << colorize("SYSTEM:", Colors::BRIGHT_RED + Colors::BOLD) << "\n";
+    cout << "  " << colorize("ak help", Colors::BRIGHT_CYAN) << "                         Show this help message\n";
+    cout << "  " << colorize("ak backend", Colors::BRIGHT_CYAN) << "                      Show backend information (GPG status, vault location)\n";
+    cout << "  " << colorize("ak install-shell", Colors::BRIGHT_CYAN) << "                Install shell integration for auto-loading\n";
+    cout << "  " << colorize("ak uninstall", Colors::BRIGHT_CYAN) << "                    Remove shell integration\n";
+    cout << "  " << colorize("ak completion <shell>", Colors::BRIGHT_CYAN) << "           Generate completion script for bash, zsh, or fish\n\n";
+
+    showTips();
+    
+    cout << colorize("For detailed documentation, visit: ", Colors::WHITE)
+         << colorize("https://github.com/apertacodex/ak", Colors::BRIGHT_BLUE + Colors::BOLD) << "\n";
+}
+
+static void showWelcome() {
+    showLogo();
+    showTips();
+    cout << colorize("Ready to manage your secrets securely! 🚀", Colors::BRIGHT_GREEN + Colors::BOLD) << "\n\n";
 }
 
 // -------- Instance ID --------
@@ -677,15 +800,37 @@ static vector<pair<string, string>> parse_env_file(istream &in)
         line = trim(line);
         if (line.empty() || line[0] == '#')
             continue;
+        
+        // Skip shell constructs that aren't env vars
+        if (line.find("alias ") == 0 ||
+            line.find("[[") != string::npos ||
+            line.find("$(") != string::npos ||
+            line.find("function ") == 0 ||
+            line.find("if ") == 0 ||
+            line.find("case ") == 0 ||
+            line.find("for ") == 0 ||
+            line.find("while ") == 0)
+            continue;
+            
         if (line.rfind("export ", 0) == 0)
             line = line.substr(7);
         auto eq = line.find('=');
         if (eq == string::npos)
             continue;
         string k = trim(line.substr(0, eq)), v = line.substr(eq + 1);
+        
+        // Validate key name - must be valid variable name
+        if (k.empty() || (!isalpha(k[0]) && k[0] != '_'))
+            continue;
+        for (char c : k) {
+            if (!isalnum(c) && c != '_')
+                goto skip_line;
+        }
+        
         if (!v.empty() && v.front() == '"' && v.back() == '"')
             v = v.substr(1, v.size() - 2);
         kvs.push_back({k, v});
+        skip_line:;
     }
     return kvs;
 }
@@ -741,7 +886,50 @@ static const map<string, string> SERVICE_KEYS = {
     {"tavily", "TAVILY_API_KEY"},
     {"together", "TOGETHER_API_KEY"},
     {"xai", "XAI_API_KEY"},
+    // Cloud providers
+    {"aws", "AWS_ACCESS_KEY_ID"},
+    {"gcp", "GOOGLE_APPLICATION_CREDENTIALS"},
+    {"azure", "AZURE_CLIENT_ID"},
+    {"github", "GITHUB_TOKEN"},
+    {"docker", "DOCKER_AUTH_TOKEN"},
+    // Database providers
+    {"mongodb", "MONGODB_URI"},
+    {"postgres", "DATABASE_URL"},
+    {"redis", "REDIS_URL"},
+    // Other common services
+    {"stripe", "STRIPE_SECRET_KEY"},
+    {"sendgrid", "SENDGRID_API_KEY"},
+    {"twilio", "TWILIO_AUTH_TOKEN"},
+    {"slack", "SLACK_API_TOKEN"},
+    {"discord", "DISCORD_TOKEN"},
+    {"vercel", "VERCEL_TOKEN"},
+    {"netlify", "NETLIFY_AUTH_TOKEN"},
 };
+
+// Get all known service provider keys
+static unordered_set<string> getKnownServiceKeys() {
+    unordered_set<string> keys;
+    for (const auto& service : SERVICE_KEYS) {
+        keys.insert(service.second);
+    }
+    // Add common variations
+    keys.insert("AWS_SECRET_ACCESS_KEY");
+    keys.insert("AWS_SESSION_TOKEN");
+    keys.insert("GOOGLE_CLOUD_PROJECT");
+    keys.insert("AZURE_CLIENT_SECRET");
+    keys.insert("AZURE_TENANT_ID");
+    keys.insert("GITHUB_CLIENT_ID");
+    keys.insert("GITHUB_CLIENT_SECRET");
+    keys.insert("DOCKER_USERNAME");
+    keys.insert("DOCKER_PASSWORD");
+    keys.insert("STRIPE_PUBLISHABLE_KEY");
+    keys.insert("SENDGRID_FROM_EMAIL");
+    keys.insert("TWILIO_ACCOUNT_SID");
+    keys.insert("SLACK_WEBHOOK_URL");
+    keys.insert("DISCORD_CLIENT_ID");
+    keys.insert("DISCORD_CLIENT_SECRET");
+    return keys;
+}
 
 static bool curl_ok(const string &args)
 {
@@ -773,7 +961,7 @@ static bool test_one(const Config &cfg, const string &svc)
         string ep = getenvs("AZURE_OPENAI_ENDPOINT");
         if (ep.empty())
             return false;
-        return curl_ok("-H \"api-key: " + k + "\" \"" + ep + "/openai/deployments?api-version=2024-02-15-preview\"");
+        return curl_ok("-H \"api-key: " + k + "\" \"" + ep + "/openai/models?api-version=2024-10-21\"");
     }
     if (svc == "brave")
         return curl_ok("-H \"X-Subscription-Token: " + k + "\" \"https://api.search.brave.com/res/v1/web/search?q=ping\"");
@@ -798,7 +986,7 @@ static bool test_one(const Config &cfg, const string &svc)
     if (svc == "openrouter")
         return curl_ok("-H \"Authorization: Bearer " + k + "\" https://openrouter.ai/api/v1/models");
     if (svc == "perplexity")
-        return curl_ok("-X POST https://api.perplexity.ai/chat/completions -H \"Authorization: Bearer " + k + "\" -H \"Content-Type: application/json\" -d '{\"model\":\"sonar-small-chat\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}],\"max_tokens\":4}'");
+        return curl_ok("-X POST https://api.perplexity.ai/chat/completions -H \"Authorization: Bearer " + k + "\" -H \"Content-Type: application/json\" -d '{\"model\":\"sonar\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}],\"max_tokens\":4}'");
     if (svc == "sambanova")
         return curl_ok("-H \"Authorization: Bearer " + k + "\" https://api.sambanova.ai/v1/models");
     if (svc == "tavily")
@@ -806,7 +994,7 @@ static bool test_one(const Config &cfg, const string &svc)
     if (svc == "together")
         return curl_ok("-H \"Authorization: Bearer " + k + "\" https://api.together.ai/v1/models");
     if (svc == "xai")
-        return curl_ok("-X POST https://api.x.ai/v1/chat/completions -H \"Authorization: Bearer " + k + "\" -H \"Content-Type: application/json\" -d '{\"model\":\"grok-1\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}],\"max_tokens\":4}'");
+        return curl_ok("-H \"Authorization: Bearer " + k + "\" https://api.x.ai/v1/models");
     return false;
 }
 
@@ -1216,6 +1404,317 @@ ak() {
 #endif
 }
 
+// -------- Short Flag Support --------
+static vector<string> expandShortFlags(const vector<string> &args)
+{
+    vector<string> expanded;
+    
+    for (const auto &arg : args)
+    {
+        if (arg.size() == 2 && arg[0] == '-' && arg[1] != '-')
+        {
+            // Handle short flags
+            char flag = arg[1];
+            switch (flag)
+            {
+                case 'p':
+                    expanded.push_back("--profile");
+                    break;
+                case 'f':
+                    expanded.push_back("--format");
+                    break;
+                case 'o':
+                    expanded.push_back("--output");
+                    break;
+                case 'i':
+                    expanded.push_back("--file");  // for import, -i means input file
+                    break;
+                case 'j':
+                    expanded.push_back("--json");
+                    break;
+                case 'h':
+                    expanded.push_back("--help");
+                    break;
+                default:
+                    expanded.push_back(arg); // Keep unknown short flags as-is
+                    break;
+            }
+        }
+        else
+        {
+            expanded.push_back(arg);
+        }
+    }
+    
+    return expanded;
+}
+
+// Helper functions to write completion scripts to files
+static void writeBashCompletionToFile(const string &path)
+{
+    ofstream out(path, ios::trunc);
+    out << "#!/bin/bash\n"
+        << "_ak_completion()\n"
+        << "{\n"
+        << "    local cur prev opts commands\n"
+        << "    COMPREPLY=()\n"
+        << "    cur=\"${COMP_WORDS[COMP_CWORD]}\"\n"
+        << "    prev=\"${COMP_WORDS[COMP_CWORD-1]}\"\n"
+        << "    \n"
+        << "    commands=\"help backend set get ls rm search cp save load unload env export import migrate profiles run guard test doctor audit install-shell uninstall completion\"\n"
+        << "    \n"
+        << "    # Handle subcommands and options\n"
+        << "    case \"${prev}\" in\n"
+        << "        ak)\n"
+        << "            COMPREPLY=($(compgen -W \"${commands}\" -- ${cur}))\n"
+        << "            return 0\n"
+        << "            ;;\n"
+        << "        get|cp|rm)\n"
+        << "            # Complete with secret names\n"
+        << "            if command -v ak >/dev/null 2>&1; then\n"
+        << "                local secrets=$(ak ls 2>/dev/null | awk '{print $1}')\n"
+        << "                COMPREPLY=($(compgen -W \"${secrets}\" -- ${cur}))\n"
+        << "            fi\n"
+        << "            return 0\n"
+        << "            ;;\n"
+        << "        save|load|unload|env)\n"
+        << "            # Complete with profile names\n"
+        << "            if command -v ak >/dev/null 2>&1; then\n"
+        << "                local profiles=$(ak profiles 2>/dev/null)\n"
+        << "                COMPREPLY=($(compgen -W \"${profiles}\" -- ${cur}))\n"
+        << "            fi\n"
+        << "            return 0\n"
+        << "            ;;\n"
+        << "        --profile|-p)\n"
+        << "            # Complete with profile names\n"
+        << "            if command -v ak >/dev/null 2>&1; then\n"
+        << "                local profiles=$(ak profiles 2>/dev/null)\n"
+        << "                COMPREPLY=($(compgen -W \"${profiles}\" -- ${cur}))\n"
+        << "            fi\n"
+        << "            return 0\n"
+        << "            ;;\n"
+        << "        --format|-f)\n"
+        << "            COMPREPLY=($(compgen -W \"env dotenv json yaml\" -- ${cur}))\n"
+        << "            return 0\n"
+        << "            ;;\n"
+        << "        guard)\n"
+        << "            COMPREPLY=($(compgen -W \"enable disable\" -- ${cur}))\n"
+        << "            return 0\n"
+        << "            ;;\n"
+        << "        test)\n"
+        << "            COMPREPLY=($(compgen -W \"aws gcp azure github docker heroku --all\" -- ${cur}))\n"
+        << "            return 0\n"
+        << "            ;;\n"
+        << "        completion)\n"
+        << "            COMPREPLY=($(compgen -W \"bash zsh fish\" -- ${cur}))\n"
+        << "            return 0\n"
+        << "            ;;\n"
+        << "        *)\n"
+        << "            # Handle flags\n"
+        << "            if [[ ${cur} == -* ]]; then\n"
+        << "                case \"${COMP_WORDS[1]}\" in\n"
+        << "                    get)\n"
+        << "                        COMPREPLY=($(compgen -W \"--full\" -- ${cur}))\n"
+        << "                        ;;\n"
+        << "                    ls)\n"
+        << "                        COMPREPLY=($(compgen -W \"--json -j\" -- ${cur}))\n"
+        << "                        ;;\n"
+        << "                    load|unload)\n"
+        << "                        COMPREPLY=($(compgen -W \"--persist\" -- ${cur}))\n"
+        << "                        ;;\n"
+        << "                    export)\n"
+        << "                        COMPREPLY=($(compgen -W \"--profile -p --format -f --output -o\" -- ${cur}))\n"
+        << "                        ;;\n"
+        << "                    import)\n"
+        << "                        COMPREPLY=($(compgen -W \"--profile -p --format -f --file -i\" -- ${cur}))\n"
+        << "                        ;;\n"
+        << "                    test)\n"
+        << "                        COMPREPLY=($(compgen -W \"--json -j --fail-fast --all\" -- ${cur}))\n"
+        << "                        ;;\n"
+        << "                    env)\n"
+        << "                        COMPREPLY=($(compgen -W \"--profile -p\" -- ${cur}))\n"
+        << "                        ;;\n"
+        << "                    run)\n"
+        << "                        COMPREPLY=($(compgen -W \"--profile -p\" -- ${cur}))\n"
+        << "                        ;;\n"
+        << "                    *)\n"
+        << "                        COMPREPLY=($(compgen -W \"--json -j --help -h\" -- ${cur}))\n"
+        << "                        ;;\n"
+        << "                esac\n"
+        << "            fi\n"
+        << "            ;;\n"
+        << "    esac\n"
+        << "}\n"
+        << "\n"
+        << "complete -F _ak_completion ak\n";
+    out.close();
+}
+
+static void writeZshCompletionToFile(const string &path)
+{
+    ofstream out(path, ios::trunc);
+    out << "#compdef ak\n"
+        << "\n"
+        << "_ak() {\n"
+        << "    local context state state_descr line\n"
+        << "    local -A opt_args\n"
+        << "\n"
+        << "    _arguments -C \\\n"
+        << "        '(--json -j)'{--json,-j}'[Output in JSON format]' \\\n"
+        << "        '(--help -h)'{--help,-h}'[Show help message]' \\\n"
+        << "        '1: :->commands' \\\n"
+        << "        '*:: :->args' && return 0\n"
+        << "\n"
+        << "    case $state in\n"
+        << "        commands)\n"
+        << "            local commands=(\n"
+        << "                'help:Show help message'\n"
+        << "                'backend:Show backend information'\n"
+        << "                'set:Set a secret value'\n"
+        << "                'get:Get a secret value'\n"
+        << "                'ls:List all secrets'\n"
+        << "                'rm:Remove a secret'\n"
+        << "                'search:Search for secrets'\n"
+        << "                'cp:Copy secret to clipboard'\n"
+        << "                'save:Save secrets to profile'\n"
+        << "                'load:Load profile environment'\n"
+        << "                'unload:Unload profile environment'\n"
+        << "                'env:Show profile as exports'\n"
+        << "                'export:Export profile to file'\n"
+        << "                'import:Import secrets from file'\n"
+        << "                'migrate:Migrate from old format'\n"
+        << "                'profiles:List profiles'\n"
+        << "                'run:Run command with profile'\n"
+        << "                'guard:Enable/disable shell guard'\n"
+        << "                'test:Test service connectivity'\n"
+        << "                'doctor:Check configuration'\n"
+        << "                'audit:Show audit log'\n"
+        << "                'install-shell:Install shell integration'\n"
+        << "                'uninstall:Remove shell integration'\n"
+        << "                'completion:Generate completion script'\n"
+        << "            )\n"
+        << "            _describe 'ak commands' commands\n"
+        << "            ;;\n"
+        << "        args)\n"
+        << "            case $line[1] in\n"
+        << "                get|cp|rm)\n"
+        << "                    _ak_secrets\n"
+        << "                    ;;\n"
+        << "                save|load|unload|env)\n"
+        << "                    _ak_profiles\n"
+        << "                    ;;\n"
+        << "                guard)\n"
+        << "                    _arguments '1:action:(enable disable)'\n"
+        << "                    ;;\n"
+        << "                test)\n"
+        << "                    _arguments \\\n"
+        << "                        '(--json -j)'{--json,-j}'[JSON output]' \\\n"
+        << "                        '--fail-fast[Stop on first failure]' \\\n"
+        << "                        '--all[Test all services]' \\\n"
+        << "                        '1:service:(aws gcp azure github docker heroku)'\n"
+        << "                    ;;\n"
+        << "                export)\n"
+        << "                    _arguments \\\n"
+        << "                        '(--profile -p)'{--profile,-p}'[Profile name]:profile:_ak_profiles' \\\n"
+        << "                        '(--format -f)'{--format,-f}'[Export format]:format:(env dotenv json yaml)' \\\n"
+        << "                        '(--output -o)'{--output,-o}'[Output file]:file:_files'\n"
+        << "                    ;;\n"
+        << "                import)\n"
+        << "                    _arguments \\\n"
+        << "                        '(--profile -p)'{--profile,-p}'[Profile name]:profile:_ak_profiles' \\\n"
+        << "                        '(--format -f)'{--format,-f}'[Import format]:format:(env dotenv json yaml)' \\\n"
+        << "                        '(--file -i)'{--file,-i}'[Input file]:file:_files'\n"
+        << "                    ;;\n"
+        << "                completion)\n"
+        << "                    _arguments '1:shell:(bash zsh fish)'\n"
+        << "                    ;;\n"
+        << "            esac\n"
+        << "            ;;\n"
+        << "    esac\n"
+        << "}\n"
+        << "\n"
+        << "_ak_secrets() {\n"
+        << "    local secrets\n"
+        << "    secrets=($(ak ls 2>/dev/null | awk '{print $1}'))\n"
+        << "    _describe 'secrets' secrets\n"
+        << "}\n"
+        << "\n"
+        << "_ak_profiles() {\n"
+        << "    local profiles\n"
+        << "    profiles=($(ak profiles 2>/dev/null))\n"
+        << "    _describe 'profiles' profiles\n"
+        << "}\n"
+        << "\n"
+        << "_ak \"$@\"\n";
+    out.close();
+}
+
+static void writeFishCompletionToFile(const string &path)
+{
+    ofstream out(path, ios::trunc);
+    out << "# Fish completion for ak\n"
+        << "\n"
+        << "# Commands\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'help backend set get ls rm search cp save load unload env export import migrate profiles run guard test doctor audit install-shell uninstall completion'\n"
+        << "\n"
+        << "# Command descriptions\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'help' -d 'Show help message'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'backend' -d 'Show backend information'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'set' -d 'Set a secret value'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'get' -d 'Get a secret value'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'ls' -d 'List all secrets'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'rm' -d 'Remove a secret'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'search' -d 'Search for secrets'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'cp' -d 'Copy secret to clipboard'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'save' -d 'Save secrets to profile'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'load' -d 'Load profile environment'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'unload' -d 'Unload profile environment'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'env' -d 'Show profile as exports'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'export' -d 'Export profile to file'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'import' -d 'Import secrets from file'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'migrate' -d 'Migrate from old format'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'profiles' -d 'List profiles'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'run' -d 'Run command with profile'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'guard' -d 'Enable/disable shell guard'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'test' -d 'Test service connectivity'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'doctor' -d 'Check configuration'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'audit' -d 'Show audit log'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'install-shell' -d 'Install shell integration'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'uninstall' -d 'Remove shell integration'\n"
+        << "complete -c ak -n '__fish_use_subcommand' -xa 'completion' -d 'Generate completion script'\n"
+        << "\n"
+        << "# Global options\n"
+        << "complete -c ak -l json -s j -d 'Output in JSON format'\n"
+        << "complete -c ak -l help -s h -d 'Show help message'\n"
+        << "\n"
+        << "# Secret name completions for get, cp, rm\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from get cp rm' -xa '(ak ls 2>/dev/null | awk \"{print \\$1}\")'\n"
+        << "\n"
+        << "# Profile name completions for save, load, env, run (unload profiles are optional)\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from save load env run' -xa '(ak profiles 2>/dev/null)'\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from unload' -xa '(ak profiles 2>/dev/null)' -d 'Profile to unload (optional - unloads all if none specified)'\n"
+        << "\n"
+        << "# Options for specific commands\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from get' -l full -d 'Show full value unmasked'\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from ls' -l json -s j -d 'Output in JSON format'\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from load unload' -l persist -d 'Persist for current directory'\n"
+        << "\n"
+        << "# Profile options with short flags\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from export import env run' -l profile -s p -d 'Profile name' -xa '(ak profiles 2>/dev/null)'\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from export import' -l format -s f -d 'File format' -xa 'env dotenv json yaml'\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from export' -l output -s o -d 'Output file' -F\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from import' -l file -s i -d 'Input file' -F\n"
+        << "\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from guard' -xa 'enable disable'\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from test' -xa 'aws gcp azure github docker heroku'\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from test' -l json -s j -d 'JSON output'\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from test' -l fail-fast -d 'Stop on first failure'\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from test' -l all -d 'Test all services'\n"
+        << "\n"
+        << "complete -c ak -n '__fish_seen_subcommand_from completion' -xa 'bash zsh fish'\n";
+    out.close();
+}
+
 static void ensureSourcedInRc(const Config &cfg)
 {
     // Install into the invoking user's shell rc (handles sudo correctly)
@@ -1225,17 +1724,65 @@ static void ensureSourcedInRc(const Config &cfg)
     string sourceLine = "source \"" + initPath + "\"";
 
     string configFile;
+    string completionFile;
+    
+    // Install completion scripts for the appropriate shell
     if (t.shellName == "zsh") {
         configFile = t.home + "/.zshrc";
+        // Install zsh completion
+        string zshCompDir = t.home + "/.config/zsh/completions";
+        fs::create_directories(zshCompDir);
+        completionFile = zshCompDir + "/_ak";
+        
+        writeZshCompletionToFile(completionFile);
+        
+        // Add fpath line to zshrc if not present
+        string fpathLine = "fpath=(~/.config/zsh/completions $fpath)";
+        if (!fileContains(configFile, fpathLine)) {
+            appendLine(configFile, fpathLine);
+        }
+        string autoloadLine = "autoload -U compinit && compinit";
+        if (!fileContains(configFile, autoloadLine)) {
+            appendLine(configFile, autoloadLine);
+        }
+        
     } else if (t.shellName == "bash") {
         configFile = t.home + "/.bashrc";
+        // Install bash completion
+        completionFile = t.home + "/.config/ak/ak-completion.bash";
+        
+        writeBashCompletionToFile(completionFile);
+        
+        // Source completion in bashrc
+        string compSourceLine = "source \"" + completionFile + "\"";
+        if (!fileContains(configFile, compSourceLine)) {
+            appendLine(configFile, compSourceLine);
+        }
+        
     } else if (t.shellName == "fish") {
         string fishConfigDir = t.home + "/.config/fish";
         fs::create_directories(fishConfigDir);
         configFile = fishConfigDir + "/config.fish";
+        
+        // Install fish completion
+        string fishCompDir = fishConfigDir + "/completions";
+        fs::create_directories(fishCompDir);
+        completionFile = fishCompDir + "/ak.fish";
+        
+        writeFishCompletionToFile(completionFile);
+        
     } else {
         // Fallback to .profile for unknown shells
         configFile = t.home + "/.profile";
+        // Install basic bash completion as fallback
+        completionFile = t.home + "/.config/ak/ak-completion.bash";
+        
+        writeBashCompletionToFile(completionFile);
+        
+        string compSourceLine = "source \"" + completionFile + "\"";
+        if (!fileContains(configFile, compSourceLine)) {
+            appendLine(configFile, compSourceLine);
+        }
     }
 
     // Create config file if it doesn't exist
@@ -1252,6 +1799,264 @@ static void ensureSourcedInRc(const Config &cfg)
     } else {
         cerr << "✅ Shell integration already configured in " << configFile << "\n";
     }
+    
+    // Report completion installation
+    if (!completionFile.empty()) {
+        cerr << "✅ Installed " << t.shellName << " completion to " << completionFile << "\n";
+    }
+}
+
+// -------- Completion Functions --------
+static void generateBashCompletion()
+{
+    cout << "#!/bin/bash\n"
+            "_ak_completion()\n"
+            "{\n"
+            "    local cur prev opts commands\n"
+            "    COMPREPLY=()\n"
+            "    cur=\"${COMP_WORDS[COMP_CWORD]}\"\n"
+            "    prev=\"${COMP_WORDS[COMP_CWORD-1]}\"\n"
+            "    \n"
+            "    commands=\"help backend set get ls rm search cp save load unload env export import migrate profiles run guard test doctor audit install-shell uninstall completion\"\n"
+            "    \n"
+            "    # Handle subcommands and options\n"
+            "    case \"${prev}\" in\n"
+            "        ak)\n"
+            "            COMPREPLY=($(compgen -W \"${commands}\" -- ${cur}))\n"
+            "            return 0\n"
+            "            ;;\n"
+            "        get|cp|rm)\n"
+            "            # Complete with secret names\n"
+            "            if command -v ak >/dev/null 2>&1; then\n"
+            "                local secrets=$(ak ls 2>/dev/null | awk '{print $1}')\n"
+            "                COMPREPLY=($(compgen -W \"${secrets}\" -- ${cur}))\n"
+            "            fi\n"
+            "            return 0\n"
+            "            ;;\n"
+            "        save|load|unload|env)\n"
+            "            # Complete with profile names\n"
+            "            if command -v ak >/dev/null 2>&1; then\n"
+            "                local profiles=$(ak profiles 2>/dev/null)\n"
+            "                COMPREPLY=($(compgen -W \"${profiles}\" -- ${cur}))\n"
+            "            fi\n"
+            "            return 0\n"
+            "            ;;\n"
+            "        --profile)\n"
+            "            # Complete with profile names\n"
+            "            if command -v ak >/dev/null 2>&1; then\n"
+            "                local profiles=$(ak profiles 2>/dev/null)\n"
+            "                COMPREPLY=($(compgen -W \"${profiles}\" -- ${cur}))\n"
+            "            fi\n"
+            "            return 0\n"
+            "            ;;\n"
+            "        --format)\n"
+            "            COMPREPLY=($(compgen -W \"env dotenv json yaml\" -- ${cur}))\n"
+            "            return 0\n"
+            "            ;;\n"
+            "        guard)\n"
+            "            COMPREPLY=($(compgen -W \"enable disable\" -- ${cur}))\n"
+            "            return 0\n"
+            "            ;;\n"
+            "        test)\n"
+            "            COMPREPLY=($(compgen -W \"aws gcp azure github docker heroku --all\" -- ${cur}))\n"
+            "            return 0\n"
+            "            ;;\n"
+            "        completion)\n"
+            "            COMPREPLY=($(compgen -W \"bash zsh fish\" -- ${cur}))\n"
+            "            return 0\n"
+            "            ;;\n"
+            "        *)\n"
+            "            # Handle flags\n"
+            "            if [[ ${cur} == -* ]]; then\n"
+            "                case \"${COMP_WORDS[1]}\" in\n"
+            "                    get)\n"
+            "                        COMPREPLY=($(compgen -W \"--full\" -- ${cur}))\n"
+            "                        ;;\n"
+            "                    ls)\n"
+            "                        COMPREPLY=($(compgen -W \"--json\" -- ${cur}))\n"
+            "                        ;;\n"
+            "                    load|unload)\n"
+            "                        COMPREPLY=($(compgen -W \"--persist\" -- ${cur}))\n"
+            "                        ;;\n"
+            "                    export)\n"
+            "                        COMPREPLY=($(compgen -W \"--profile --format --output\" -- ${cur}))\n"
+            "                        ;;\n"
+            "                    import)\n"
+            "                        COMPREPLY=($(compgen -W \"--profile --format --file\" -- ${cur}))\n"
+            "                        ;;\n"
+            "                    test)\n"
+            "                        COMPREPLY=($(compgen -W \"--json --fail-fast --all\" -- ${cur}))\n"
+            "                        ;;\n"
+            "                    *)\n"
+            "                        COMPREPLY=($(compgen -W \"--json --help\" -- ${cur}))\n"
+            "                        ;;\n"
+            "                esac\n"
+            "            fi\n"
+            "            ;;\n"
+            "    esac\n"
+            "}\n"
+            "\n"
+            "complete -F _ak_completion ak\n";
+}
+
+static void generateZshCompletion()
+{
+    cout << "#compdef ak\n"
+            "\n"
+            "_ak() {\n"
+            "    local context state state_descr line\n"
+            "    local -A opt_args\n"
+            "\n"
+            "    _arguments -C \\\n"
+            "        '--json[Output in JSON format]' \\\n"
+            "        '--help[Show help message]' \\\n"
+            "        '1: :->commands' \\\n"
+            "        '*:: :->args' && return 0\n"
+            "\n"
+            "    case $state in\n"
+            "        commands)\n"
+            "            local commands=(\n"
+            "                'help:Show help message'\n"
+            "                'backend:Show backend information'\n"
+            "                'set:Set a secret value'\n"
+            "                'get:Get a secret value'\n"
+            "                'ls:List all secrets'\n"
+            "                'rm:Remove a secret'\n"
+            "                'search:Search for secrets'\n"
+            "                'cp:Copy secret to clipboard'\n"
+            "                'save:Save secrets to profile'\n"
+            "                'load:Load profile environment'\n"
+            "                'unload:Unload profile environment'\n"
+            "                'env:Show profile as exports'\n"
+            "                'export:Export profile to file'\n"
+            "                'import:Import secrets from file'\n"
+            "                'migrate:Migrate from old format'\n"
+            "                'profiles:List profiles'\n"
+            "                'run:Run command with profile'\n"
+            "                'guard:Enable/disable shell guard'\n"
+            "                'test:Test service connectivity'\n"
+            "                'doctor:Check configuration'\n"
+            "                'audit:Show audit log'\n"
+            "                'install-shell:Install shell integration'\n"
+            "                'uninstall:Remove shell integration'\n"
+            "                'completion:Generate completion script'\n"
+            "            )\n"
+            "            _describe 'ak commands' commands\n"
+            "            ;;\n"
+            "        args)\n"
+            "            case $line[1] in\n"
+            "                get|cp|rm)\n"
+            "                    _ak_secrets\n"
+            "                    ;;\n"
+            "                save|load|unload|env)\n"
+            "                    _ak_profiles\n"
+            "                    ;;\n"
+            "                guard)\n"
+            "                    _arguments '1:action:(enable disable)'\n"
+            "                    ;;\n"
+            "                test)\n"
+            "                    _arguments \\\n"
+            "                        '--json[JSON output]' \\\n"
+            "                        '--fail-fast[Stop on first failure]' \\\n"
+            "                        '--all[Test all services]' \\\n"
+            "                        '1:service:(aws gcp azure github docker heroku)'\n"
+            "                    ;;\n"
+            "                export)\n"
+            "                    _arguments \\\n"
+            "                        '--profile[Profile name]:profile:_ak_profiles' \\\n"
+            "                        '--format[Export format]:format:(env dotenv json yaml)' \\\n"
+            "                        '--output[Output file]:file:_files'\n"
+            "                    ;;\n"
+            "                import)\n"
+            "                    _arguments \\\n"
+            "                        '--profile[Profile name]:profile:_ak_profiles' \\\n"
+            "                        '--format[Import format]:format:(env dotenv json yaml)' \\\n"
+            "                        '--file[Input file]:file:_files'\n"
+            "                    ;;\n"
+            "                completion)\n"
+            "                    _arguments '1:shell:(bash zsh fish)'\n"
+            "                    ;;\n"
+            "            esac\n"
+            "            ;;\n"
+            "    esac\n"
+            "}\n"
+            "\n"
+            "_ak_secrets() {\n"
+            "    local secrets\n"
+            "    secrets=($(ak ls 2>/dev/null | awk '{print $1}'))\n"
+            "    _describe 'secrets' secrets\n"
+            "}\n"
+            "\n"
+            "_ak_profiles() {\n"
+            "    local profiles\n"
+            "    profiles=($(ak profiles 2>/dev/null))\n"
+            "    _describe 'profiles' profiles\n"
+            "}\n"
+            "\n"
+            "_ak \"$@\"\n";
+}
+
+static void generateFishCompletion()
+{
+    cout << "# Fish completion for ak\n"
+            "\n"
+            "# Commands\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'help backend set get ls rm search cp save load unload env export import migrate profiles run guard test doctor audit install-shell uninstall completion'\n"
+            "\n"
+            "# Command descriptions\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'help' -d 'Show help message'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'backend' -d 'Show backend information'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'set' -d 'Set a secret value'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'get' -d 'Get a secret value'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'ls' -d 'List all secrets'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'rm' -d 'Remove a secret'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'search' -d 'Search for secrets'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'cp' -d 'Copy secret to clipboard'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'save' -d 'Save secrets to profile'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'load' -d 'Load profile environment'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'unload' -d 'Unload profile environment'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'env' -d 'Show profile as exports'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'export' -d 'Export profile to file'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'import' -d 'Import secrets from file'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'migrate' -d 'Migrate from old format'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'profiles' -d 'List profiles'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'run' -d 'Run command with profile'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'guard' -d 'Enable/disable shell guard'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'test' -d 'Test service connectivity'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'doctor' -d 'Check configuration'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'audit' -d 'Show audit log'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'install-shell' -d 'Install shell integration'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'uninstall' -d 'Remove shell integration'\n"
+            "complete -c ak -n '__fish_use_subcommand' -xa 'completion' -d 'Generate completion script'\n"
+            "\n"
+            "# Global options\n"
+            "complete -c ak -l json -d 'Output in JSON format'\n"
+            "complete -c ak -l help -d 'Show help message'\n"
+            "\n"
+            "# Secret name completions for get, cp, rm\n"
+            "complete -c ak -n '__fish_seen_subcommand_from get cp rm' -xa '(ak ls 2>/dev/null | awk \"{print \\$1}\")'\n"
+            "\n"
+            "# Profile name completions for save, load, env (unload profiles are optional)\n"
+            "complete -c ak -n '__fish_seen_subcommand_from save load env' -xa '(ak profiles 2>/dev/null)'\n"
+            "complete -c ak -n '__fish_seen_subcommand_from unload' -xa '(ak profiles 2>/dev/null)' -d 'Profile to unload (optional - unloads all if none specified)'\n"
+            "\n"
+            "# Options for specific commands\n"
+            "complete -c ak -n '__fish_seen_subcommand_from get' -l full -d 'Show full value unmasked'\n"
+            "complete -c ak -n '__fish_seen_subcommand_from ls' -l json -d 'Output in JSON format'\n"
+            "complete -c ak -n '__fish_seen_subcommand_from load unload' -l persist -d 'Persist for current directory'\n"
+            "\n"
+            "complete -c ak -n '__fish_seen_subcommand_from export import' -l profile -d 'Profile name' -xa '(ak profiles 2>/dev/null)'\n"
+            "complete -c ak -n '__fish_seen_subcommand_from export import' -l format -d 'File format' -xa 'env dotenv json yaml'\n"
+            "complete -c ak -n '__fish_seen_subcommand_from export' -l output -d 'Output file' -F\n"
+            "complete -c ak -n '__fish_seen_subcommand_from import' -l file -d 'Input file' -F\n"
+            "\n"
+            "complete -c ak -n '__fish_seen_subcommand_from guard' -xa 'enable disable'\n"
+            "complete -c ak -n '__fish_seen_subcommand_from test' -xa 'aws gcp azure github docker heroku'\n"
+            "complete -c ak -n '__fish_seen_subcommand_from test' -l json -d 'JSON output'\n"
+            "complete -c ak -n '__fish_seen_subcommand_from test' -l fail-fast -d 'Stop on first failure'\n"
+            "complete -c ak -n '__fish_seen_subcommand_from test' -l all -d 'Test all services'\n"
+            "\n"
+            "complete -c ak -n '__fish_seen_subcommand_from completion' -xa 'bash zsh fish'\n";
 }
 
 // -------- main --------
@@ -1274,22 +2079,37 @@ int main(int argc, char **argv)
     cfg.instanceId = loadOrCreateInstanceId(cfg);
     cfg.persistDir = cfg.configDir + "/persist";
 
-    // parse global flags
-    vector<string> args;
-    args.reserve(argc - 1);
+    // parse global flags - first expand short flags
+    vector<string> rawArgs;
+    rawArgs.reserve(argc - 1);
     for (int i = 1; i < argc; ++i)
     {
-        string a = argv[i];
+        rawArgs.push_back(argv[i]);
+    }
+    
+    // Expand short flags
+    vector<string> expandedArgs = expandShortFlags(rawArgs);
+    
+    // Now process global flags
+    vector<string> args;
+    args.reserve(expandedArgs.size());
+    for (const auto &a : expandedArgs)
+    {
         if (a == "--json")
             cfg.json = true;
         else
             args.push_back(a);
     }
-    string cmd = args.empty() ? "help" : args[0];
+    string cmd = args.empty() ? "welcome" : args[0];
 
     ensureDefaultProfile(cfg);
 
-    if (cmd == "help" || cmd == "--help" || cmd == "-h")
+    if (cmd == "welcome")
+    {
+        showWelcome();
+        return 0;
+    }
+    else if (cmd == "help" || cmd == "--help" || cmd == "-h")
     {
         cmd_help();
         return 0;
@@ -1390,7 +2210,30 @@ int main(int argc, char **argv)
     else if (cmd == "rm")
     {
         if (args.size() < 2)
-            error(cfg, "Usage: ak rm <NAME>");
+            error(cfg, "Usage: ak rm <NAME> (remove secret) or ak rm --profile <NAME> (remove profile)");
+        
+        // Check if removing a profile
+        if (args.size() >= 3 && args[1] == "--profile")
+        {
+            string profileName = args[2];
+            auto profiles = listProfiles(cfg);
+            if (find(profiles.begin(), profiles.end(), profileName) == profiles.end())
+                error(cfg, "Profile '" + profileName + "' not found.");
+            
+            // Remove profile file
+            string profilePath = cfg.profilesDir + "/" + profileName + ".profile";
+            if (fs::exists(profilePath))
+            {
+                fs::remove(profilePath);
+                ok(cfg, "Removed profile '" + profileName + "'.");
+                auditLog(cfg, "rm_profile", {profileName});
+            }
+            else
+                error(cfg, "Profile file not found: " + profilePath);
+            return 0;
+        }
+        
+        // Remove secret key
         string name = args[1];
         KeyStore ks = loadVault(cfg);
         if (!ks.kv.erase(name))
@@ -1398,6 +2241,86 @@ int main(int argc, char **argv)
         saveVault(cfg, ks);
         ok(cfg, "Removed " + name + ".");
         auditLog(cfg, "rm", {name});
+        return 0;
+    }
+    else if (cmd == "purge")
+    {
+        bool backup = true;
+        // Check for --no-backup flag
+        if (args.size() >= 2 && args[1] == "--no-backup")
+            backup = false;
+        
+        KeyStore ks = loadVault(cfg);
+        auto profiles = listProfiles(cfg);
+        
+        if (ks.kv.empty() && profiles.empty())
+        {
+            ok(cfg, "Nothing to purge - vault and profiles are already empty.");
+            return 0;
+        }
+        
+        string backupDir;
+        if (backup)
+        {
+            // Create backup directory with timestamp
+            auto now = chrono::system_clock::now();
+            auto time_t = chrono::system_clock::to_time_t(now);
+            stringstream ss;
+            ss << put_time(gmtime(&time_t), "%Y%m%d_%H%M%S");
+            backupDir = cfg.configDir + "/backups/purge_" + ss.str();
+            fs::create_directories(backupDir);
+            
+            // Backup vault
+            if (!ks.kv.empty())
+            {
+                string backupVault = backupDir + "/keys.env";
+                ofstream out(backupVault);
+                for (auto &p : ks.kv)
+                    out << p.first << "=" << base64Encode(p.second) << "\n";
+                out.close();
+            }
+            
+            // Backup profiles
+            if (!profiles.empty())
+            {
+                string backupProfilesDir = backupDir + "/profiles";
+                fs::create_directories(backupProfilesDir);
+                for (const auto& profile : profiles)
+                {
+                    string srcPath = cfg.profilesDir + "/" + profile;
+                    string dstPath = backupProfilesDir + "/" + profile;
+                    if (fs::exists(srcPath))
+                        fs::copy_file(srcPath, dstPath);
+                }
+            }
+            
+            ok(cfg, "Created backup at: " + backupDir);
+        }
+        
+        // Purge all secrets
+        size_t secretCount = ks.kv.size();
+        ks.kv.clear();
+        saveVault(cfg, ks);
+        
+        // Purge all profiles
+        size_t profileCount = profiles.size();
+        for (const auto& profile : profiles)
+        {
+            string profilePath = cfg.profilesDir + "/" + profile + ".profile";
+            if (fs::exists(profilePath))
+                fs::remove(profilePath);
+        }
+        
+        // Clear persistence directory
+        if (fs::exists(cfg.persistDir))
+            fs::remove_all(cfg.persistDir);
+        
+        string msg = "Purged " + to_string(secretCount) + " secrets and " + to_string(profileCount) + " profiles";
+        if (backup)
+            msg += " (backup created)";
+        ok(cfg, msg + ".");
+        
+        auditLog(cfg, "purge", {});
         return 0;
     }
     else if (cmd == "save")
@@ -1475,10 +2398,36 @@ int main(int argc, char **argv)
 
     else if (cmd == "unload")
     {
-        if (args.size() < 2)
-            error(cfg, "Usage: ak unload <profile> [--persist]");
-        string profile = args[1];
-        bool persist = (find(args.begin() + 2, args.end(), string("--persist")) != args.end());
+        vector<string> profilesToUnload;
+        bool persist = false;
+        
+        // Parse arguments to determine profiles and flags
+        if (args.size() == 1)
+        {
+            // No profile specified - unload all profiles
+            profilesToUnload = listProfiles(cfg);
+        }
+        else
+        {
+            // Check for --persist flag and extract profile names
+            for (size_t i = 1; i < args.size(); i++)
+            {
+                if (args[i] == "--persist")
+                    persist = true;
+                else
+                    profilesToUnload.push_back(args[i]);
+            }
+            
+            // If no profiles specified after removing flags, unload all
+            if (profilesToUnload.empty())
+                profilesToUnload = listProfiles(cfg);
+        }
+        
+        if (profilesToUnload.empty())
+        {
+            ok(cfg, "No profiles found to unload.");
+            return 0;
+        }
 
         // Warn if user is calling the binary directly in a TTY (unsets won't apply without eval)
         bool wrapperActive = (getenv("AK_SHELL_WRAPPER_ACTIVE") != nullptr);
@@ -1489,13 +2438,27 @@ int main(int argc, char **argv)
 #endif
         if (!wrapperActive && stdoutIsTTY && !cfg.json)
         {
-            cerr << "⚠️  Not applied to current shell. Use: eval \"$(ak unload " << profile
-                 << ")\" or run 'ak unload " << profile << "' (no ./) after sourcing your shell init.\n";
+            if (profilesToUnload.size() == 1)
+            {
+                cerr << "⚠️  Not applied to current shell. Use: eval \"$(ak unload " << profilesToUnload[0]
+                     << ")\" or run 'ak unload " << profilesToUnload[0] << "' (no ./) after sourcing your shell init.\n";
+            }
+            else
+            {
+                cerr << "⚠️  Not applied to current shell. Use: eval \"$(ak unload)\" or run 'ak unload' (no ./) after sourcing your shell init.\n";
+            }
         }
 
-        // Print unset lines (eval them to drop from current shell)
-        for (auto &k : readProfile(cfg, profile))
-            cout << "unset " << k << "\n";
+        // Print unset lines for all profiles (eval them to drop from current shell)
+        unordered_set<string> allKeys;
+        for (const string &profile : profilesToUnload)
+        {
+            for (auto &k : readProfile(cfg, profile))
+                allKeys.insert(k);
+        }
+        
+        for (const string &key : allKeys)
+            cout << "unset " << key << "\n";
 
         // If asked, remove from this directory's persistence mapping
         if (persist)
@@ -1505,15 +2468,19 @@ int main(int argc, char **argv)
             vector<string> kept;
             kept.reserve(profiles.size());
             for (auto &p : profiles)
-                if (p != profile)
+            {
+                if (find(profilesToUnload.begin(), profilesToUnload.end(), p) == profilesToUnload.end())
                     kept.push_back(p);
+            }
             writeDirProfiles(cfg, dir, kept);
-            ok(cfg, "Removed '" + profile + "' persistence for this directory.");
-            // We do NOT delete the bundle file here, because other directories may reference it.
-            // (Optional cleanup could be added later by checking all maps.)
+            
+            if (profilesToUnload.size() == 1)
+                ok(cfg, "Removed '" + profilesToUnload[0] + "' persistence for this directory.");
+            else
+                ok(cfg, "Removed persistence for " + to_string(profilesToUnload.size()) + " profiles from this directory.");
         }
 
-        auditLog(cfg, "unload", {profile});
+        auditLog(cfg, "unload", profilesToUnload);
         return 0;
     }
 
@@ -1628,6 +2595,7 @@ int main(int argc, char **argv)
     else if (cmd == "import")
     {
         string prof = "default", fmt = "dotenv", file;
+        bool keysOnly = false;
         for (size_t i = 1; i < args.size();)
         {
             if (args[i] == "--profile" && i + 1 < args.size())
@@ -1645,21 +2613,36 @@ int main(int argc, char **argv)
                 file = args[i + 1];
                 i += 2;
             }
+            else if (args[i] == "--keys")
+            {
+                keysOnly = true;
+                i++;
+            }
             else
                 error(cfg, "Unknown or incomplete flag: " + args[i]);
         }
         if (file.empty())
-            error(cfg, "Usage: ak import --profile <p> --format env|dotenv|json|yaml --file <file>");
+            error(cfg, "Usage: ak import --profile <p> --format env|dotenv|json|yaml --file <file> [--keys]");
         ifstream in(file);
         if (!in)
             error(cfg, "File not found: " + file);
+        
         KeyStore ks = loadVault(cfg);
         unordered_set<string> importedKeys;
+        unordered_set<string> knownKeys;
+        
+        if (keysOnly)
+            knownKeys = getKnownServiceKeys();
+        
         if (fmt == "env" || fmt == "dotenv")
         {
             auto rows = parse_env_file(in);
             for (auto &kv : rows)
             {
+                // Filter for known service keys if --keys flag is set
+                if (keysOnly && knownKeys.find(kv.first) == knownKeys.end())
+                    continue;
+                
                 ks.kv[kv.first] = kv.second;
                 importedKeys.insert(kv.first);
             }
@@ -1671,6 +2654,10 @@ int main(int argc, char **argv)
             auto rows = parse_json_min(ss.str());
             for (auto &kv : rows)
             {
+                // Filter for known service keys if --keys flag is set
+                if (keysOnly && knownKeys.find(kv.first) == knownKeys.end())
+                    continue;
+                
                 ks.kv[kv.first] = kv.second;
                 importedKeys.insert(kv.first);
             }
@@ -1690,13 +2677,20 @@ int main(int argc, char **argv)
                 string v = trim(line.substr(c + 1));
                 if (!v.empty() && v.front() == '"' && v.back() == '"')
                     v = v.substr(1, v.size() - 2);
+                
+                // Filter for known service keys if --keys flag is set
+                if (keysOnly && knownKeys.find(k) == knownKeys.end())
+                    continue;
+                
                 ks.kv[k] = v;
                 importedKeys.insert(k);
             }
         }
         else
             error(cfg, "Unknown format: " + fmt);
+        
         saveVault(cfg, ks);
+        
         // merge into profile
         auto existing = readProfile(cfg, prof);
         unordered_set<string> set(existing.begin(), existing.end());
@@ -1704,7 +2698,12 @@ int main(int argc, char **argv)
             set.insert(k);
         vector<string> merged(set.begin(), set.end());
         writeProfile(cfg, prof, merged);
-        ok(cfg, "Imported " + to_string(importedKeys.size()) + " keys into profile '" + prof + "'");
+        
+        string msg = "Imported " + to_string(importedKeys.size()) + " keys into profile '" + prof + "'";
+        if (keysOnly)
+            msg += " (filtered for known service provider keys)";
+        ok(cfg, msg);
+        
         vector<string> imp(importedKeys.begin(), importedKeys.end());
         auditLog(cfg, "import", imp);
         return 0;
@@ -1898,16 +2897,119 @@ int main(int argc, char **argv)
     }
     else if (cmd == "uninstall")
     {
-        // remove config dir; try to remove binary if absolute
+        // Determine the target user (handles sudo) for proper cleanup
+        TargetUser t = resolveTargetUser();
+        
+        // Override cfg.configDir to the target user's config dir
+        cfg.configDir = t.home + "/.config/ak";
+        
         string dir = cfg.configDir;
         string bin = argv[0];
-        string cmd = "rm -rf '" + dir + "'";
-        int rc = system(cmd.c_str());
+        string initPath = (fs::path(cfg.configDir) / "shell-init.sh").string();
+        string sourceLine = "source \"" + initPath + "\"";
+        
+        // Remove shell completion files and configuration lines
+        string configFile;
+        string completionFile;
+        
+        if (t.shellName == "zsh") {
+            configFile = t.home + "/.zshrc";
+            completionFile = t.home + "/.config/zsh/completions/_ak";
+            
+            // Remove zsh completion file
+            if (fs::exists(completionFile)) {
+                fs::remove(completionFile);
+                cerr << "✅ Removed zsh completion file: " << completionFile << "\n";
+            }
+            
+        } else if (t.shellName == "bash") {
+            configFile = t.home + "/.bashrc";
+            completionFile = t.home + "/.config/ak/ak-completion.bash";
+            // Completion file will be removed with config dir
+            
+        } else if (t.shellName == "fish") {
+            configFile = t.home + "/.config/fish/config.fish";
+            completionFile = t.home + "/.config/fish/completions/ak.fish";
+            
+            // Remove fish completion file
+            if (fs::exists(completionFile)) {
+                fs::remove(completionFile);
+                cerr << "✅ Removed fish completion file: " << completionFile << "\n";
+            }
+            
+        } else {
+            // Fallback to .profile
+            configFile = t.home + "/.profile";
+            completionFile = t.home + "/.config/ak/ak-completion.bash";
+            // Completion file will be removed with config dir
+        }
+        
+        // Remove lines from shell config file
+        if (fs::exists(configFile)) {
+            vector<string> lines;
+            ifstream in(configFile);
+            string line;
+            bool modified = false;
+            
+            while (getline(in, line)) {
+                // Skip the source line and related ak lines
+                if (line.find(sourceLine) != string::npos ||
+                    line.find("# Added by ak installer") != string::npos ||
+                    line.find("fpath=(~/.config/zsh/completions $fpath)") != string::npos ||
+                    line.find("autoload -U compinit && compinit") != string::npos ||
+                    line.find("source \"" + t.home + "/.config/ak/ak-completion.bash\"") != string::npos) {
+                    modified = true;
+                    continue;
+                }
+                lines.push_back(line);
+            }
+            in.close();
+            
+            if (modified) {
+                ofstream out(configFile, ios::trunc);
+                for (const auto& l : lines) {
+                    out << l << "\n";
+                }
+                out.close();
+                cerr << "✅ Removed ak integration from " << configFile << "\n";
+            }
+        }
+        
+        // Remove config directory
+        string rmCmd = "rm -rf '" + dir + "'";
+        int rc = system(rmCmd.c_str());
         if (rc != 0)
             cerr << "⚠️  Failed to remove " << dir << " (rc=" << rc << ")\n";
-        if (!bin.empty() && bin[0] == '/')
-            unlink(bin.c_str());
-        cerr << "✅ Removed " << dir << ". If installed system-wide, also remove the binary (e.g., /usr/local/bin/ak).\n";
+        else
+            cerr << "✅ Removed " << dir << "\n";
+            
+        // Try to remove binary if it's an absolute path
+        if (!bin.empty() && bin[0] == '/') {
+            if (unlink(bin.c_str()) == 0) {
+                cerr << "✅ Removed binary: " << bin << "\n";
+            } else {
+                cerr << "⚠️  Could not remove binary: " << bin << " (may need sudo)\n";
+            }
+        } else {
+            cerr << "⚠️  If installed system-wide, also remove the binary manually (e.g., sudo rm /usr/local/bin/ak)\n";
+        }
+        
+        cerr << "✅ Uninstall complete. Restart your terminal for changes to take effect.\n";
+        return 0;
+    }
+    else if (cmd == "completion")
+    {
+        if (args.size() < 2)
+            error(cfg, "Usage: ak completion <shell>\nSupported shells: bash, zsh, fish");
+        string shell = args[1];
+        if (shell == "bash")
+            generateBashCompletion();
+        else if (shell == "zsh")
+            generateZshCompletion();
+        else if (shell == "fish")
+            generateFishCompletion();
+        else
+            error(cfg, "Unsupported shell: " + shell + "\nSupported shells: bash, zsh, fish");
         return 0;
     }
     else
