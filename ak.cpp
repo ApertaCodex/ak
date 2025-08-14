@@ -1,7 +1,13 @@
-// ak C++ rewrite of core 'ak' CLI with added commands
-// Storage: gpg/plain vault at ~/.config/ak/keys.env(.gpg)
-// Implements: set/get/ls/rm, profiles save/env/export/import, masking, backend detection,
-// PLUS: load, unload, cp, search, run, guard, migrate exports, test, doctor, uninstall, audit.
+ // ak - Secure secret management CLI (C++ implementation)
+ //
+ // This tool provides a vault-based key/value store with optional GPG encryption.
+ // It supports setting, getting, listing, and removing secrets,
+ // profile management (save, load, unload, export, import),
+ // and utilities such as copy to clipboard, search, run, guard,
+ // testing service connectivity, and shell integration.
+ //
+ // Storage: GPG‑encrypted or plain text vault at ~/.config/ak/keys.env(.gpg)
+ // Configuration directory: ~/.config/ak
 
 #include <cstdio>
 #include <cstdlib>
@@ -561,31 +567,76 @@ static void writeProfile(const Config &cfg, const string &name, const vector<str
 // -------- CLI help --------
 static void cmd_help()
 {
-    cout << "AK (C++ vault-based)\n"
-            "Usage:\n"
-            "  ak help\n"
-            "  ak backend\n"
-            "  ak set <NAME>\n"
-            "  ak get <NAME> [--full]\n"
-            "  ak ls [--json]\n"
-            "  ak rm <NAME>\n"
-            "  ak search <PATTERN>\n"
-            "  ak cp <NAME>\n"
-            "  ak save <profile> [NAMES...]\n"
-            "  ak env --profile <name>\n"
-            "  ak load <profile> [--persist]   # prints export lines; with --persist, also records for this directory\n"
-            "  ak unload <profile> [--persist] # prints unset lines; with --persist, also removes directory mapping\n"
-            "  ak export --profile <p> --format env|dotenv|json|yaml --output <file>\n"
-            "  ak import --profile <p> --format env|dotenv|json|yaml --file <file>\n"
-            "  ak migrate exports <file>\n"
-            "  ak profiles\n"
-            "  ak run --profile <p> -- <cmd...>\n"
-            "  ak guard enable|disable\n"
-            "  ak test <service>|--all [--json] [--fail-fast]\n"
-            "  ak doctor\n"
-            "  ak audit [N]\n"
-            "  ak install-shell            # installs auto-load snippet and sources it from your shell\n"
-            "  ak uninstall\n";
+    cout << R"(AK - Secure Secret Management CLI (C++ Implementation)
+
+A vault-based key/value store with optional GPG encryption for secure secret management.
+Supports setting, getting, listing, and removing secrets with profile management,
+export/import in multiple formats, shell integration, and audit logging.
+
+USAGE:
+  ak <command> [options] [arguments]
+
+SECRET MANAGEMENT:
+  ak set <NAME>                   Set a secret (prompts for value)
+  ak get <NAME> [--full]          Get a secret value (--full shows unmasked)
+  ak ls [--json]                  List all secret names (--json for JSON output)
+  ak rm <NAME>                    Remove a secret
+  ak search <PATTERN>             Search for secrets by name pattern (case-insensitive)
+  ak cp <NAME>                    Copy secret value to clipboard
+
+PROFILE MANAGEMENT:
+  ak save <profile> [NAMES...]    Save secrets to a profile (all secrets if no names given)
+  ak load <profile> [--persist]  Load profile as environment variables
+                                  --persist: remember profile for current directory
+  ak unload <profile> [--persist] Unload profile environment variables
+                                   --persist: remove directory profile mapping
+  ak profiles                     List all available profiles
+  ak env --profile <name>         Show profile as export statements
+
+EXPORT/IMPORT:
+  ak export --profile <p> --format <fmt> --output <file>
+                                  Export profile to file
+  ak import --profile <p> --format <fmt> --file <file>
+                                  Import secrets from file to profile
+                                  
+  Supported formats: env, dotenv, json, yaml
+
+UTILITIES:
+  ak run --profile <p> -- <cmd>   Run command with profile environment loaded
+  ak test <service>|--all [--json] [--fail-fast]
+                                  Test service connectivity using stored credentials
+                                  Available services: aws, gcp, azure, github, docker, etc.
+  ak guard enable|disable         Enable/disable shell guard for secret protection
+  ak migrate exports <file>       Migrate from old export file format
+  ak doctor                       Check system configuration and dependencies
+  ak audit [N]                    Show audit log (last N entries, default: 10)
+  
+SYSTEM:
+  ak help                         Show this help message
+  ak backend                      Show backend information (GPG status, vault location)
+  ak install-shell               Install shell integration for auto-loading
+  ak uninstall                   Remove shell integration
+
+CONFIGURATION:
+  Config Directory: ~/.config/ak (or $XDG_CONFIG_HOME/ak)
+  Vault Location:   keys.env.gpg (encrypted) or keys.env (plain text)
+  
+ENVIRONMENT VARIABLES:
+  AK_DISABLE_GPG=1               Force plain text storage (not recommended)
+  AK_PASSPHRASE=<pass>           Preset GPG passphrase (use with caution)
+  AK_AUDIT_LOG=<path>            Enable audit logging to specified file
+  
+EXAMPLES:
+  ak set DATABASE_URL            # Interactively set a database connection string
+  ak get API_KEY --full          # Show full API key value
+  ak save prod DATABASE_URL API_KEY  # Save specific secrets to 'prod' profile
+  ak load prod --persist        # Load 'prod' profile and remember for this directory
+  ak run --profile dev -- npm start   # Run npm with 'dev' profile environment
+  ak export --profile prod --format json --output secrets.json
+  ak test aws --json            # Test AWS credentials in JSON format
+
+For more information, visit: https://github.com/user/ak
+)";
 }
 
 // -------- Instance ID --------
