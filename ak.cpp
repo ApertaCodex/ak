@@ -1,7 +1,13 @@
-// ak C++ rewrite of core 'ak' CLI with added commands
-// Storage: gpg/plain vault at ~/.config/ak/keys.env(.gpg)
-// Implements: set/get/ls/rm, profiles save/env/export/import, masking, backend detection,
-// PLUS: load, unload, cp, search, run, guard, migrate exports, test, doctor, uninstall, audit.
+ // ak - Secure secret management CLI (C++ implementation)
+ //
+ // This tool provides a vault-based key/value store with optional GPG encryption.
+ // It supports setting, getting, listing, and removing secrets,
+ // profile management (save, load, unload, export, import),
+ // and utilities such as copy to clipboard, search, run, guard,
+ // testing service connectivity, and shell integration.
+ //
+ // Storage: GPG‑encrypted or plain text vault at ~/.config/ak/keys.env(.gpg)
+ // Configuration directory: ~/.config/ak
 
 #include <cstdio>
 #include <cstdlib>
@@ -561,31 +567,31 @@ static void writeProfile(const Config &cfg, const string &name, const vector<str
 // -------- CLI help --------
 static void cmd_help()
 {
-    cout << "AK (C++ vault-based)\n"
+    cout << "AK (C++ vault-based) - Secure secret management CLI\n"
             "Usage:\n"
-            "  ak help\n"
-            "  ak backend\n"
-            "  ak set <NAME>\n"
-            "  ak get <NAME> [--full]\n"
-            "  ak ls [--json]\n"
-            "  ak rm <NAME>\n"
-            "  ak search <PATTERN>\n"
-            "  ak cp <NAME>\n"
-            "  ak save <profile> [NAMES...]\n"
-            "  ak env --profile <name>\n"
-            "  ak load <profile> [--persist]   # prints export lines; with --persist, also records for this directory\n"
-            "  ak unload <profile> [--persist] # prints unset lines; with --persist, also removes directory mapping\n"
-            "  ak export --profile <p> --format env|dotenv|json|yaml --output <file>\n"
-            "  ak import --profile <p> --format env|dotenv|json|yaml --file <file>\n"
-            "  ak migrate exports <file>\n"
-            "  ak profiles\n"
-            "  ak run --profile <p> -- <cmd...>\n"
-            "  ak guard enable|disable\n"
-            "  ak test <service>|--all [--json] [--fail-fast]\n"
-            "  ak doctor\n"
-            "  ak audit [N]\n"
-            "  ak install-shell            # installs auto-load snippet and sources it from your shell\n"
-            "  ak uninstall\n";
+            "  ak help                         # Show this help message\n"
+            "  ak backend                      # Show storage backend (gpg or plain)\n"
+            "  ak set <NAME>                  # Set a secret (prompts for value)\n"
+            "  get <NAME> [--full]            # Retrieve a secret (masked by default)\n"
+            "  ls [--json]                    # List stored keys (optional JSON)\n"
+            "  rm <NAME>                     # Remove a secret\n"
+            "  search <PATTERN>               # Search keys by pattern\n"
+            "  cp <NAME>                     # Copy secret to clipboard\n"
+            "  save <profile> [NAMES...]      # Save keys to a profile (all if none specified)\n"
+            "  env --profile <name>          # Export profile as shell exports\n"
+            "  load <profile> [--persist]   # Load profile into environment (optional persistence)\n"
+            "  unload <profile> [--persist] # Unload profile from environment (optional persistence)\n"
+            "  export --profile <p> --format env|dotenv|json|yaml --output <file>   # Export profile to file\n"
+            "  import --profile <p> --format env|dotenv|json|yaml --file <file>   # Import keys from file\n"
+            "  migrate exports <file>        # Migrate legacy export file\n"
+            "  profiles                     # List saved profiles\n"
+            "  run --profile <p> -- <cmd...> # Run command with profile environment\n"
+            "  guard enable|disable        # Enable/disable pre-commit secret guard\n"
+            "  test <service>|--all [--json] [--fail-fast]   # Test service connectivity\n"
+            "  doctor                     # Show system diagnostics\n"
+            "  audit [N]                  # Show recent audit log entries\n"
+            "  install-shell              # Install shell auto-load snippet\n"
+            "  uninstall                  # Remove configuration and binary\n";
 }
 
 // -------- Instance ID --------
