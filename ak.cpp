@@ -1,7 +1,13 @@
-// ak C++ rewrite of core 'ak' CLI with added commands
-// Storage: gpg/plain vault at ~/.config/ak/keys.env(.gpg)
-// Implements: set/get/ls/rm, profiles save/env/export/import, masking, backend detection,
-// PLUS: load, unload, cp, search, run, guard, migrate exports, test, doctor, uninstall, audit.
+ // ak - Secure secret management CLI (C++ implementation)
+ //
+ // This tool provides a vault-based key/value store with optional GPG encryption.
+ // It supports setting, getting, listing, and removing secrets,
+ // profile management (save, load, unload, export, import),
+ // and utilities such as copy to clipboard, search, run, guard,
+ // testing service connectivity, and shell integration.
+ //
+ // Storage: GPG‑encrypted or plain text vault at ~/.config/ak/keys.env(.gpg)
+ // Configuration directory: ~/.config/ak
 
 #include <cstdio>
 #include <cstdlib>
