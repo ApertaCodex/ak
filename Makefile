@@ -130,7 +130,25 @@ package-rpm: strip
 
 dist: package-deb package-rpm
 
+# -------------------------
+# Testing (gtest)
+# -------------------------
+gtest_DIR := tests/lib/googletest
+TEST_BIN  = ak_test
+
+test: $(TEST_BIN)
+	@echo "Running test: $(TEST_BIN)"
+	./$(TEST_BIN)
+
+$(TEST_BIN): $(GTEST_DIR)/googletest/src/gtest-all.cc tests/main.cpp tests/ak_test.cpp $(BIN)
+	@mkdir -p tests/bin
+	$(CXX) $(CXXFLAGS) -isystem $(GTEST_DIR)/googletest/include -I$(GTEST_DIR)/googletest -pthread \
+	       tests/main.cpp tests/ak_test.cpp $(GTEST_DIR)/googletest/src/gtest-all.cc \
+	       -o $(TEST_BIN)
+	@chmod +x $(TEST_BIN)
+	@echo "✅ Built test suite"
+
 clean:
-	@rm -f $(BIN)
-	@rm -rf $(PKGROOT) $(DISTDIR)
+	@rm -f $(BIN) $(TEST_BIN)
+	@rm -rf $(PKGROOT) $(DISTDIR) tests/bin
 	@echo "🧹 Cleaned"
