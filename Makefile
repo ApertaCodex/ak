@@ -18,7 +18,7 @@ DEB_ARCH  := $(if $(filter $(UNAME_M),x86_64 amd64),amd64,$(UNAME_M))
 RPM_ARCH  := $(if $(filter $(UNAME_M),x86_64 amd64),x86_64,$(UNAME_M))
 
 CXX       ?= g++
-CXXFLAGS  ?= -std=c++17 -O2 -pipe -Wall -Wextra
+CXXFLAGS  ?= -std=c++20 -O2 -pipe -Wall -Wextra
 LDFLAGS   ?=
 PREFIX    ?= /usr/local
 BINDIR    ?= $(PREFIX)/bin
