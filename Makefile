@@ -18,12 +18,23 @@ DEB_ARCH  := $(if $(filter $(UNAME_M),x86_64 amd64),amd64,$(UNAME_M))
 RPM_ARCH  := $(if $(filter $(UNAME_M),x86_64 amd64),x86_64,$(UNAME_M))
 
 CXX       ?= g++
-CXXFLAGS  ?= -std=c++17 -O2 -pipe -Wall -Wextra
+CXXFLAGS  ?= -std=c++17 -O2 -pipe -Wall -Wextra -Iinclude
 LDFLAGS   ?=
 PREFIX    ?= /usr/local
 BINDIR    ?= $(PREFIX)/bin
 
-SRC       := ak.cpp
+# Source files
+CORE_SRC  := src/core/config.cpp
+CRYPTO_SRC := src/crypto/crypto.cpp
+STORAGE_SRC := src/storage/vault.cpp
+UI_SRC    := src/ui/ui.cpp
+SYSTEM_SRC := src/system/system.cpp
+CLI_SRC   := src/cli/cli.cpp
+SERVICES_SRC := src/services/services.cpp
+COMMANDS_SRC := src/commands/commands.cpp
+MAIN_SRC  := src/main.cpp
+
+ALL_SRC   := $(CORE_SRC) $(CRYPTO_SRC) $(STORAGE_SRC) $(UI_SRC) $(SYSTEM_SRC) $(CLI_SRC) $(SERVICES_SRC) $(COMMANDS_SRC) $(MAIN_SRC)
 BIN       := $(APP)
 
 DESTDIR   ?=
@@ -34,8 +45,8 @@ DISTDIR   := dist
 
 all: $(BIN)
 
-$(BIN): $(SRC)
-	$(CXX) $(CXXFLAGS) $(SRC) -o $(BIN) $(LDFLAGS)
+$(BIN): $(ALL_SRC)
+	$(CXX) $(CXXFLAGS) $(ALL_SRC) -o $(BIN) $(LDFLAGS)
 
 strip: $(BIN)
 	@which strip >/dev/null 2>&1 && strip $(BIN) || true
