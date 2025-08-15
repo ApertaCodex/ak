@@ -628,12 +628,12 @@ static void showLogo() {
     }
     
     cout << colorize(R"(
-        ████████╗   ██╗  ██╗
-        ██╔══╗██║   ██║ ██╔╝
-        ██║██║██║   █████╔╝
-        ██║  ║██║   ██╔═██╗
-        ██║  ║██║   ██║  ██╗
-        ╚═╝  ╚══╝   ╚═╝  ╚═╝
+            ████████╗  ██╗  ██╗
+            ██╔═══██║  ██║ ██╔╝
+            ██║█████║  ████╔╝
+            ██║   ██║  ██╔═██╗
+            ██║   ██║  ██║  ██╗
+            ╚═╝   ╚═╝  ╚═╝  ╚═╝
 )", Colors::BRIGHT_CYAN) << "\n";
 
     cout << colorize("    🔐 ", "") << colorize("Secure Secret Management", Colors::BRIGHT_WHITE + Colors::BOLD) << "\n";
@@ -690,7 +690,7 @@ static void cmd_help()
 
     cout << colorize("UTILITIES:", Colors::BRIGHT_YELLOW + Colors::BOLD) << "\n";
     cout << "  " << colorize("ak run --profile|-p <p> -- <cmd>", Colors::BRIGHT_CYAN) << "  Run command with profile environment loaded\n";
-    cout << "  " << colorize("ak test <service>|--all [options]", Colors::BRIGHT_CYAN) << "   Test service connectivity using stored credentials\n";
+    cout << "  " << colorize("ak test [<service>|--all] [--json] [--fail-fast] [--parallel]", Colors::BRIGHT_CYAN) << "  Test connectivity (defaults to configured providers)\n";
     cout << "  " << colorize("ak guard enable|disable", Colors::BRIGHT_CYAN) << "         Enable/disable shell guard for secret protection\n";
     cout << "  " << colorize("ak doctor", Colors::BRIGHT_CYAN) << "                       Check system configuration and dependencies\n";
     cout << "  " << colorize("ak audit [N]", Colors::BRIGHT_CYAN) << "                    Show audit log (last N entries, default: 10)\n\n";
@@ -935,6 +935,55 @@ static unordered_set<string> getKnownServiceKeys() {
     return keys;
 }
 
+ // Services that have implemented tests in test_one()
+static const unordered_set<string> TESTABLE_SERVICES = {
+    "anthropic","azure_openai","brave","cohere","deepseek","exa","fireworks",
+    "gemini","groq","huggingface","mistral","openai","openrouter",
+    "perplexity","sambanova","tavily","together","xai"
+};
+
+// Detect configured providers from vault and environment.
+// Only returns services that are TESTABLE and have sufficient configuration.
+static vector<string> detectConfiguredServices(const Config &cfg)
+{
+    vector<string> svcs;
+    KeyStore ks = loadVault(cfg);
+
+    auto present = [&](const string &name) -> bool {
+        auto it = ks.kv.find(name);
+        if (it != ks.kv.end() && !it->second.empty()) return true;
+        const char *v = getenv(name.c_str());
+        return v && *v;
+    };
+
+    for (const auto &p : SERVICE_KEYS)
+    {
+        const string &svc = p.first;
+        if (TESTABLE_SERVICES.find(svc) == TESTABLE_SERVICES.end())
+            continue;
+
+        bool ok = false;
+        if (svc == "gemini")
+        {
+            ok = present("GEMINI_API_KEY") || present("GOOGLE_API_KEY") || present("GOOGLE_GENAI_API_KEY");
+        }
+        else if (svc == "azure_openai")
+        {
+            ok = present("AZURE_OPENAI_API_KEY") && present("AZURE_OPENAI_ENDPOINT");
+        }
+        else
+        {
+            ok = present(p.second);
+        }
+
+        if (ok)
+            svcs.push_back(svc);
+    }
+
+    sort(svcs.begin(), svcs.end());
+    return svcs;
+}
+
 static bool curl_ok(const string &args)
 {
     string cmd = "curl -sS -f -L --connect-timeout 5 --max-time 12 " + args + " >/dev/null";
@@ -965,7 +1014,9 @@ static bool test_one(const Config &cfg, const string &svc)
         string ep = getenvs("AZURE_OPENAI_ENDPOINT");
         if (ep.empty())
             return false;
-        return curl_ok("-H \"api-key: " + k + "\" \"" + ep + "/openai/models?api-version=2024-10-21\"");
+        string apiVer = getenvs("AZURE_OPENAI_API_VERSION", "2024-10-21");
+        // Prefer deployments list; models listing may be restricted on some accounts
+        return curl_ok("-H \"api-key: " + k + "\" \"" + ep + "/openai/deployments?api-version=" + apiVer + "\"");
     }
     if (svc == "brave")
         return curl_ok("-H \"X-Subscription-Token: " + k + "\" \"https://api.search.brave.com/res/v1/web/search?q=ping\"");
@@ -2797,10 +2848,50 @@ int main(int argc, char **argv)
     }
     else if (cmd == "test")
     {
-        if (args.size() < 2)
-            error(cfg, "Usage: ak test <service>|--all [--json] [--fail-fast]");
-        bool all = (args[1] == "--all" || args[1] == "all");
         bool ff = (find(args.begin(), args.end(), "--fail-fast") != args.end());
+
+        // Default: smart mode (only configured, testable providers)
+        if (args.size() == 1)
+        {
+            vector<string> svcs = detectConfiguredServices(cfg);
+            if (svcs.empty())
+            {
+                if (cfg.json)
+                    cout << "[]\n";
+                else
+                    cerr << "No configured services detected. Set API keys via 'ak set <NAME>' or environment variables.\n";
+                return 0;
+            }
+            bool ok_all = true;
+            if (cfg.json)
+                cout << "[";
+            bool first = true;
+            for (auto &s : svcs)
+            {
+                bool ok1 = test_one(cfg, s);
+                ok_all = ok_all && ok1;
+                if (cfg.json)
+                {
+                    if (!first)
+                        cout << ",";
+                    first = false;
+                    cout << "{\"service\":\"" << s << "\",\"ok\":" << (ok1 ? "true" : "false") << "}";
+                }
+                else
+                    cerr << s << " " << (ok1 ? "OK" : "failed") << "\n";
+                if (ff && !ok1)
+                    break;
+            }
+            if (cfg.json)
+                cout << "]\n";
+            return ok_all ? 0 : 2;
+        }
+
+        // Legacy/explicit modes
+        if (args.size() < 2)
+            error(cfg, "Usage: ak test [<service>|--all] [--json] [--fail-fast] [--parallel]");
+
+        bool all = (args[1] == "--all" || args[1] == "all");
         if (all)
         {
             vector<string> svcs;
