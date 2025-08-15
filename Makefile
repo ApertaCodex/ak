@@ -18,13 +18,44 @@ DEB_ARCH  := $(if $(filter $(UNAME_M),x86_64 amd64),amd64,$(UNAME_M))
 RPM_ARCH  := $(if $(filter $(UNAME_M),x86_64 amd64),x86_64,$(UNAME_M))
 
 CXX       ?= g++
-CXXFLAGS  ?= -std=c++17 -O2 -pipe -Wall -Wextra
+CXXFLAGS  ?= -std=c++17 -O2 -pipe -Wall -Wextra -Iinclude -Itests/googletest/googletest/include -Itests/googletest/googlemock/include
+CXXFLAGS_COV := -std=c++17 -O0 -g -pipe -Wall -Wextra -Iinclude -Itests/googletest/googletest/include -Itests/googletest/googlemock/include --coverage
 LDFLAGS   ?=
+LDFLAGS_COV := --coverage
 PREFIX    ?= /usr/local
 BINDIR    ?= $(PREFIX)/bin
 
-SRC       := ak.cpp
+# Source files
+CORE_SRC  := src/core/config.cpp
+CRYPTO_SRC := src/crypto/crypto.cpp
+STORAGE_SRC := src/storage/vault.cpp
+UI_SRC    := src/ui/ui.cpp
+SYSTEM_SRC := src/system/system.cpp
+CLI_SRC   := src/cli/cli.cpp
+SERVICES_SRC := src/services/services.cpp
+COMMANDS_SRC := src/commands/commands.cpp
+MAIN_SRC  := src/main.cpp
+
+APP_SRCS  := $(CORE_SRC) $(CRYPTO_SRC) $(STORAGE_SRC) $(UI_SRC) $(SYSTEM_SRC) $(CLI_SRC) $(SERVICES_SRC) $(COMMANDS_SRC) $(MAIN_SRC)
 BIN       := $(APP)
+
+# Test files
+TEST_UNIT_SRCS := tests/core/test_config.cpp \
+                  tests/crypto/test_crypto.cpp \
+                  tests/cli/test_cli.cpp \
+                  tests/services/test_services.cpp
+TEST_SRCS := tests/test_main_gtest.cpp $(TEST_UNIT_SRCS)
+TEST_BIN  := ak_tests
+
+# Object files directory
+OBJDIR    := obj
+
+# Object files for the main application
+APP_OBJS  := $(patsubst src/%.cpp,$(OBJDIR)/src/%.o,$(APP_SRCS))
+
+# Object files for the tests
+TEST_OBJS := $(OBJDIR)/tests/test_main_gtest.o $(patsubst tests/%.cpp,$(OBJDIR)/tests/%.o,$(TEST_UNIT_SRCS))
+MODULE_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/src/%.o,$(filter-out $(MAIN_SRC),$(APP_SRCS)))
 
 DESTDIR   ?=
 INSTALL   ?= install
@@ -34,8 +65,26 @@ DISTDIR   := dist
 
 all: $(BIN)
 
-$(BIN): $(SRC)
-	$(CXX) $(CXXFLAGS) $(SRC) -o $(BIN) $(LDFLAGS)
+test: $(TEST_BIN)
+	$(MAKE) $(BIN) # Ensure the main app is built
+	cd $(CURDIR) && ./$(TEST_BIN)
+
+# Rule to create object directories
+$(OBJDIR)/src/%.o: src/%.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+
+$(OBJDIR)/tests/%.o: tests/%.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) -Itests -c $< -o $@
+
+$(BIN): $(APP_OBJS)
+	$(CXX) $(LDFLAGS) $^ -o $@
+
+$(TEST_BIN): $(TEST_OBJS) $(MODULE_OBJS)
+	$(CXX) $(LDFLAGS) $^ -Ltests/googletest/build/lib -lgtest -lgtest_main -pthread -o $@
+
 
 strip: $(BIN)
 	@which strip >/dev/null 2>&1 && strip $(BIN) || true
@@ -46,9 +95,63 @@ install: $(BIN)
 	$(DESTDIR)$(BINDIR)/$(APP) install-shell
 	@echo "✅ Installed $(APP) to $(DESTDIR)$(BINDIR)/$(APP)"
 
+# Install to user's local bin directory (no sudo required)
+install-user: $(BIN)
+	@mkdir -p $(HOME)/.local/bin
+	$(INSTALL) -m 0755 $(BIN) $(HOME)/.local/bin/$(APP)
+	$(HOME)/.local/bin/$(APP) install-shell
+	@echo "✅ Installed $(APP) to $(HOME)/.local/bin/$(APP)"
+	@echo "💡 Make sure $(HOME)/.local/bin is in your PATH"
+
 uninstall:
 	@rm -f $(DESTDIR)$(BINDIR)/$(APP) || true
 	@echo "🗑️  Uninstalled $(APP) from $(DESTDIR)$(BINDIR)/$(APP)"
+
+uninstall-user:
+	@rm -f $(HOME)/.local/bin/$(APP) || true
+	@echo "🗑️  Uninstalled $(APP) from $(HOME)/.local/bin/$(APP)"
+
+# Test coverage targets
+coverage: clean-coverage
+	@echo "🔍 Building with coverage instrumentation..."
+	$(MAKE) CXXFLAGS="$(CXXFLAGS_COV)" LDFLAGS="$(LDFLAGS_COV)" $(TEST_BIN)
+	@echo "🧪 Running tests with coverage..."
+	cd $(CURDIR) && ./$(TEST_BIN)
+	@echo "📊 Generating coverage report..."
+	@if which lcov >/dev/null 2>&1; then \
+		lcov --capture --directory . --output-file coverage.info --quiet; \
+		lcov --remove coverage.info '/usr/*' '*/tests/googletest/*' --output-file coverage.info --quiet; \
+		echo "✅ Coverage analysis complete!"; \
+		echo "📈 Coverage data saved to coverage.info"; \
+	else \
+		echo "⚠️  lcov not found. Install lcov for coverage reports: sudo apt-get install lcov"; \
+	fi
+
+coverage-html: coverage
+	@echo "🌐 Generating HTML coverage report..."
+	@if which lcov >/dev/null 2>&1; then \
+		lcov --capture --directory . --output-file coverage.info --quiet; \
+		lcov --remove coverage.info '/usr/*' '*/tests/googletest/*' --output-file coverage.info --quiet; \
+		genhtml coverage.info --output-directory coverage_html --quiet; \
+		echo "📊 HTML coverage report generated in coverage_html/index.html"; \
+	else \
+		echo "⚠️  lcov not found. Install lcov for HTML reports: sudo apt-get install lcov"; \
+	fi
+
+coverage-summary: coverage
+	@echo "📊 Coverage Summary:"
+	@echo "===================="
+	@if [ -f coverage.info ]; then \
+		lcov --summary coverage.info 2>/dev/null || echo "📈 Coverage data available in coverage.info"; \
+	else \
+		echo "⚠️  No coverage data available. Run 'make coverage' first."; \
+	fi
+	@echo "===================="
+
+clean-coverage:
+	@rm -f *.gcov *.gcda *.gcno coverage.info
+	@rm -rf coverage_html
+	@find obj -name "*.gcda" -o -name "*.gcno" -exec rm -f {} \; 2>/dev/null || true
 
 # -------------------------
 # Debian package (.deb)
@@ -130,7 +233,7 @@ package-rpm: strip
 
 dist: package-deb package-rpm
 
-clean:
-	@rm -f $(BIN)
-	@rm -rf $(PKGROOT) $(DISTDIR)
+clean: clean-coverage
+	@rm -f $(BIN) $(TEST_BIN)
+	@rm -rf $(PKGROOT) $(DISTDIR) $(OBJDIR)
 	@echo "🧹 Cleaned"
