@@ -18,13 +18,42 @@ DEB_ARCH  := $(if $(filter $(UNAME_M),x86_64 amd64),amd64,$(UNAME_M))
 RPM_ARCH  := $(if $(filter $(UNAME_M),x86_64 amd64),x86_64,$(UNAME_M))
 
 CXX       ?= g++
-CXXFLAGS  ?= -std=c++17 -O2 -pipe -Wall -Wextra
+CXXFLAGS  ?= -std=c++17 -O2 -pipe -Wall -Wextra -Iinclude
 LDFLAGS   ?=
 PREFIX    ?= /usr/local
 BINDIR    ?= $(PREFIX)/bin
 
-SRC       := ak.cpp
+# Source files
+CORE_SRC  := src/core/config.cpp
+CRYPTO_SRC := src/crypto/crypto.cpp
+STORAGE_SRC := src/storage/vault.cpp
+UI_SRC    := src/ui/ui.cpp
+SYSTEM_SRC := src/system/system.cpp
+CLI_SRC   := src/cli/cli.cpp
+SERVICES_SRC := src/services/services.cpp
+COMMANDS_SRC := src/commands/commands.cpp
+MAIN_SRC  := src/main.cpp
+
+APP_SRCS  := $(CORE_SRC) $(CRYPTO_SRC) $(STORAGE_SRC) $(UI_SRC) $(SYSTEM_SRC) $(CLI_SRC) $(SERVICES_SRC) $(COMMANDS_SRC) $(MAIN_SRC)
 BIN       := $(APP)
+
+# Test files
+TEST_UNIT_SRCS := tests/core/test_config.cpp \
+                  tests/crypto/test_crypto.cpp \
+                  tests/cli/test_cli.cpp \
+                  tests/services/test_services.cpp
+TEST_SRCS := $(TEST_UNIT_SRCS)
+TEST_BIN  := ak_tests
+
+# Object files directory
+OBJDIR    := obj
+
+# Object files for the main application
+APP_OBJS  := $(patsubst src/%.cpp,$(OBJDIR)/src/%.o,$(APP_SRCS))
+
+# Object files for the tests
+TEST_OBJS := $(patsubst tests/%.cpp,$(OBJDIR)/tests/%.o,$(TEST_UNIT_SRCS))
+MODULE_OBJS := $(patsubst src/%.cpp,$(OBJDIR)/src/%.o,$(filter-out $(MAIN_SRC),$(APP_SRCS)))
 
 DESTDIR   ?=
 INSTALL   ?= install
@@ -34,8 +63,25 @@ DISTDIR   := dist
 
 all: $(BIN)
 
-$(BIN): $(SRC)
-	$(CXX) $(CXXFLAGS) $(SRC) -o $(BIN) $(LDFLAGS)
+test: $(TEST_BIN)
+	./$(TEST_BIN)
+
+# Rule to create object directories
+$(OBJDIR)/src/%.o: src/%.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+
+$(OBJDIR)/tests/%.o: tests/%.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) -Itests -c $< -o $@
+
+$(BIN): $(APP_OBJS)
+	$(CXX) $(LDFLAGS) $^ -o $@
+
+$(TEST_BIN): $(TEST_OBJS) $(MODULE_OBJS)
+	$(CXX) $(LDFLAGS) $^ -o $@
+
 
 strip: $(BIN)
 	@which strip >/dev/null 2>&1 && strip $(BIN) || true
@@ -131,6 +177,6 @@ package-rpm: strip
 dist: package-deb package-rpm
 
 clean:
-	@rm -f $(BIN)
-	@rm -rf $(PKGROOT) $(DISTDIR)
+	@rm -f $(BIN) $(TEST_BIN)
+	@rm -rf $(PKGROOT) $(DISTDIR) $(OBJDIR)
 	@echo "🧹 Cleaned"
