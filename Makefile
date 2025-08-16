@@ -150,7 +150,7 @@ coverage-summary: coverage
 clean-coverage:
 	@rm -f *.gcov *.gcda *.gcno coverage.info
 	@rm -rf coverage_html
-	@find obj -name "*.gcda" -o -name "*.gcno" -exec rm -f {} \; 2>/dev/null || true
+	@find obj \( -name "*.gcda" -o -name "*.gcno" \) -type f -exec rm -f {} \; 2>/dev/null || true
 
 # Clean only object files (for rebuilding with coverage)
 clean-obj:
