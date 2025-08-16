@@ -1,0 +1,18 @@
+# Build artifacts
+ak
+ak_tests
+obj/
+*.o
+*.gcno
+*.gcda
+*.gcov
+coverage_html/
+.coverage
+
+# IDE files  
+.vscode/
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db
