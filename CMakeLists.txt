@@ -61,6 +61,9 @@ add_executable(ak
     ${CORE_SOURCES}
 )
 
+# Pass version to C++ code
+target_compile_definitions(ak PRIVATE AK_VERSION_STRING="${AK_VERSION}")
+
 # Windows-specific settings
 if(WIN32)
     target_compile_definitions(ak PRIVATE WIN32_LEAN_AND_MEAN)
