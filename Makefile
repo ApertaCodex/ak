@@ -10,7 +10,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 1.0.0
+VERSION   ?= 2.0.0
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
 # Map to Debian/RPM arch tags
