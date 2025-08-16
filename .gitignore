@@ -1,17 +1,32 @@
 # Build artifacts
 ak
+ak.exe
 ak_tests
+ak_tests.exe
 obj/
+build/
 *.o
 *.gcno
 *.gcda
 *.gcov
 coverage_html/
+coverage.info
 .coverage
 
-# IDE files  
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+!cmake/*.cmake
+
+# IDE files
 .vscode/
 .idea/
+*.vcxproj*
+*.sln
 
 # System files
 .DS_Store
@@ -19,3 +34,4 @@ Thumbs.db
 
 # Dependencies - googletest is built locally but shouldn't be versioned
 tests/googletest/
+_deps/
