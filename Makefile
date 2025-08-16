@@ -63,6 +63,11 @@ INSTALL   ?= install
 PKGROOT   := pkg
 DISTDIR   := dist
 
+.PHONY: all test strip install install-user uninstall uninstall-user \
+        coverage coverage-html coverage-summary clean-coverage clean-obj \
+        package-deb package-rpm dist publish publish-patch publish-minor publish-major \
+        bump-patch bump-minor bump-major build-release test-release commit-and-push clean
+
 all: $(BIN)
 
 test: $(TEST_BIN)
@@ -150,7 +155,7 @@ coverage-summary: coverage
 clean-coverage:
 	@rm -f *.gcov *.gcda *.gcno coverage.info
 	@rm -rf coverage_html
-	@find obj -name "*.gcda" -o -name "*.gcno" -exec rm -f {} \; 2>/dev/null || true
+	@find $(OBJDIR) \( -name "*.gcda" -o -name "*.gcno" \) -type f -exec rm -f {} \; 2>/dev/null || true
 
 # Clean only object files (for rebuilding with coverage)
 clean-obj:
@@ -321,5 +326,5 @@ commit-and-push:
 
 clean: clean-coverage
 	@rm -f $(BIN) $(TEST_BIN)
-	@rm -rf $(PKGROOT) $(DISTDIR) $(OBJDIR)
+	@rm -rf $(PKGROOT) $(DISTDIR) $(OBJDIR) build
 	@echo "🧹 Cleaned"
