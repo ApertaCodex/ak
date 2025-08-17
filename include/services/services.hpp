@@ -23,6 +23,7 @@ struct TestResult {
     std::string service;
     bool ok;
     std::chrono::milliseconds duration;
+    std::string error_message;
 };
 
 // Testing functions
