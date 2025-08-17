@@ -414,6 +414,9 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
                 std::cout << ui::colorize("✅ PASS", ui::Colors::BRIGHT_GREEN) << " " << result.service << "\n";
             } else {
                 std::cout << ui::colorize("❌ FAIL", ui::Colors::BRIGHT_RED) << " " << result.service << "\n";
+                if (!result.error_message.empty()) {
+                    std::cerr << "       " << result.error_message << "\n";
+                }
             }
         }
     }
