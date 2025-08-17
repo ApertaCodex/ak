@@ -46,7 +46,10 @@ namespace fs = std::filesystem;
 extern char **environ;
 
 // Version
-static const string AK_VERSION = "0.1.0";
+#ifndef AK_VERSION_STRING
+#define AK_VERSION_STRING "1.0.1"
+#endif
+static const string AK_VERSION = AK_VERSION_STRING;
 
 // -------- Colors --------
 namespace Colors {
