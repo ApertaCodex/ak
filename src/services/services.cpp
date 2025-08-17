@@ -107,9 +107,12 @@ std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
 }
 
 // Testing functions
-bool curl_ok(const std::string& args) {
-    std::string cmd = "curl -sS -f -L --connect-timeout 5 --max-time 12 " + args + " >/dev/null 2>&1";
-    return system::runCmdCapture(cmd).empty() == false; // Simplified check
+std::pair<bool, std::string> curl_ok(const std::string& args) {
+    std::string cmd = "curl -sS -L --connect-timeout 5 --max-time 12 " + args + " 2>&1";
+    int exitCode = 0;
+    std::string output = system::runCmdCapture(cmd, &exitCode);
+    bool success = (exitCode == 0);
+    return {success, success ? "" : output};
 }
 
 TestResult test_one(const core::Config& cfg, const std::string& service) {
@@ -126,11 +129,15 @@ TestResult test_one(const core::Config& cfg, const std::string& service) {
         if (service == "openai") {
             // Example: test OpenAI API
             std::string args = "-H 'Authorization: Bearer test' https://api.openai.com/v1/models";
-            result.ok = curl_ok(args);
+            auto curl_result = curl_ok(args);
+            result.ok = curl_result.first;
+            if (!result.ok) result.error_message = curl_result.second;
         } else if (service == "anthropic") {
             // Example: test Anthropic API
             std::string args = "-H 'x-api-key: test' https://api.anthropic.com/v1/messages";
-            result.ok = curl_ok(args);
+            auto curl_result = curl_ok(args);
+            result.ok = curl_result.first;
+            if (!result.ok) result.error_message = curl_result.second;
         } else {
             // Generic test - just check if service key exists
             auto it = SERVICE_KEYS.find(service);
@@ -141,6 +148,7 @@ TestResult test_one(const core::Config& cfg, const std::string& service) {
         }
     } catch (...) {
         result.ok = false;
+        result.error_message = "Unknown exception";
     }
     
     auto end = std::chrono::steady_clock::now();
