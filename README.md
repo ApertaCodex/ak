@@ -251,7 +251,7 @@ TEST(ModuleTest, BasicFunctionality) {
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the terms of the EULA (End-User License Agreement). See the EULA.txt file for details.
 
 ## 🔧 Troubleshooting
 
