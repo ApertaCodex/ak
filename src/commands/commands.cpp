@@ -413,7 +413,10 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
             if (result.ok) {
                 std::cout << ui::colorize("✅ PASS", ui::Colors::BRIGHT_GREEN) << " " << result.service << "\n";
             } else {
-                std::cout << ui::colorize("❌ FAIL", ui::Colors::BRIGHT_RED) << " " << result.service << "\n";
+                std::cout << ui::colorize("❌ FAIL", ui::Colors::BRIGHT_RED) << " " << result.service;
+                // Always show error message for failed tests, even if empty
+                std::cout << ", " << (result.error_message.empty() ? "unknown error" : result.error_message);
+                std::cout << " ...\n";
             }
         }
     }
