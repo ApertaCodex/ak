@@ -413,7 +413,9 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
             if (result.ok) {
                 std::cout << ui::colorize("✅ PASS", ui::Colors::BRIGHT_GREEN) << " " << result.service << "\n";
             } else {
-                std::cout << ui::colorize("❌ FAIL", ui::Colors::BRIGHT_RED) << " " << result.service << "\n";
+                // Print provider and error message on the same line
+                std::cout << ui::colorize("❌ FAIL", ui::Colors::BRIGHT_RED) << " " << result.service
+                          << ", " << (result.error_message.empty() ? "unknown error" : result.error_message) << " ...\n";
             }
         }
     }
