@@ -1,6 +1,7 @@
 #include "services/services.hpp"
 #include "core/config.hpp"
 #include "system/system.hpp"
+#include <iostream>
 #include <chrono>
 #include <future>
 #include <thread>
@@ -56,6 +57,26 @@ const std::unordered_set<std::string> TESTABLE_SERVICES = {
     "perplexity","sambanova","tavily","together","xai"
 };
 
+// Helper function to get Google API key from various common environment variables
+std::string getGoogleApiKey() {
+    // Try common Google API key environment variable names
+    const std::vector<std::string> google_keys = {
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "GOOGLE_GENERATIVE_AI_API_KEY",
+        "GOOGLE_AI_API_KEY",
+        "GOOGLE_CLOUD_API_KEY"
+    };
+    
+    for (const auto& key : google_keys) {
+        const char* value = getenv(key.c_str());
+        if (value && *value) {
+            return std::string(value);
+        }
+    }
+    return "";
+}
+
 // Service management
 std::unordered_set<std::string> getKnownServiceKeys() {
     std::unordered_set<std::string> keys;
@@ -78,6 +99,11 @@ std::unordered_set<std::string> getKnownServiceKeys() {
     keys.insert("SLACK_WEBHOOK_URL");
     keys.insert("DISCORD_CLIENT_ID");
     keys.insert("DISCORD_CLIENT_SECRET");
+    // Add Google API key variations
+    keys.insert("GOOGLE_API_KEY");
+    keys.insert("GOOGLE_GENERATIVE_AI_API_KEY");
+    keys.insert("GOOGLE_AI_API_KEY");
+    keys.insert("GOOGLE_CLOUD_API_KEY");
     return keys;
 }
 
@@ -94,9 +120,19 @@ std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
     for (const auto& pair : SERVICE_KEYS) {
         const std::string& service = pair.first;
         if (TESTABLE_SERVICES.find(service) != TESTABLE_SERVICES.end()) {
-            // Check if service is configured (simplified check)
-            const char* envValue = getenv(pair.second.c_str());
-            if (envValue && *envValue) {
+            bool isConfigured = false;
+            
+            // Special handling for gemini service to check Google aliases
+            if (service == "gemini") {
+                std::string googleKey = getGoogleApiKey();
+                isConfigured = !googleKey.empty();
+            } else {
+                // Check if service is configured (simplified check)
+                const char* envValue = getenv(pair.second.c_str());
+                isConfigured = (envValue && *envValue);
+            }
+            
+            if (isConfigured) {
                 services.push_back(service);
             }
         }
@@ -107,9 +143,12 @@ std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
 }
 
 // Testing functions
-bool curl_ok(const std::string& args) {
-    std::string cmd = "curl -sS -f -L --connect-timeout 5 --max-time 12 " + args + " >/dev/null 2>&1";
-    return system::runCmdCapture(cmd).empty() == false; // Simplified check
+std::pair<bool, std::string> curl_ok(const std::string& args) {
+    std::string cmd = "curl -sS -L --connect-timeout 5 --max-time 12 " + args + " 2>&1";
+    int exitCode = 0;
+    std::string output = system::runCmdCapture(cmd, &exitCode);
+    bool success = (exitCode == 0);
+    return {success, success ? "" : output};
 }
 
 TestResult test_one(const core::Config& cfg, const std::string& service) {
@@ -126,11 +165,33 @@ TestResult test_one(const core::Config& cfg, const std::string& service) {
         if (service == "openai") {
             // Example: test OpenAI API
             std::string args = "-H 'Authorization: Bearer test' https://api.openai.com/v1/models";
-            result.ok = curl_ok(args);
+            auto curl_result = curl_ok(args);
+            result.ok = curl_result.first;
+            if (!result.ok) {
+                result.error_message = curl_result.second;
+                // Debug: print captured curl output to stderr when running locally
+                if (getenv("AK_DEBUG_TESTS")) {
+                    std::cerr << "[debug] service=" << service << " curl_output=" << result.error_message << std::endl;
+                }
+            }
         } else if (service == "anthropic") {
             // Example: test Anthropic API
             std::string args = "-H 'x-api-key: test' https://api.anthropic.com/v1/messages";
-            result.ok = curl_ok(args);
+            auto curl_result = curl_ok(args);
+            result.ok = curl_result.first;
+            if (!result.ok) {
+                result.error_message = curl_result.second;
+                if (getenv("AK_DEBUG_TESTS")) {
+                    std::cerr << "[debug] service=" << service << " curl_output=" << result.error_message << std::endl;
+                }
+            }
+        } else if (service == "gemini") {
+            // Special handling for Gemini API - check for Google aliases
+            std::string googleKey = getGoogleApiKey();
+            result.ok = !googleKey.empty();
+            if (!result.ok) {
+                result.error_message = "No Google API key found (checked GEMINI_API_KEY, GOOGLE_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, GOOGLE_AI_API_KEY, GOOGLE_CLOUD_API_KEY)";
+            }
         } else {
             // Generic test - just check if service key exists
             auto it = SERVICE_KEYS.find(service);
@@ -141,6 +202,7 @@ TestResult test_one(const core::Config& cfg, const std::string& service) {
         }
     } catch (...) {
         result.ok = false;
+        result.error_message = "Unknown exception";
     }
     
     auto end = std::chrono::steady_clock::now();
