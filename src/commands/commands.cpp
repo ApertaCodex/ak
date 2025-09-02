@@ -60,6 +60,86 @@ void printUnsetsForProfile(const core::Config& cfg, const std::string& name) {
 }
 
 // Individual command handlers
+int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
+    if (args.size() < 2) {
+        core::error(cfg, "Usage: ak add [-p|--profile <profile>] <ENV_NAME> <ENV_VALUE> or ak add [-p|--profile <profile>] <ENV_NAME=ENV_VALUE>");
+    }
+    
+    std::string name;
+    std::string value;
+    std::string profileName;
+    
+    // Parse arguments, handling profile flag
+    std::vector<std::string> parsedArgs;
+    for (size_t i = 1; i < args.size(); ++i) {
+        if ((args[i] == "-p" || args[i] == "--profile") && i + 1 < args.size()) {
+            profileName = args[i + 1];
+            ++i; // Skip the profile name argument
+        } else {
+            parsedArgs.push_back(args[i]);
+        }
+    }
+    
+    if (parsedArgs.empty()) {
+        core::error(cfg, "Usage: ak add [-p|--profile <profile>] <ENV_NAME> <ENV_VALUE> or ak add [-p|--profile <profile>] <ENV_NAME=ENV_VALUE>");
+    }
+    
+    // Handle two formats: "ak add NAME VALUE" or "ak add NAME=VALUE"
+    if (parsedArgs.size() >= 2) {
+        // Format: ak add ENV_NAME ENV_VALUE
+        name = parsedArgs[0];
+        value = parsedArgs[1];
+        // If there are more arguments, join them with spaces
+        for (size_t i = 2; i < parsedArgs.size(); ++i) {
+            value += " " + parsedArgs[i];
+        }
+    } else if (parsedArgs.size() == 1) {
+        // Format: ak add ENV_NAME=ENV_VALUE
+        const std::string& arg = parsedArgs[0];
+        size_t equalPos = arg.find('=');
+        if (equalPos == std::string::npos || equalPos == 0 || equalPos == arg.length() - 1) {
+            core::error(cfg, "Usage: ak add [-p|--profile <profile>] <ENV_NAME> <ENV_VALUE> or ak add [-p|--profile <profile>] <ENV_NAME=ENV_VALUE>");
+        }
+        name = arg.substr(0, equalPos);
+        value = arg.substr(equalPos + 1);
+    } else {
+        core::error(cfg, "Usage: ak add [-p|--profile <profile>] <ENV_NAME> <ENV_VALUE> or ak add [-p|--profile <profile>] <ENV_NAME=ENV_VALUE>");
+    }
+    
+    if (name.empty()) {
+        core::error(cfg, "Environment variable name cannot be empty");
+    }
+    if (value.empty()) {
+        core::error(cfg, "Environment variable value cannot be empty");
+    }
+    
+    // Add to vault
+    core::KeyStore ks = storage::loadVault(cfg);
+    ks.kv[name] = value;
+    storage::saveVault(cfg, ks);
+    
+    // Add to profile if specified
+    if (!profileName.empty()) {
+        // Read existing profile keys
+        std::vector<std::string> profileKeys = storage::readProfile(cfg, profileName);
+        
+        // Check if key already exists in profile
+        auto it = std::find(profileKeys.begin(), profileKeys.end(), name);
+        if (it == profileKeys.end()) {
+            profileKeys.push_back(name);
+            storage::writeProfile(cfg, profileName, profileKeys);
+        }
+        
+        core::ok(cfg, "Added " + name + " to vault and profile '" + profileName + "'.");
+        core::auditLog(cfg, "add_profile", {name, profileName});
+    } else {
+        core::ok(cfg, "Added " + name + ".");
+        core::auditLog(cfg, "add", {name});
+    }
+    
+    return 0;
+}
+
 int cmd_set(const core::Config& cfg, const std::vector<std::string>& args) {
     if (args.size() < 2) {
         core::error(cfg, "Usage: ak set <NAME>");
@@ -413,7 +493,9 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
             if (result.ok) {
                 std::cout << ui::colorize("✅ PASS", ui::Colors::BRIGHT_GREEN) << " " << result.service << "\n";
             } else {
-                std::cout << ui::colorize("❌ FAIL", ui::Colors::BRIGHT_RED) << " " << result.service << "\n";
+                // Print provider and error message on the same line
+                std::cout << ui::colorize("❌ FAIL", ui::Colors::BRIGHT_RED) << " " << result.service
+                          << ", " << (result.error_message.empty() ? "unknown error" : result.error_message) << " ...\n";
             }
         }
     }
