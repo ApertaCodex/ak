@@ -74,6 +74,7 @@ int main(int argc, char** argv) {
         {"backend", commands::cmd_backend},
         
         // Secret management
+        {"add", commands::cmd_add},
         {"set", commands::cmd_set},
         {"get", commands::cmd_get},
         {"ls", commands::cmd_ls},
