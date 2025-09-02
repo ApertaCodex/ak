@@ -113,11 +113,11 @@ TEST(DetectConfiguredServicesFunction, ReturnedServicesShouldBeTestable) {
 
 TEST(CurlOkFunction, ShouldHandleBasicCurlOperations) {
     // Test with a simple operation that should work
-    bool result = curl_ok("--version");
+    auto result = curl_ok("--version");
     
     // This might fail if curl isn't available, but shouldn't crash
     // We mainly want to test that the function can be called
-    ASSERT_TRUE(result == true || result == false);
+    ASSERT_TRUE(result.first == true || result.first == false);
 }
 
 TEST(RunTestsParallelFunction, ShouldHandleEmptyServiceList) {
