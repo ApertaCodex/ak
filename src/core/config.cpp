@@ -15,7 +15,10 @@ namespace ak {
 namespace core {
 
 // Version information
-const std::string AK_VERSION = "2.0.0";
+#ifndef AK_VERSION_STRING
+#define AK_VERSION_STRING "2.0.0"
+#endif
+const std::string AK_VERSION = AK_VERSION_STRING;
 
 // Utility functions
 bool commandExists(const std::string& cmd) {
