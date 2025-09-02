@@ -23,10 +23,11 @@ struct TestResult {
     std::string service;
     bool ok;
     std::chrono::milliseconds duration;
+    std::string error_message;
 };
 
 // Testing functions
-bool curl_ok(const std::string& args);
+std::pair<bool, std::string> curl_ok(const std::string& args);
 TestResult test_one(const core::Config& cfg, const std::string& service);
 std::vector<TestResult> run_tests_parallel(
     const core::Config& cfg, 

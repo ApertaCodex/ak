@@ -11,6 +11,7 @@ namespace commands {
 using CommandHandler = int(*)(const core::Config& cfg, const std::vector<std::string>& args);
 
 // Individual command handlers
+int cmd_add(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_set(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_get(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_ls(const core::Config& cfg, const std::vector<std::string>& args);
