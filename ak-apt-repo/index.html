@@ -21,11 +21,12 @@
     
     <h2>🔧 Manual Setup</h2>
     <div class="code">
-        # Add GPG key<br>
-        curl -fsSL https://apertacodex.github.io/ak/ak-repository-key.gpg | sudo apt-key add -<br><br>
+        # Add GPG key (modern method)<br>
+        sudo mkdir -p /usr/share/keyrings<br>
+        curl -fsSL https://apertacodex.github.io/ak/ak-repository-key.gpg | sudo tee /usr/share/keyrings/ak-archive-keyring.gpg > /dev/null<br><br>
         
-        # Add repository<br>
-        echo "deb https://apertacodex.github.io/ak/ak-apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list<br><br>
+        # Add repository with keyring specification<br>
+        echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertacodex.github.io/ak/ak-apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list<br><br>
         
         # Update and install<br>
         sudo apt update && sudo apt install ak
