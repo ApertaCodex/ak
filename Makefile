@@ -335,7 +335,7 @@ bump-patch:
 	sed -i "s/const std::string AK_VERSION = \".*\";/const std::string AK_VERSION = \"$$new_version\";/" src/core/config.cpp; \
 	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
-	sed -i "s/^ak (.*)/ak ($$new_version-1)/" debian/changelog; \
+	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
 	echo "✅ Updated version to $$new_version in all files"
 
 bump-minor:
@@ -350,7 +350,7 @@ bump-minor:
 	sed -i "s/const std::string AK_VERSION = \".*\";/const std::string AK_VERSION = \"$$new_version\";/" src/core/config.cpp; \
 	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
-	sed -i "s/^ak (.*)/ak ($$new_version-1)/" debian/changelog; \
+	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
 	echo "✅ Updated version to $$new_version in all files"
 
 bump-major:
@@ -364,7 +364,7 @@ bump-major:
 	sed -i "s/const std::string AK_VERSION = \".*\";/const std::string AK_VERSION = \"$$new_version\";/" src/core/config.cpp; \
 	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
-	sed -i "s/^ak (.*)/ak ($$new_version-1)/" debian/changelog; \
+	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
 	echo "✅ Updated version to $$new_version in all files"
 
 build-release: clean
