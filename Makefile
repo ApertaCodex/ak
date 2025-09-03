@@ -333,7 +333,9 @@ bump-patch:
 	echo "📈 Version: $$current_version → $$new_version"; \
 	sed -i "s/^VERSION.*=.*/VERSION   ?= $$new_version/" Makefile; \
 	sed -i "s/const std::string AK_VERSION = \".*\";/const std::string AK_VERSION = \"$$new_version\";/" src/core/config.cpp; \
-	echo "✅ Updated version to $$new_version"
+	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
+	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
+	echo "✅ Updated version to $$new_version in all files"
 
 bump-minor:
 	@echo "🔄 Bumping minor version..."
