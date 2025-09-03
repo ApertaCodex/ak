@@ -1,6 +1,6 @@
 End-User License Agreement (EULA) for AK - API Key Manager
 
-This End-User License Agreement ("EULA") is a legal agreement between you (either an individual or a single entity), hereinafter referred to as "Licensee," and apertacodex, hereinafter referred to as "Licensor," for the software application known as AK - API Key Manager including any associated media and electronic documentation, hereinafter referred to as the "Software."
+This End-User License Agreement ("EULA") is a legal agreement between you (either an individual or a single entity), hereinafter referred to as "Licensee," and ApertaCodex, hereinafter referred to as "Licensor," for the software application known as AK - API Key Manager including any associated media and electronic documentation, hereinafter referred to as the "Software."
 
 By installing, copying, or otherwise using the Software, you agree to be bound by the terms of this EULA. If you do not agree to the terms of this EULA, do not install or use the Software.
 
