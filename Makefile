@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 2.10.3
+VERSION   ?= 2.10.4
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -290,8 +290,8 @@ publish-major:
 #   V_BUMP=major make release    # override default with flag
 # -------------------------
 
-VERSION   ?= 2.10.3
-VERSION   ?= 2.10.3
+VERSION   ?= 2.10.4
+VERSION   ?= 2.10.4
 
 release:
 	@echo "🚀 Starting comprehensive release ($(V_BUMP) version bump)..."
@@ -339,7 +339,7 @@ bump-patch:
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" index.html; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?_amd64\.deb/ak_$$new_version\_amd64.deb/g" ak-apt-repo/index.html; \
 	sed -i "s/Latest version:[^<]*/Latest version: $$new_version/g" ak-apt-repo/index.html; \
-	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?/- **Version**: $$new_version/" README.md; \
+	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]\+\.[0-9]\+/- **Version**: $$new_version/" README.md; \
 	sed -i "s/version: \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version: \"$$new_version\"/" CITATION.cff; \
 	sed -i "s/\"version\": \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/\"version\": \"$$new_version\"/" codemeta.json; \
 	sed -i "s/- \*\*Version\*\*: \`\?[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?\`\?/- **Version**: \`$$new_version\`/" DEBIAN_PUBLISHING.md; \
@@ -364,7 +364,7 @@ bump-minor:
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" index.html; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?_amd64\.deb/ak_$$new_version\_amd64.deb/g" ak-apt-repo/index.html; \
 	sed -i "s/Latest version:[^<]*/Latest version: $$new_version/g" ak-apt-repo/index.html; \
-	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?/- **Version**: $$new_version/" README.md; \
+	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]\+\.[0-9]\+/- **Version**: $$new_version/" README.md; \
 	sed -i "s/version: \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version: \"$$new_version\"/" CITATION.cff; \
 	sed -i "s/\"version\": \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/\"version\": \"$$new_version\"/" codemeta.json; \
 	sed -i "s/- \*\*Version\*\*: \`\?[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?\`\?/- **Version**: \`$$new_version\`/" DEBIAN_PUBLISHING.md; \
@@ -388,7 +388,7 @@ bump-major:
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" index.html; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?_amd64\.deb/ak_$$new_version\_amd64.deb/g" ak-apt-repo/index.html; \
 	sed -i "s/Latest version:[^<]*/Latest version: $$new_version/g" ak-apt-repo/index.html; \
-	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?/- **Version**: $$new_version/" README.md; \
+	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]\+\.[0-9]\+/- **Version**: $$new_version/" README.md; \
 	sed -i "s/version: \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version: \"$$new_version\"/" CITATION.cff; \
 	sed -i "s/\"version\": \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/\"version\": \"$$new_version\"/" codemeta.json; \
 	sed -i "s/- \*\*Version\*\*: \`\?[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?\`\?/- **Version**: \`$$new_version\`/" DEBIAN_PUBLISHING.md; \
