@@ -4,26 +4,26 @@ Hash: SHA512
 Archive: stable
 Codename: stable
 Components: main
-Date: Sun, 17 Aug 2025 00:04:26 +0000
-Description: AK API Key Manager Repository
+Date: Wed, 03 Sep 2025 00:30:52 +0000
+Description: AK API Key Manager Repository  
 Label: AK Repository
 Origin: AK
 Suite: stable
 Version: 1.0
 Architectures: amd64
 MD5Sum:
-d7cb28b3ce0c906dd2f6f829a64322ae  Packages.gz
-21efdd7bbe2bcd98845ee7ae8c2076f3  Packages
+cec64a252bd17be536ee929ed50aaa77  Packages.gz
+3494c2c69b388dab75aa16509fb97ef5  Packages
 SHA1:
-eaf5f79e117bbb3e2dad94c1ad439bb8f60ec53d  Packages.gz
-97d99cf0b2c098d1a41a89e30312a8fd53db128f  Packages
+aa108563123a5875617dbfbbe034d2637d9ebd32  Packages.gz
+f4a7632c397e6ef8206576ae3cef4a54c216f856  Packages
 SHA256:
-8aa0dbac9470dfb219ee2ca0ae4a1d7f355db9886d978a7f4cab7a28aee8b220  Packages.gz
-de232c59a048339b9b37fd3d8b6c5b58b1a1bde0bebf691fc2ca779edd8f119c  Packages
+28096a6f07a915ac522c3ab5961dbbb901cd32ee02605887e033ad58fce3a782  Packages.gz
+eae6de680fac29940ac848227c60b74eda52ade395d52c0a411f7e0095c07c5c  Packages
 -----BEGIN PGP SIGNATURE-----
 
-iHUEARYKAB0WIQRQSAcxZWNqenxREtyknUIHLH9UmAUCaKEcqQAKCRCknUIHLH9U
-mEIgAP96fVL7AvQCp2Zd/ASQV/7607eAxJRc3qSs12UEuS+jLwEA6lliNBhnkGWc
-SXBCIDoFFBD3R5mS1mrsAP6CIrqS6gU=
-=+22Y
+iHUEARYKAB0WIQRQSAcxZWNqenxREtyknUIHLH9UmAUCaLeMaAAKCRCknUIHLH9U
+mPIhAP4/PV8iJHTBQ1xXMrYWNcEUN4i4ZHtO0++D/xs/W0+B9QD/fJTyvdmA445v
+TSpri0PfTcZsN9gvT/8VhWeXLu4DsgU=
+=5IJS
 -----END PGP SIGNATURE-----
