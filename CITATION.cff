@@ -7,7 +7,7 @@ authors:
   - family-names: "Mokhtari"
     given-names: "Moussa"
     email: "me@moussamokhtari.com"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
+    orcid: "https://orcid.org/0009-0009-7908-8570"
 repository-code: "https://github.com/ApertaCodex/ak"
 url: "https://apertacodex.github.io/ak"
 license: MIT
@@ -30,4 +30,4 @@ keywords:
   - "ubuntu"
   - "debian"
   - "apt-package"
-  - "apertacodx"
+  - "apertacodex"
