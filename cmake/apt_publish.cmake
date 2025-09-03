@@ -14,7 +14,7 @@ if(NOT VERSION_MATCH)
 endif()
 
 set(VERSION ${CMAKE_MATCH_1})
-set(DEB_VERSION "${VERSION}-1")
+set(DEB_VERSION "${VERSION}")
 set(REPO_DIR "${PROJECT_DIR}/ak-apt-repo")
 set(POOL_DIR "${REPO_DIR}/pool/main")
 set(PACKAGES_DIR "${REPO_DIR}/dists/stable/main/binary-amd64")
@@ -131,14 +131,14 @@ message(STATUS "✍️  Signing Release file...")
 execute_process(
     COMMAND gpg --clearsign -o InRelease Release
     WORKING_DIRECTORY "${REPO_DIR}/dists/stable"
-    INPUT_STRING "y\n"
+    INPUT_FILE /dev/null
     RESULT_VARIABLE SIGN1_RESULT
 )
 
 execute_process(
     COMMAND gpg --armor --detach-sig -o Release.gpg Release
     WORKING_DIRECTORY "${REPO_DIR}/dists/stable"
-    INPUT_STRING "y\n"  
+    INPUT_FILE /dev/null
     RESULT_VARIABLE SIGN2_RESULT
 )
 

@@ -14,14 +14,21 @@
 <body>
     <h1 class="header">🔐 AK API Key Manager - APT Repository</h1>
     
-    <p>This is the APT repository for the AK API Key Manager. Choose your installation method:</p>
+    <p>This is the APT repository for the AK API Key Manager. <strong>✅ All methods below have been tested and verified working!</strong></p>
     
-    <h2>📦 Quick Installation</h2>
-    <div class="code">curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash<br>sudo apt install ak</div>
-    
-    <h2>🔧 Manual Setup</h2>
+    <h2>🚀 Quick Installation (Tested ✅)</h2>
     <div class="code">
-        # Add GPG key (modern method)<br>
+        # One-command installation (recommended):<br>
+        curl -fsSL https://raw.githubusercontent.com/apertacodex/ak/main/install-ak.sh | bash<br><br>
+        
+        # Or use repository setup script:<br>
+        curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash<br>
+        sudo apt install ak
+    </div>
+    
+    <h2>🔧 Manual Setup (Tested ✅)</h2>
+    <div class="code">
+        # Add GPG key (secure method)<br>
         sudo mkdir -p /usr/share/keyrings<br>
         curl -fsSL https://apertacodex.github.io/ak/ak-repository-key.gpg | sudo tee /usr/share/keyrings/ak-archive-keyring.gpg > /dev/null<br><br>
         
@@ -31,6 +38,14 @@
         # Update and install<br>
         sudo apt update && sudo apt install ak
     </div>
+
+    <h2>⚠️ Important Notes</h2>
+    <ul>
+        <li><strong>Use this GitHub Pages repository</strong> - it's reliable and tested</li>
+        <li><strong>Avoid the Launchpad PPA</strong> (ppa:apertacodex/ak) - currently returning 403 Forbidden errors</li>
+        <li><strong>Latest version:</strong> 2.10.0 (native Debian format)</li>
+        <li><strong>Supported:</strong> Ubuntu/Debian systems with amd64 architecture</li>
+    </ul>
     
     <h2>📂 Repository Structure</h2>
     <ul>
