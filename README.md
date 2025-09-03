@@ -13,9 +13,11 @@ A cross-platform C++17 command-line tool for managing API keys securely across d
 
 ## 📦 Installation
 
-### APT Repository (Ubuntu/Debian) - Recommended
+### APT Repository (Ubuntu/Debian) - Recommended ✅
 
-#### Quick Install
+> **Note:** Use the GitHub Pages repository below. The Launchpad PPA is currently experiencing access issues.
+
+#### Quick Install (Recommended)
 ```bash
 curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash
 sudo apt install ak
@@ -23,26 +25,32 @@ sudo apt install ak
 
 #### Manual Setup
 ```bash
-# Add GPG key (modern method)
+# Add GPG key (secure method)
 sudo mkdir -p /usr/share/keyrings
 curl -fsSL https://apertacodex.github.io/ak/ak-repository-key.gpg | sudo tee /usr/share/keyrings/ak-archive-keyring.gpg > /dev/null
 
-# Add repository with keyring specification
+# Add GitHub Pages repository
 echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertacodex.github.io/ak/ak-apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list
 
 # Update and install
-sudo apt update
-sudo apt install ak
+sudo apt update && sudo apt install ak
 ```
 
-#### Direct Download
+#### Direct Package Download
 ```bash
-# Download latest .deb package
-wget https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_2.1.0-1_amd64.deb
-sudo dpkg -i ak_2.1.0-1_amd64.deb
+# Download latest .deb package (check for newest version)
+wget https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_2.9.0_amd64.deb
+sudo dpkg -i ak_2.9.0_amd64.deb
 
 # Fix dependencies if needed
 sudo apt-get install -f
+```
+
+#### ⚠️ PPA Alternative (Currently Unavailable)
+```bash
+# NOTE: Launchpad PPA currently returns 403 errors
+# Use GitHub Pages repository above instead
+# sudo add-apt-repository ppa:apertacodex/ak  # ← Don't use this
 ```
 
 #### Verification
