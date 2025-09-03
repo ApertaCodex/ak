@@ -282,7 +282,7 @@ TEST(ModuleTest, BasicFunctionality) {
 
 ## 📊 Current Status
 
-- **Version**: 2.1.0-1
+- **Version**: 2.2.0-1
 - **Test Coverage**: ~60% line coverage, ~67% function coverage
 - **Tests**: 65 tests across 21 test suites
 - **Build System**: CMake 3.16+ with cross-platform support
@@ -298,11 +298,11 @@ TEST(ModuleTest, BasicFunctionality) {
 
 ## 📄 License
 
-This project is open source - free to use, modify, and distribute.
+This project is open source and licensed under the MIT License with Attribution Requirement.
 
 **Attribution Required:** When integrating AK into other systems or creating derivative works, please mention ApertaCodex as the original creator.
 
-See the LICENSE file for full details.
+See the [LICENSE](LICENSE:1) file for full details.
 
 ## 🔧 Troubleshooting
 

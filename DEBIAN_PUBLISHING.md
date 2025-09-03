@@ -27,8 +27,8 @@ sudo apt update && sudo apt install ak
 
 ### Method 3: Direct Package Download
 ```bash
-wget https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_2.1.0-1_amd64.deb
-sudo dpkg -i ak_2.1.0-1_amd64.deb
+wget https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_2.2.0-1_amd64.deb
+sudo dpkg -i ak_2.2.0-1_amd64.deb
 sudo apt-get install -f  # Fix dependencies if needed
 ```
 
