@@ -7,6 +7,7 @@
 #   sudo make uninstall # remove installed binary
 #   make package-deb    # builds ./dist/ak_<ver>_<arch>.deb (needs dpkg-deb)
 #   make package-rpm    # builds ./dist/ak-<ver>-1.<arch>.rpm (needs rpmbuild or fpm)
+#   make publish-ppa    # build signed source and upload to Launchpad PPA
 #   make clean
 
 APP       ?= ak
@@ -25,6 +26,9 @@ LDFLAGS_COV := --coverage
 PREFIX    ?= /usr/local
 BINDIR    ?= $(PREFIX)/bin
 
+# Launchpad PPA settings
+SERIES    ?= $(shell dpkg-parsechangelog -S Distribution 2>/dev/null || echo noble)
+PPA       ?= ppa:apertacodex/ak
 # Source files
 CORE_SRC  := src/core/config.cpp
 CRYPTO_SRC := src/crypto/crypto.cpp
@@ -66,7 +70,7 @@ DISTDIR   := dist
 .PHONY: all test strip install install-user uninstall uninstall-user \
         coverage coverage-html coverage-summary clean-coverage clean-obj \
         package-deb package-rpm dist publish publish-patch publish-minor publish-major \
-        bump-patch bump-minor bump-major build-release test-release commit-and-push clean
+        bump-patch bump-minor bump-major build-release test-release commit-and-push publish-ppa clean
 
 all: $(BIN)
 
@@ -250,6 +254,14 @@ publish: publish-patch
 publish-apt:
 	@echo "📦 Updating APT repository..."
 	@cmake -DPROJECT_DIR=$(CURDIR) -P cmake/apt_publish.cmake
+
+# -------------------------
+# Launchpad PPA (one command)
+# -------------------------
+publish-ppa:
+	@echo "🚀 Publishing to Launchpad PPA $(PPA) (series=$(SERIES))..."
+	@chmod +x ./publish-ppa.sh || true
+	@PPA="$(PPA)" SERIES="$(SERIES)" ./publish-ppa.sh
 
 publish-patch:
 	@$(MAKE) bump-patch build-release test-release publish-apt commit-and-push
