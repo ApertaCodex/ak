@@ -303,11 +303,20 @@ add_custom_target(test-release
     COMMENT "🧪 Running release tests..."
 )
 
+# APT repository update target
+add_custom_target(update-apt-repo
+    COMMAND ${CMAKE_COMMAND}
+        -DPROJECT_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apt_publish.cmake
+    COMMENT "📦 Updating APT repository..."
+)
+
 # Publish targets
 add_custom_target(publish
     COMMAND ${CMAKE_COMMAND} --build . --target bump-patch
-    COMMAND ${CMAKE_COMMAND} --build . --target test-release  
+    COMMAND ${CMAKE_COMMAND} --build . --target test-release
     COMMAND ${CMAKE_COMMAND} --build . --target build-release
+    COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
     COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
     COMMENT "🚀 Publishing patch release..."
 )
@@ -316,6 +325,7 @@ add_custom_target(publish-minor
     COMMAND ${CMAKE_COMMAND} --build . --target bump-minor
     COMMAND ${CMAKE_COMMAND} --build . --target test-release
     COMMAND ${CMAKE_COMMAND} --build . --target build-release
+    COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
     COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
     COMMENT "🚀 Publishing minor release..."
 )
@@ -324,6 +334,7 @@ add_custom_target(publish-major
     COMMAND ${CMAKE_COMMAND} --build . --target bump-major
     COMMAND ${CMAKE_COMMAND} --build . --target test-release
     COMMAND ${CMAKE_COMMAND} --build . --target build-release
+    COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
     COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
     COMMENT "🚀 Publishing major release..."
 )
