@@ -10,7 +10,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 2.2.0
+VERSION   ?= 2.3.0
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
 # Map to Debian/RPM arch tags
@@ -172,17 +172,17 @@ package-deb: strip
 	@mkdir -p $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin
 	@cp -f $(BIN) $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin/$(APP)
 	@chmod 0755 $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin/$(APP)
-	@echo "Package: $(APP)"                                              >  $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
-	@echo "Version: $(VERSION)"                                         >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
-	@echo "Section: utils"                                              >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
-	@echo "Priority: optional"                                          >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
-	@echo "Architecture: $(DEB_ARCH)"                                   >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
-	@echo "Maintainer: You <you@example.com>"                           >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
-	@echo "Depends: gpg, coreutils, bash, curl"                         >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
-	@echo "Description: $(APP) — secure API key manager (CLI, C++)"     >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
+	@echo "Package: $(APP)"                                              >  $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
+	@echo "Version: $(VERSION)-1"                                       >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
+	@echo "Section: utils"                                              >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
+	@echo "Priority: optional"                                          >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
+	@echo "Architecture: $(DEB_ARCH)"                                   >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
+	@echo "Maintainer: Moussa Mokhtari <me@moussamokhtari.com>"         >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
+	@echo "Depends: gpg, coreutils, bash, curl"                         >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
+	@echo "Description: $(APP) — secure API key manager (CLI, C++)"     >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
 	@mkdir -p $(DISTDIR)
-	@dpkg-deb --build $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH) $(DISTDIR)/$(APP)_$(VERSION)_$(DEB_ARCH).deb
-	@echo "🎁 Built $(DISTDIR)/$(APP)_$(VERSION)_$(DEB_ARCH).deb"
+	@dpkg-deb --build $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH) $(DISTDIR)/$(APP)_$(VERSION)-1_$(DEB_ARCH).deb
+	@echo "🎁 Built $(DISTDIR)/$(APP)_$(VERSION)-1_$(DEB_ARCH).deb"
 
 # -------------------------
 # RPM package (.rpm)
@@ -247,14 +247,18 @@ dist: package-deb package-rpm
 # -------------------------
 publish: publish-patch
 
+publish-apt:
+	@echo "📦 Updating APT repository..."
+	@cmake -DPROJECT_DIR=$(CURDIR) -P cmake/apt_publish.cmake
+
 publish-patch:
-	@$(MAKE) bump-patch build-release test-release commit-and-push
+	@$(MAKE) bump-patch build-release test-release publish-apt commit-and-push
 
 publish-minor:
-	@$(MAKE) bump-minor build-release test-release commit-and-push
+	@$(MAKE) bump-minor build-release test-release publish-apt commit-and-push
 
 publish-major:
-	@$(MAKE) bump-major build-release test-release commit-and-push
+	@$(MAKE) bump-major build-release test-release publish-apt commit-and-push
 
 bump-patch:
 	@echo "🔄 Bumping patch version..."
@@ -307,7 +311,7 @@ commit-and-push:
 	@echo "📦 Committing and pushing release..."
 	@new_version=$$(grep "^VERSION" Makefile | head -1 | cut -d'=' -f2 | tr -d ' ?'); \
 	if ! git diff --quiet; then \
-		git add Makefile src/core/config.cpp; \
+		git add Makefile src/core/config.cpp ak-apt-repo/ ak-repository-key.gpg debian/changelog; \
 		git commit -m "🚀 Release v$$new_version"; \
 		git tag "v$$new_version"; \
 		echo "🏷️  Created tag v$$new_version"; \
