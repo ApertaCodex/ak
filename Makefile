@@ -423,10 +423,11 @@ commit-and-push:
 	@echo "📦 Committing and pushing release..."
 	@new_version=$$(grep "^VERSION" Makefile | head -1 | cut -d'=' -f2 | tr -d ' ?'); \
 	if ! git diff --quiet; then \
-		git add Makefile CMakeLists.txt src/core/config.cpp debian/changelog \
+		git add .gitignore Makefile CMakeLists.txt src/core/config.cpp debian/changelog \
 		        index.html ak-apt-repo/ ak-repository-key.gpg \
 		        README.md CITATION.cff codemeta.json DEBIAN_PUBLISHING.md \
 		        docs/MANUAL.md docs/ak.1 install-ak.sh; \
+		git rm --cached ak debian/files pkg/ dist/ 2>/dev/null || true; \
 		git commit -m "🚀 Release v$$new_version"; \
 		git tag "v$$new_version"; \
 		echo "🏷️  Created tag v$$new_version"; \
