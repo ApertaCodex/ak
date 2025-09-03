@@ -288,6 +288,6 @@ sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 60
 
 ## 📞 Support
 
-- Issues: [GitHub Issues](https://github.com/username/ak/issues)
+- Issues: [GitHub Issues](https://github.com/apertacodex/ak/issues)
 - Documentation: This README and inline code comments
 - Build Problems: Check troubleshooting section above
