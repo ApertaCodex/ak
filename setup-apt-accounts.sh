@@ -229,7 +229,7 @@ create_github_repo() {
         echo "  git add ."
         echo "  git commit -m 'Initial APT repository setup'"
         echo "  git branch -M main"
-        echo "  git remote add origin https://github.com/USERNAME/ak-apt-repo.git"
+        echo "  git remote add origin https://github.com/apertacodex/ak-apt-repo.git"
         echo "  git push -u origin main"
         echo "  # Enable GitHub Pages in repository settings"
     else

@@ -8,9 +8,9 @@ Build-Depends: debhelper-compat (= 13),
                g++ (>= 7) | clang++ (>= 8),
                git
 Standards-Version: 4.6.0
-Homepage: https://github.com/username/ak
-Vcs-Git: https://github.com/username/ak.git
-Vcs-Browser: https://github.com/username/ak
+Homepage: https://github.com/apertacodex/ak
+Vcs-Git: https://github.com/apertacodex/ak.git
+Vcs-Browser: https://github.com/apertacodex/ak
 Rules-Requires-Root: no
 
 Package: ak

@@ -265,7 +265,7 @@ ak test --all
 
 ## BUGS
 
-Report bugs at: https://github.com/username/ak/issues
+Report bugs at: https://github.com/apertacodex/ak/issues
 
 Please include the following information in bug reports:
 
@@ -290,7 +290,7 @@ Copyright (C) 2024 apertacodex. This software is licensed under the terms of the
 - **keyring**(1)
 - **ssh-agent**(1)
 
-For complete documentation, visit: https://github.com/username/ak
+For complete documentation, visit: https://github.com/apertacodex/ak
 
 ## VERSION
 
