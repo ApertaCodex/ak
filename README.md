@@ -298,7 +298,11 @@ TEST(ModuleTest, BasicFunctionality) {
 
 ## 📄 License
 
-This project is licensed under the terms of the EULA (End-User License Agreement). See the EULA.txt file for details.
+This project is open source - free to use, modify, and distribute.
+
+**Attribution Required:** When integrating AK into other systems or creating derivative works, please mention ApertaCodex as the original creator.
+
+See the LICENSE file for full details.
 
 ## 🔧 Troubleshooting
 
