@@ -150,18 +150,57 @@ gpg --armor --detach-sig -o Release.gpg Release
 
 ### Option 2: Launchpad PPA
 
-1. **Create Launchpad Account**: https://launchpad.net
-2. **Upload GPG Key** to Launchpad
-3. **Create PPA**: Your Name → Create PPA
-4. **Build Source Package**:
+Prerequisites (on Ubuntu/Debian build host):
 ```bash
-# Build source package
-dpkg-buildpackage -S -sa
-
-# Upload to PPA
-dput ppa:username/ak-ppa ../ak_2.0.0-1_source.changes
+sudo apt update
+sudo apt install devscripts dput gnupg dpkg-dev debhelper
 ```
 
+1. Create Launchpad account: https://launchpad.net
+2. Upload your GPG public key to Launchpad (the same key used for signing packages).
+   - Find your key: `gpg --list-secret-keys --keyid-format=long`
+   - Upload at: https://launchpad.net/people/+me/+editpgpkeys
+3. Create the PPA (team or personal), e.g. “ApertaCodex / ak”: https://launchpad.net/~apertacodex/+archive/ubuntu/ak
+4. Ensure debian/changelog targets a valid Ubuntu series (e.g., noble):
+```bash
+# If needed, set/confirm distribution series in changelog
+dch -D noble -r "Release for noble"
+```
+5. Build a signed source package:
+```bash
+# Replace with your actual key id (e.g., 0xABCDEF1234567890)
+export DEBSIGN_KEYID=YOUR_KEY_ID
+
+# Using debuild (from devscripts)
+debuild -S -sa -k"$DEBSIGN_KEYID"
+
+# Alternatively:
+# dpkg-buildpackage -S -sa -k"$DEBSIGN_KEYID"
+```
+6. Upload the source changes file to the PPA:
+```bash
+# Upload to the ApertaCodex ak PPA
+dput ppa:apertacodex/ak ../ak_*_source.changes
+```
+
+Optional: one-liner helper via the provided script:
+```bash
+# Builds a signed source package and uploads to Launchpad
+./ppa-upload.sh -s noble -k YOUR_KEY_ID
+
+# Dry run (no upload):
+./ppa-upload.sh -s noble -k YOUR_KEY_ID --simulate
+```
+
+Verification:
+- Monitor build status: https://launchpad.net/~apertacodex/+archive/ubuntu/ak
+- After “Successfully built” and “Published”, test:
+```bash
+sudo add-apt-repository -y ppa:apertacodex/ak
+sudo apt update
+apt-cache policy ak
+sudo apt install ak
+```
 ### Option 3: Official Debian Repository
 
 1. **Become Debian Maintainer**: https://www.debian.org/devel/
@@ -179,10 +218,10 @@ set -e
 echo "🔧 Setting up AK API Key Manager repository..."
 
 # Add GPG key
-curl -fsSL https://yourrepo.com/ak-archive-key.gpg | sudo apt-key add -
+curl -fsSL https://apertacodex.github.io/ak-archive-key.gpg | sudo apt-key add -
 
 # Add repository
-echo "deb https://yourrepo.com/apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list
+echo "deb https://apertacodex.github.io/apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list
 
 # Update package list
 sudo apt update
@@ -197,17 +236,17 @@ chmod +x setup-ak-repo.sh
 ### User Installation Instructions
 ```bash
 # Method 1: Repository setup script
-curl -fsSL https://yourrepo.com/setup-ak-repo.sh | bash
+curl -fsSL https://apertacodex.github.io/setup-ak-repo.sh | bash
 sudo apt install ak
 
 # Method 2: Manual setup
-curl -fsSL https://yourrepo.com/ak-archive-key.gpg | sudo apt-key add -
-echo "deb https://yourrepo.com/apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list
+curl -fsSL https://apertacodex.github.io/ak-archive-key.gpg | sudo apt-key add -
+echo "deb https://apertacodex.github.io/apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list
 sudo apt update
 sudo apt install ak
 
 # Method 3: Direct .deb download
-wget https://yourrepo.com/ak_2.0.0-1_amd64.deb
+wget https://apertacodex.github.io/ak_2.0.0-1_amd64.deb
 sudo dpkg -i ak_2.0.0-1_amd64.deb
 ```
 
@@ -352,3 +391,64 @@ dpkg-deb -I ../ak_2.0.0-1_amd64.deb
 ---
 
 **Ready for Production**: The AK package is fully prepared for APT repository distribution! 🎉
+## 🚀 Quick PPA Upload (copy-paste)
+
+Use these commands to upload AK to the Launchpad PPA “apertacodex/ak”.
+
+Prerequisites:
+```bash
+sudo apt update
+sudo apt install -y devscripts dput gnupg dpkg-dev debhelper
+```
+
+GPG key setup (once):
+```bash
+# Find your key ID (use the long ID like 0xABCDEF1234567890)
+gpg --list-secret-keys --keyid-format=long
+
+# Export and upload your public key to Launchpad: https://launchpad.net/people/+me/+editpgpkeys
+# Set the key to use for signing
+export DEBSIGN_KEYID=YOUR_KEY_ID
+```
+
+Ensure changelog targets Ubuntu noble:
+```bash
+# Only run if debian/changelog Distribution is not already 'noble'
+dch -D noble -r "Release for noble"
+```
+
+Build signed source package:
+```bash
+# From repository root
+debuild -S -sa -k"$DEBSIGN_KEYID"
+```
+
+Upload to the PPA:
+```bash
+# Upload the generated source changes file
+dput ppa:apertacodex/ak ../ak_*_source.changes
+```
+
+Monitor build and publish status:
+```bash
+# Open the PPA page to monitor builds
+xdg-open "https://launchpad.net/~apertacodex/+archive/ubuntu/ak" 2>/dev/null || true
+```
+
+Test installation after publish:
+```bash
+sudo add-apt-repository -y ppa:apertacodex/ak
+sudo apt update
+apt-cache policy ak
+sudo apt install -y ak
+ak --version
+```
+
+Optional helper script (one-liner):
+```bash
+# Builds a signed source package and uploads to Launchpad
+./ppa-upload.sh -s noble -k YOUR_KEY_ID
+
+# Dry run (no upload):
+./ppa-upload.sh -s noble -k YOUR_KEY_ID --simulate
+```
