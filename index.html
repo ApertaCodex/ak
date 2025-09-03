@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AK - API Key Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'slate-900': '#0F172A',
+              'slate-800': '#1E293B',
+              'slate-700': '#334155',
+              'slate-300': '#CBD5E1',
+              'purple-400': '#A78BFA',
+              'teal-400': '#2DD4BF',
+              'sky-400': '#38BDF8',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['Fira Code', 'monospace'],
+            },
+            animation: {
+              'aurora': 'aurora 60s linear infinite',
+            },
+            keyframes: {
+              aurora: {
+                from: {
+                  backgroundPosition: '50% 50%, 50% 50%',
+                },
+                to: {
+                  backgroundPosition: '350% 50%, 350% 50%',
+                },
+              },
+            },
+          },
+        },
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+      .tab-panel[data-state='inactive'] {
+        display: none;
+      }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-300 font-sans antialiased">
+    <div class="min-h-screen bg-slate-900 relative overflow-hidden">
+        <!-- Animated background -->
+        <div class="absolute top-0 left-0 w-full h-full [background:radial-gradient(125%_125%_at_50%_10%,#0F172A_40%,#6366F1_100%)]"></div>
+        <div class="absolute inset-0 z-0 h-full w-full bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]"></div>
+        
+        <div class="relative z-10">
+            <header class="absolute top-0 left-0 w-full z-50">
+                <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+                    <div class="text-2xl font-bold text-white tracking-wider">
+                        <span class="text-purple-400">A</span>K
+                    </div>
+                    <ul class="hidden md:flex items-center space-x-8 text-sm font-medium">
+                        <li><a href="#features" class="text-slate-300 hover:text-purple-400 transition-colors">Features</a></li>
+                        <li><a href="#quick-start" class="text-slate-300 hover:text-purple-400 transition-colors">Install</a></li>
+                        <li><a href="#usage" class="text-slate-300 hover:text-purple-400 transition-colors">Usage</a></li>
+                    </ul>
+                </nav>
+            </header>
+
+            <main>
+                <!-- Hero Section -->
+                <section class="py-32 sm:py-48 text-center">
+                    <div class="container mx-auto px-6">
+                        <h1 class="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-teal-400 leading-tight tracking-tighter mb-6">
+                            Secure & Simple API Key Management
+                        </h1>
+                        <p class="max-w-3xl mx-auto text-lg md:text-xl text-slate-300 mb-10">
+                            AK is a cross-platform C++17 command-line tool for managing API keys securely with a local, encrypted vault.
+                        </p>
+                        <div class="flex justify-center items-center gap-4">
+                            <a href="#quick-start" class="bg-gradient-to-r from-purple-400 to-teal-400 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:opacity-90 transition-all duration-300 transform hover:scale-105">
+                                Get Started
+                            </a>
+                            <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="bg-slate-800/50 border border-slate-700 text-white font-bold py-3 px-8 rounded-lg hover:border-purple-400 transition-colors duration-300">
+                                View on GitHub
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Features Section -->
+                <section id="features" class="py-20 sm:py-24">
+                    <div class="container mx-auto px-6">
+                        <div class="text-center mb-16">
+                            <h2 class="text-4xl font-bold text-white">Why AK?</h2>
+                            <p class="text-lg text-slate-300 mt-2">Everything you need for secure and efficient key management.</p>
+                        </div>
+                        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                            <!-- Feature 1: Cross-Platform -->
+                            <div class="relative group p-px rounded-xl bg-gradient-to-b from-slate-700 to-transparent">
+                                <div class="rounded-xl bg-slate-900 h-full p-8">
+                                    <div class="mb-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18z" /><path stroke-linecap="round" stroke-linejoin="round" d="M3.6 9h16.8M3.6 15h16.8" /><ellipse cx="12" cy="12" rx="4" ry="9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white mb-2">Cross-Platform</h3>
+                                    <p class="text-slate-300">Runs natively on Linux, macOS, and Windows for a consistent experience everywhere.</p>
+                                </div>
+                                <div class="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-teal-400 transition-all duration-300 pointer-events-none"></div>
+                            </div>
+                            <!-- Feature 2: Secure Storage -->
+                            <div class="relative group p-px rounded-xl bg-gradient-to-b from-slate-700 to-transparent">
+                                <div class="rounded-xl bg-slate-900 h-full p-8">
+                                    <div class="mb-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.956 11.956 0 0112 3c2.35 0 4.54.633 6.465 1.714m-12.93 0A11.956 11.956 0 0112 3c-2.35 0-4.54.633-6.465 1.714M12 21c-3.13 0-6.01-.97-8.465-2.686M20.465 18.314A11.956 11.956 0 0112 21c3.13 0 6.01-.97 8.465-2.686m-16.93 0a11.956 11.956 0 0116.93 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 12a3 3 0 100-6 3 3 0 000 6z" /></svg>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white mb-2">Secure Storage</h3>
+                                    <p class="text-slate-300">Encrypts your API keys in a local vault, keeping your credentials safe from prying eyes.</p>
+                                </div>
+                                <div class="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-teal-400 transition-all duration-300 pointer-events-none"></div>
+                            </div>
+                            <!-- Feature 3: Service Integration -->
+                            <div class="relative group p-px rounded-xl bg-gradient-to-b from-slate-700 to-transparent">
+                                <div class="rounded-xl bg-slate-900 h-full p-8">
+                                    <div class="mb-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white mb-2">Service Integration</h3>
+                                    <p class="text-slate-300">Built-in support for popular services like OpenAI, GitHub, AWS, and more.</p>
+                                </div>
+                                <div class="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-teal-400 transition-all duration-300 pointer-events-none"></div>
+                            </div>
+                             <!-- Feature 4: Shell Completions -->
+                            <div class="relative group p-px rounded-xl bg-gradient-to-b from-slate-700 to-transparent">
+                                <div class="rounded-xl bg-slate-900 h-full p-8">
+                                    <div class="mb-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" /></svg>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white mb-2">Shell Completions</h3>
+                                    <p class="text-slate-300">Boost your productivity with shell completions for Bash, Zsh, and Fish.</p>
+                                </div>
+                                <div class="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-teal-400 transition-all duration-300 pointer-events-none"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quick Start Section -->
+                <section id="quick-start" class="py-20 sm:py-24">
+                    <div class="container mx-auto px-6">
+                        <div class="text-center mb-12">
+                            <h2 class="text-4xl font-bold text-white">Quick Start</h2>
+                            <p class="text-lg text-slate-300 mt-2">Get up and running in minutes.</p>
+                        </div>
+                        <div class="max-w-4xl mx-auto">
+                            <div class="flex justify-center mb-6">
+                                <div id="tab-buttons" class="bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-full p-1 flex space-x-1">
+                                    <button data-tab-target="linux" class="tab-button py-2 px-6 text-sm font-medium rounded-full transition-colors bg-sky-400 text-white">Linux/macOS</button>
+                                    <button data-tab-target="windows" class="tab-button py-2 px-6 text-sm font-medium rounded-full transition-colors text-slate-300 hover:bg-slate-700">Windows</button>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <!-- Linux/macOS Panel -->
+                                <div id="linux-panel" class="tab-panel" data-state="active">
+                                    <h3 class="text-lg font-semibold text-white mb-2">1. Prerequisites</h3>
+                                    <div class="code-block bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg relative">
+                                        <div class="flex items-center justify-between px-4 py-2 border-b border-slate-700">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-400 font-mono uppercase">bash</span>
+                                            <button aria-label="Copy code" class="copy-button p-1.5 bg-slate-700/50 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 transition-all">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 copy-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-400 check-icon" style="display: none;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                            </button>
+                                        </div>
+                                        <pre class="p-4 text-sm overflow-x-auto font-mono text-slate-300"><code>sudo apt install build-essential cmake git  # Debian/Ubuntu
+brew install cmake git                  # macOS</code></pre>
+                                    </div>
+                                    <h3 class="text-lg font-semibold text-white mt-6 mb-2">2. Build</h3>
+                                    <div class="code-block bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg relative">
+                                        <div class="flex items-center justify-between px-4 py-2 border-b border-slate-700">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-400 font-mono uppercase">bash</span>
+                                            <button aria-label="Copy code" class="copy-button p-1.5 bg-slate-700/50 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 transition-all">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 copy-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-400 check-icon" style="display: none;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                            </button>
+                                        </div>
+                                        <pre class="p-4 text-sm overflow-x-auto font-mono text-slate-300"><code>./build.sh</code></pre>
+                                    </div>
+                                </div>
+                                <!-- Windows Panel -->
+                                <div id="windows-panel" class="tab-panel" data-state="inactive">
+                                    <h3 class="text-lg font-semibold text-white mb-2">1. Prerequisites</h3>
+                                    <div class="code-block bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg relative">
+                                        <div class="flex items-center justify-between px-4 py-2 border-b border-slate-700">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-400 font-mono uppercase">bash</span>
+                                            <button aria-label="Copy code" class="copy-button p-1.5 bg-slate-700/50 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 transition-all">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 copy-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-400 check-icon" style="display: none;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                            </button>
+                                        </div>
+                                        <pre class="p-4 text-sm overflow-x-auto font-mono text-slate-300"><code># Install Visual Studio 2019+ with C++ tools
+# Install CMake & Git for Windows</code></pre>
+                                    </div>
+                                    <h3 class="text-lg font-semibold text-white mt-6 mb-2">2. Build</h3>
+                                    <div class="code-block bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg relative">
+                                        <div class="flex items-center justify-between px-4 py-2 border-b border-slate-700">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-400 font-mono uppercase">bash</span>
+                                            <button aria-label="Copy code" class="copy-button p-1.5 bg-slate-700/50 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 transition-all">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 copy-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-400 check-icon" style="display: none;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                            </button>
+                                        </div>
+                                        <pre class="p-4 text-sm overflow-x-auto font-mono text-slate-300"><code>.\\build.ps1</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Usage Section -->
+                <section id="usage" class="py-20 sm:py-24">
+                    <div class="container mx-auto px-6">
+                         <div class="text-center mb-16">
+                            <h2 class="text-4xl font-bold text-white">Powerful & Intuitive</h2>
+                            <p class="text-lg text-slate-300 mt-2">Manage keys, test services, and more with simple commands.</p>
+                        </div>
+                        <div class="max-w-4xl mx-auto">
+                           <div class="code-block bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg relative">
+                                <div class="flex items-center justify-between px-4 py-2 border-b border-slate-700">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                        <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                    </div>
+                                    <span class="text-xs text-slate-400 font-mono uppercase">bash</span>
+                                    <button aria-label="Copy code" class="copy-button p-1.5 bg-slate-700/50 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 transition-all">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 copy-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-400 check-icon" style="display: none;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                </div>
+                                <pre class="p-4 text-sm overflow-x-auto font-mono text-slate-300"><code># Add a new key
+ak add my-openai-key "sk-..."
+
+# List all keys
+ak list
+
+# Get a specific key
+ak get my-openai-key
+
+# Remove a key
+ak remove my-openai-key
+
+# Test a service configuration
+ak test openai</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Supported Platforms -->
+                 <section id="platforms" class="py-20 sm:py-24">
+                    <div class="container mx-auto px-6">
+                        <div class="text-center mb-16">
+                            <h2 class="text-4xl font-bold text-white">Supported Platforms</h2>
+                            <p class="text-lg text-slate-300 mt-2">Built and tested to run on your favorite OS.</p>
+                        </div>
+                        <div class="max-w-4xl mx-auto bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl overflow-hidden">
+                            <div class="grid grid-cols-4 text-sm font-semibold text-white uppercase border-b border-slate-700">
+                                <div class="p-4">Platform</div>
+                                <div class="p-4">Architecture</div>
+                                <div class="p-4">Compiler</div>
+                                <div class="p-4 text-center">Status</div>
+                            </div>
+                            <div>
+                                <div class="grid grid-cols-4 items-center border-b border-slate-800 last:border-b-0 hover:bg-slate-800 transition-colors">
+                                    <div class="p-4 font-mono text-sm">Linux</div>
+                                    <div class="p-4 font-mono text-sm">x86_64</div>
+                                    <div class="p-4 font-mono text-sm">GCC 7+</div>
+                                    <div class="p-4 text-center"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-400/20 text-teal-300"><svg class="-ml-0.5 mr-1.5 h-2 w-2 text-teal-400" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" /></svg>Supported</span></div>
+                                </div>
+                                <div class="grid grid-cols-4 items-center border-b border-slate-800 last:border-b-0 hover:bg-slate-800 transition-colors">
+                                    <div class="p-4 font-mono text-sm">Linux</div>
+                                    <div class="p-4 font-mono text-sm">x86_64</div>
+                                    <div class="p-4 font-mono text-sm">Clang 8+</div>
+                                    <div class="p-4 text-center"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-400/20 text-teal-300"><svg class="-ml-0.5 mr-1.5 h-2 w-2 text-teal-400" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" /></svg>Supported</span></div>
+                                </div>
+                                <div class="grid grid-cols-4 items-center border-b border-slate-800 last:border-b-0 hover:bg-slate-800 transition-colors">
+                                    <div class="p-4 font-mono text-sm">macOS</div>
+                                    <div class="p-4 font-mono text-sm">x86_64</div>
+                                    <div class="p-4 font-mono text-sm">Clang</div>
+                                    <div class="p-4 text-center"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-400/20 text-teal-300"><svg class="-ml-0.5 mr-1.5 h-2 w-2 text-teal-400" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" /></svg>Supported</span></div>
+                                </div>
+                                <div class="grid grid-cols-4 items-center border-b border-slate-800 last:border-b-0 hover:bg-slate-800 transition-colors">
+                                    <div class="p-4 font-mono text-sm">macOS</div>
+                                    <div class="p-4 font-mono text-sm">ARM64</div>
+                                    <div class="p-4 font-mono text-sm">Clang</div>
+                                    <div class="p-4 text-center"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-400/20 text-teal-300"><svg class="-ml-0.5 mr-1.5 h-2 w-2 text-teal-400" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" /></svg>Supported</span></div>
+                                </div>
+                                <div class="grid grid-cols-4 items-center border-b border-slate-800 last:border-b-0 hover:bg-slate-800 transition-colors">
+                                    <div class="p-4 font-mono text-sm">Windows</div>
+                                    <div class="p-4 font-mono text-sm">x86_64</div>
+                                    <div class="p-4 font-mono text-sm">MSVC 2019+</div>
+                                    <div class="p-4 text-center"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-400/20 text-teal-300"><svg class="-ml-0.5 mr-1.5 h-2 w-2 text-teal-400" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" /></svg>Supported</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <footer class="border-t border-slate-800 mt-24">
+                <div class="container mx-auto px-6 py-8 text-center text-slate-400 text-sm">
+                    <p>&copy; 2024 AK Project. All rights reserved.</p>
+                    <p class="mt-1">Licensed under the MIT License.</p>
+                </div>
+            </footer>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Tab Switching Logic ---
+            const tabContainer = document.getElementById('tab-buttons');
+            const tabButtons = tabContainer.querySelectorAll('.tab-button');
+            const tabPanels = document.querySelectorAll('.tab-panel');
+
+            tabContainer.addEventListener('click', (e) => {
+                const clickedButton = e.target.closest('.tab-button');
+                if (!clickedButton) return;
+
+                const targetPanelId = clickedButton.dataset.tabTarget + '-panel';
+
+                // Update button styles
+                tabButtons.forEach(button => {
+                    button.classList.remove('bg-sky-400', 'text-white');
+                    button.classList.add('text-slate-300', 'hover:bg-slate-700');
+                });
+                clickedButton.classList.add('bg-sky-400', 'text-white');
+                clickedButton.classList.remove('text-slate-300', 'hover:bg-slate-700');
+
+                // Update panel visibility
+                tabPanels.forEach(panel => {
+                    if (panel.id === targetPanelId) {
+                        panel.dataset.state = 'active';
+                    } else {
+                        panel.dataset.state = 'inactive';
+                    }
+                });
+            });
+
+            // --- Copy to Clipboard Logic ---
+            const allCodeBlocks = document.querySelectorAll('.code-block');
+            
+            allCodeBlocks.forEach(block => {
+                const copyButton = block.querySelector('.copy-button');
+                const codeEl = block.querySelector('pre > code');
+                const copyIcon = block.querySelector('.copy-icon');
+                const checkIcon = block.querySelector('.check-icon');
+
+                if (copyButton && codeEl) {
+                    copyButton.addEventListener('click', () => {
+                        const code = codeEl.innerText.trim();
+                        navigator.clipboard.writeText(code).then(() => {
+                            copyIcon.style.display = 'none';
+                            checkIcon.style.display = 'inline-block';
+
+                            setTimeout(() => {
+                                copyIcon.style.display = 'inline-block';
+                                checkIcon.style.display = 'none';
+                            }, 2000);
+                        }).catch(err => {
+                            console.error('Failed to copy text: ', err);
+                        });
+                    });
+                }
+            });
+
+            // --- Update Copyright Year ---
+            const footer = document.querySelector('footer p');
+            if (footer) {
+              footer.innerHTML = `&copy; ${new Date().getFullYear()} AK Project. All rights reserved.`;
+            }
+        });
+    </script>
+</body>
+</html>

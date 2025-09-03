@@ -1,0 +1,2 @@
+# Main binary is installed by CMake to /usr/bin/ak
+# Shell completions are generated and installed by debian/rules

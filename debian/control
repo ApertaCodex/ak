@@ -1,0 +1,32 @@
+Source: ak
+Section: utils
+Priority: optional
+Maintainer: AK Maintainer <maintainer@example.com>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.16),
+               build-essential,
+               g++ (>= 7) | clang++ (>= 8),
+               git
+Standards-Version: 4.6.0
+Homepage: https://github.com/username/ak
+Vcs-Git: https://github.com/username/ak.git
+Vcs-Browser: https://github.com/username/ak
+Rules-Requires-Root: no
+
+Package: ak
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: gnupg
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration

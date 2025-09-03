@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Version is managed by the build system
-set(AK_VERSION "1.0.1" CACHE STRING "Project version")
+set(AK_VERSION "2.1.0" CACHE STRING "Project version")
 project(ak VERSION ${AK_VERSION} LANGUAGES CXX)
 
 # C++ Standard
@@ -60,6 +60,9 @@ add_executable(ak
     src/main.cpp
     ${CORE_SOURCES}
 )
+
+# Pass version to C++ code
+target_compile_definitions(ak PRIVATE AK_VERSION_STRING="${AK_VERSION}")
 
 # Windows-specific settings
 if(WIN32)
@@ -244,6 +247,14 @@ if(NOT WIN32)
             OPTIONAL
         )
     endif()
+endif()
+
+# Install man page (Unix-like systems only)
+if(NOT WIN32)
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/docs/ak.1
+        DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+        OPTIONAL
+    )
 endif()
 
 # ============================================================================

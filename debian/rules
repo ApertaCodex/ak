@@ -1,0 +1,40 @@
+#!/usr/bin/make -f
+
+# Enable all hardening flags
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+# Set CMAKE flags for proper installation paths
+export CMAKE_FLAGS = \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_INSTALL_PREFIX=/usr \
+	-DCMAKE_INSTALL_BINDIR=bin \
+	-DCMAKE_INSTALL_DATAROOTDIR=share \
+	-DBUILD_TESTS=OFF
+
+%:
+	dh $@ --buildsystem=cmake
+
+override_dh_auto_configure:
+	dh_auto_configure -- $(CMAKE_FLAGS)
+
+override_dh_auto_build:
+	dh_auto_build
+
+override_dh_auto_test:
+	# Skip tests during package build to avoid dependency issues
+	@echo "Skipping tests during package build"
+
+override_dh_auto_install:
+	dh_auto_install
+	# Install shell completions
+	mkdir -p debian/ak/etc/bash_completion.d
+	mkdir -p debian/ak/usr/share/zsh/site-functions
+	mkdir -p debian/ak/usr/share/fish/completions
+	# Generate completions after installation
+	debian/ak/usr/bin/ak completion bash > debian/ak/etc/bash_completion.d/ak || true
+	debian/ak/usr/bin/ak completion zsh > debian/ak/usr/share/zsh/site-functions/_ak || true
+	debian/ak/usr/bin/ak completion fish > debian/ak/usr/share/fish/completions/ak.fish || true
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf build/

@@ -1,0 +1,13 @@
+ak (2.0.0-1) plucky; urgency=medium
+
+  * Major version 2.0.0 release
+  * Cross-platform API Key Manager with secure storage
+  * Support for encrypted vault with GPG integration
+  * Built-in service integrations for popular APIs
+  * Profile management and shell completions
+  * Comprehensive test suite with 65+ tests
+  * Shell completion support for Bash, Zsh, and Fish
+  * Enhanced modular architecture
+  * Improved version synchronization
+
+ -- AK Maintainer <maintainer@example.com>  Fri, 16 Aug 2025 23:48:00 +0000
