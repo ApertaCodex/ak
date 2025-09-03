@@ -45,11 +45,11 @@ string(REGEX REPLACE
 
 file(WRITE "${PROJECT_DIR}/CMakeLists.txt" "${NEW_CMAKE_CONTENT}")
 
-# Update config.cpp
+# Update config.cpp fallback version
 file(READ "${PROJECT_DIR}/src/core/config.cpp" CONFIG_CONTENT)
 string(REGEX REPLACE
-    "const std::string AK_VERSION = \"[0-9]+\\.[0-9]+\\.[0-9]+\";"
-    "const std::string AK_VERSION = \"${NEW_VERSION}\";"
+    "#define AK_VERSION_STRING \"[0-9]+\\.[0-9]+\\.[0-9]+\""
+    "#define AK_VERSION_STRING \"${NEW_VERSION}\""
     NEW_CONFIG_CONTENT
     "${CONFIG_CONTENT}"
 )

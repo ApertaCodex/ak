@@ -5,7 +5,7 @@ Maintainer: AK Maintainer <maintainer@example.com>
 Installed-Size: 201
 Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
 Recommends: gnupg
-Filename: ../../../../pool/main/ak_2.1.0-1_amd64.deb
+Filename: pool/main/ak_2.1.0-1_amd64.deb
 Size: 75170
 MD5sum: f689c96e0e52b88561fe52e9e862d3bc
 SHA1: 7a130f06b8e2890230754ec6ebcd02f44bf2e157

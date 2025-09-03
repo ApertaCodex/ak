@@ -38,9 +38,9 @@ if(GIT_DIFF_RESULT EQUAL 0)
     endif()
 endif()
 
-# Add changed files
+# Add changed files (including APT repository updates)
 execute_process(
-    COMMAND git add CMakeLists.txt src/core/config.cpp
+    COMMAND git add CMakeLists.txt src/core/config.cpp ak-apt-repo/ debian/changelog
     WORKING_DIRECTORY ${PROJECT_DIR}
     RESULT_VARIABLE ADD_RESULT
 )
