@@ -7,17 +7,18 @@
   "version": "2.2.0",
   "author": [
     {
-      "@type": "Organization",
-      "name": "ApertaCodex",
-      "email": "developers@apertacodex.ai",
-      "url": "https://apertacodex.com"
+      "@type": "Person",
+      "givenName": "Moussa",
+      "familyName": "Mokhtari",
+      "email": "me@moussamokhtari.com"
     }
   ],
   "maintainer": [
     {
-      "@type": "Organization", 
-      "name": "ApertaCodex",
-      "email": "developers@apertacodex.ai"
+      "@type": "Person",
+      "givenName": "Moussa",
+      "familyName": "Mokhtari",
+      "email": "me@moussamokhtari.com"
     }
   ],
   "license": "MIT",

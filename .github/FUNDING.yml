@@ -1,11 +1,11 @@
 # GitHub Sponsors configuration for ApertaCodex/ak
 
 # Remove or comment out funding platforms that aren't set up yet
-# github: apertacodx
-# patreon: apertacodx
-# open_collective: apertacodx
-# ko_fi: apertacodx
-# liberapay: apertacodx
+github: moussamokhtari # Replace with your GitHub username
+# patreon: moussamokhtari
+# open_collective: moussamokhtari
+# ko_fi: moussamokhtari
+# liberapay: moussamokhtari
 
 # Custom funding URLs (when ready)
 # custom: ["https://apertacodx.com/sponsor", "https://paypal.me/apertacodx"]
