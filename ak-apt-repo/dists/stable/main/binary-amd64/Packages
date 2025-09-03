@@ -6,10 +6,10 @@ Installed-Size: 201
 Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
 Recommends: gnupg
 Filename: ../../../../pool/main/ak_2.1.0-1_amd64.deb
-Size: 75272
-MD5sum: 94691b80ea643c590c527d6acc93284a
-SHA1: 90bfa10452bf7f8e7671a3cdcdac406c0da36c4f
-SHA256: 9fcd864fc7ac8f60e8dba597b11356cf3ea60bc85561028f9090c7c3aee29794
+Size: 75170
+MD5sum: f689c96e0e52b88561fe52e9e862d3bc
+SHA1: 7a130f06b8e2890230754ec6ebcd02f44bf2e157
+SHA256: 4bcc6dd9b92f7aa56b3da79b973e9715b0ff8270ba7a9931f2fbdf2eeadb65da
 Section: utils
 Priority: optional
 Homepage: https://github.com/apertacodex/ak
