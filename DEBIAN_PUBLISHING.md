@@ -4,10 +4,26 @@ This guide covers how to publish the AK (API Key Manager) to Linux APT repositor
 
 ## Quick Start
 
-The project now includes complete Debian packaging. Users can install via:
+The project now includes complete Debian packaging and APT repository. Users can install via:
+
+### Method 1: Repository Setup (Recommended)
 ```bash
-sudo apt update
+curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash
 sudo apt install ak
+```
+
+### Method 2: Manual Repository Setup
+```bash
+curl -fsSL https://apertacodex.github.io/ak/ak-repository-key.gpg | sudo apt-key add -
+echo "deb https://apertacodex.github.io/ak/ak-apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list
+sudo apt update && sudo apt install ak
+```
+
+### Method 3: Direct Package Download
+```bash
+wget https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_2.1.0-1_amd64.deb
+sudo dpkg -i ak_2.1.0-1_amd64.deb
+sudo apt-get install -f  # Fix dependencies if needed
 ```
 
 ## 📦 Package Details

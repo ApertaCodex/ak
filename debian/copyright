@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: ak
 Upstream-Contact: AK Maintainer <maintainer@example.com>
-Source: https://github.com/username/ak
+Source: https://github.com/apertacodex/ak
 
 Files: *
 Copyright: 2025 AK Project Contributors

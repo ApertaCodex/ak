@@ -11,7 +11,52 @@ A cross-platform C++17 command-line tool for managing API keys securely across d
 - **Easy Installation**: Simple build and install process
 - **Shell Completions**: Bash, Zsh, and Fish shell completions
 
-## 📦 Quick Start
+## 📦 Installation
+
+### APT Repository (Ubuntu/Debian) - Recommended
+
+#### Quick Install
+```bash
+curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash
+sudo apt install ak
+```
+
+#### Manual Setup
+```bash
+# Add GPG key
+curl -fsSL https://apertacodex.github.io/ak/ak-repository-key.gpg | sudo apt-key add -
+
+# Add repository
+echo "deb https://apertacodex.github.io/ak/ak-apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list
+
+# Update and install
+sudo apt update
+sudo apt install ak
+```
+
+#### Direct Download
+```bash
+# Download latest .deb package
+wget https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_2.1.0-1_amd64.deb
+sudo dpkg -i ak_2.1.0-1_amd64.deb
+
+# Fix dependencies if needed
+sudo apt-get install -f
+```
+
+#### Verification
+```bash
+# Check version
+ak --version
+
+# Test functionality
+ak --help
+
+# Shell completions work after restart
+ak --<TAB><TAB>
+```
+
+## 🔧 Building from Source
 
 ### Prerequisites
 
@@ -236,10 +281,11 @@ TEST(ModuleTest, BasicFunctionality) {
 
 ## 📊 Current Status
 
-- **Version**: 1.0.0
+- **Version**: 2.1.0-1
 - **Test Coverage**: ~60% line coverage, ~67% function coverage
 - **Tests**: 65 tests across 21 test suites
 - **Build System**: CMake 3.16+ with cross-platform support
+- **APT Repository**: Available for Ubuntu/Debian systems
 
 ## 🤝 Contributing
 
@@ -288,6 +334,6 @@ sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 60
 
 ## 📞 Support
 
-- Issues: [GitHub Issues](https://github.com/username/ak/issues)
+- Issues: [GitHub Issues](https://github.com/apertacodex/ak/issues)
 - Documentation: This README and inline code comments
 - Build Problems: Check troubleshooting section above
