@@ -1,3 +1,12 @@
+ak (2.1.0-1) plucky; urgency=medium
+
+  * Updated GoogleTest to v1.15.2 to fix CMake deprecation warnings
+  * Resolved CMake compatibility warnings for modern builds
+  * All 65 tests continue to pass with updated test framework
+  * Improved build system reliability
+
+ -- AK Maintainer <maintainer@example.com>  Tue, 03 Sep 2025 00:29:00 +0000
+
 ak (2.0.0-1) plucky; urgency=medium
 
   * Major version 2.0.0 release
