@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 2.10.6
+VERSION   ?= 2.10.7
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -290,8 +290,8 @@ publish-major:
 #   V_BUMP=major make release    # override default with flag
 # -------------------------
 
-VERSION   ?= 2.10.6
-VERSION   ?= 2.10.6
+VERSION   ?= 2.10.7
+VERSION   ?= 2.10.7
 
 release:
 	@echo "🚀 Starting comprehensive release ($(V_BUMP) version bump)..."
