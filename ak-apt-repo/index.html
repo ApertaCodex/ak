@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AK API Key Manager - APT Repository</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .header { color: #2c5aa0; }
+        .code { background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .link { color: #0366d6; text-decoration: none; }
+        .link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1 class="header">🔐 AK API Key Manager - APT Repository</h1>
+    
+    <p>This is the APT repository for the AK API Key Manager. Choose your installation method:</p>
+    
+    <h2>📦 Quick Installation</h2>
+    <div class="code">curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash<br>sudo apt install ak</div>
+    
+    <h2>🔧 Manual Setup</h2>
+    <div class="code">
+        # Add GPG key<br>
+        curl -fsSL https://apertacodex.github.io/ak/ak-repository-key.gpg | sudo apt-key add -<br><br>
+        
+        # Add repository<br>
+        echo "deb https://apertacodex.github.io/ak/ak-apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list<br><br>
+        
+        # Update and install<br>
+        sudo apt update && sudo apt install ak
+    </div>
+    
+    <h2>📂 Repository Structure</h2>
+    <ul>
+        <li><a href="dists/" class="link">dists/</a> - Distribution metadata</li>
+        <li><a href="pool/" class="link">pool/</a> - Package files</li>
+        <li><a href="dists/stable/Release" class="link">Release</a> - Repository information</li>
+        <li><a href="pool/main/ak_2.1.0-1_amd64.deb" class="link">ak_2.1.0-1_amd64.deb</a> - Latest package</li>
+    </ul>
+    
+    <h2>✅ Verification</h2>
+    <div class="code">
+        ak --version<br>
+        ak --help
+    </div>
+    
+    <p><a href="../" class="link">← Back to main project</a></p>
+</body>
+</html>
