@@ -12,7 +12,7 @@ SHA1: 90bfa10452bf7f8e7671a3cdcdac406c0da36c4f
 SHA256: 9fcd864fc7ac8f60e8dba597b11356cf3ea60bc85561028f9090c7c3aee29794
 Section: utils
 Priority: optional
-Homepage: https://github.com/username/ak
+Homepage: https://github.com/apertacodex/ak
 Description: Secure API Key Manager
  AK is a cross-platform command-line tool for managing API keys securely
  across different services. It provides encrypted storage, service integration,
