@@ -1,496 +1,1619 @@
-<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/vite.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AK - API Key Manager | Secure Secret Management</title>
-    <meta name="description" content="Cross-platform command-line tool for managing API keys securely across different services. Encrypted storage, service integration, and comprehensive testing.">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-</head>
-<body>
-    <!-- Navigation -->
-    <nav class="nav">
-        <div class="nav-container">
-            <a href="#" class="nav-brand">
-                <svg class="logo" viewBox="0 0 32 32" fill="none">
-                    <rect width="32" height="32" rx="8" fill="url(#gradient)"/>
-                    <path d="M8 12h16v2H8zm0 4h16v2H8zm0 4h12v2H8z" fill="white"/>
-                    <defs>
-                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#667eea"/>
-                            <stop offset="100%" style="stop-color:#764ba2"/>
-                        </linearGradient>
-                    </defs>
-                </svg>
-                <span class="brand-text">AK</span>
-            </a>
-            
-            <div class="nav-links">
-                <a href="#features" class="nav-link">Features</a>
-                <a href="#installation" class="nav-link">Install</a>
-                <a href="#docs" class="nav-link">Docs</a>
-                <a href="https://github.com/ApertaCodex/ak" class="nav-link">GitHub</a>
-                <a href="#installation" class="nav-cta">Get Started</a>
-            </div>
-            
-            <button class="nav-toggle">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-background">
-            <div class="hero-gradient"></div>
-            <div class="hero-grid"></div>
-        </div>
-        
-        <div class="container">
-            <div class="hero-content">
-                <div class="hero-badge">
-                    <span>🔐</span>
-                    <span>v2.1.0 - Production Ready</span>
-                </div>
-                
-                <h1 class="hero-title">
-                    Secure API Key<br>
-                    <span class="gradient-text">Management</span>
-                </h1>
-                
-                <p class="hero-description">
-                    Cross-platform command-line tool for managing API keys securely across different services. 
-                    Features encrypted storage, service integration, and comprehensive testing capabilities.
-                </p>
-                
-                <div class="hero-actions">
-                    <a href="#installation" class="btn btn-primary">
-                        <span>⚡</span>
-                        Quick Install
-                    </a>
-                    <a href="#demo" class="btn btn-secondary">
-                        <span>🎮</span>
-                        View Demo
-                    </a>
-                </div>
-                
-                <div class="hero-stats">
-                    <div class="stat">
-                        <span class="stat-number">65+</span>
-                        <span class="stat-label">Tests</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-number">3</span>
-                        <span class="stat-label">Platforms</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-number">20+</span>
-                        <span class="stat-label">Services</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="hero-terminal">
-                <div class="terminal">
-                    <div class="terminal-header">
-                        <div class="terminal-controls">
-                            <div class="control control-close"></div>
-                            <div class="control control-minimize"></div>
-                            <div class="control control-maximize"></div>
-                        </div>
-                        <div class="terminal-title">ak - API Key Manager</div>
-                        <div></div>
-                    </div>
-                    <div class="terminal-body">
-                        <div class="terminal-line">
-                            <span class="prompt">$</span>
-                            <span class="command">ak set OPENAI_API_KEY</span>
-                        </div>
-                        <div class="terminal-line">
-                            <span class="output">🔐 Enter value for OPENAI_API_KEY:</span>
-                        </div>
-                        <div class="terminal-line">
-                            <span class="output">✅ Secret OPENAI_API_KEY saved securely</span>
-                        </div>
-                        <div class="terminal-line">
-                            <span class="prompt">$</span>
-                            <span class="command">ak test openai</span>
-                        </div>
-                        <div class="terminal-line">
-                            <span class="output success">✅ OpenAI API connection successful</span>
-                        </div>
-                        <div class="terminal-line">
-                            <span class="prompt">$</span>
-                            <span class="command">ak save prod OPENAI_API_KEY</span>
-                            <span class="cursor">█</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Installation Section -->
-    <section id="installation" class="section installation">
-        <div class="container">
-            <div class="section-header">
-                <h2 class="section-title">Quick Installation</h2>
-                <p class="section-description">
-                    Get started with AK in seconds. Choose your preferred installation method.
-                </p>
-            </div>
-            
-            <div class="installation-tabs">
-                <div class="tab-nav">
-                    <button class="tab-btn active" data-tab="quick">
-                        <span>🚀</span>
-                        Quick Setup
-                    </button>
-                    <button class="tab-btn" data-tab="direct">
-                        <span>📦</span>
-                        Direct Download
-                    </button>
-                    <button class="tab-btn" data-tab="source">
-                        <span>🛠️</span>
-                        From Source
-                    </button>
-                </div>
-                
-                <div class="tab-content">
-                    <div class="tab-panel active" id="tab-quick">
-                        <div class="code-block">
-                            <div class="code-header">
-                                <span class="code-title">Ubuntu/Debian (Recommended)</span>
-                                <button class="copy-btn">📋</button>
-                            </div>
-                            <pre><code>curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash
-sudo apt install ak</code></pre>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-panel" id="tab-direct">
-                        <div class="code-block">
-                            <div class="code-header">
-                                <span class="code-title">Direct Package Download</span>
-                                <button class="copy-btn">📋</button>
-                            </div>
-                            <pre><code>wget https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_2.1.0-1_amd64.deb
-sudo dpkg -i ak_2.1.0-1_amd64.deb</code></pre>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-panel" id="tab-source">
-                        <div class="code-block">
-                            <div class="code-header">
-                                <span class="code-title">Build from Source</span>
-                                <button class="copy-btn">📋</button>
-                            </div>
-                            <pre><code>git clone https://github.com/ApertaCodex/ak.git
-cd ak && ./build.sh</code></pre>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Features Section -->
-    <section id="features" class="section features">
-        <div class="container">
-            <div class="section-header">
-                <h2 class="section-title">Features</h2>
-                <p class="section-description">
-                    Everything you need for secure API key management
-                </p>
-            </div>
-            
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🔐</div>
-                    <h3 class="feature-title">Secure Storage</h3>
-                    <p class="feature-description">Encrypted API key storage with optional GPG encryption for maximum security.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3 class="feature-title">Fast & Lightweight</h3>
-                    <p class="feature-description">Built in C++17 for optimal performance across Linux, macOS, and Windows.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">🔌</div>
-                    <h3 class="feature-title">Service Integration</h3>
-                    <p class="feature-description">Built-in support for OpenAI, GitHub, AWS, and 20+ other popular APIs.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">🧪</div>
-                    <h3 class="feature-title">Testing Suite</h3>
-                    <p class="feature-description">Comprehensive test suite with 65+ tests and coverage reporting.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">🐚</div>
-                    <h3 class="feature-title">Shell Integration</h3>
-                    <p class="feature-description">Bash, Zsh, and Fish completions with environment loading support.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">📁</div>
-                    <h3 class="feature-title">Profile Management</h3>
-                    <p class="feature-description">Organize secrets into profiles for different environments and projects.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Usage Section -->
-    <section id="usage" class="section usage">
-        <div class="container">
-            <div class="section-header">
-                <h2 class="section-title">Common Usage</h2>
-                <p class="section-description">
-                    See how easy it is to manage your API keys
-                </p>
-            </div>
-            
-            <div class="usage-grid">
-                <div class="usage-card">
-                    <div class="usage-title">
-                        <i>🔐</i>
-                        <span>Add & Test Keys</span>
-                    </div>
-                    <div class="usage-code">
-                        <pre><code><span class="prompt">$</span> ak set OPENAI_API_KEY
-<span class="output">🔐 Enter value: ●●●●●●●●</span>
-<span class="output">✅ Secret saved securely</span>
-
-<span class="prompt">$</span> ak test openai
-<span class="output success">✅ OpenAI API connection successful</span></code></pre>
-                    </div>
-                </div>
-                
-                <div class="usage-card">
-                    <div class="usage-title">
-                        <i>📁</i>
-                        <span>Profile Management</span>
-                    </div>
-                    <div class="usage-code">
-                        <pre><code><span class="prompt">$</span> ak save prod OPENAI_API_KEY DB_URL
-<span class="output">✅ Saved 2 secrets to 'prod' profile</span>
-
-<span class="prompt">$</span> ak load prod
-<span class="output">✅ Loaded 'prod' environment</span></code></pre>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Platforms Section -->
-    <section id="platforms" class="section platforms">
-        <div class="container">
-            <div class="section-header">
-                <h2 class="section-title">Cross-Platform Support</h2>
-                <p class="section-description">
-                    Works seamlessly across all major platforms
-                </p>
-            </div>
-            
-            <div class="platforms-grid">
-                <div class="platform-card">
-                    <div class="platform-icon">🐧</div>
-                    <div class="platform-title">Linux</div>
-                    <div class="platform-status supported">
-                        <span>✅</span>
-                        <span>Fully Supported</span>
-                    </div>
-                    <div class="platform-specs">
-                        <span class="spec">GCC 7+</span>
-                        <span class="spec">x86_64</span>
-                        <span class="spec">APT Packages</span>
-                    </div>
-                </div>
-                
-                <div class="platform-card">
-                    <div class="platform-icon">🍎</div>
-                    <div class="platform-title">macOS</div>
-                    <div class="platform-status supported">
-                        <span>✅</span>
-                        <span>Fully Supported</span>
-                    </div>
-                    <div class="platform-specs">
-                        <span class="spec">Clang</span>
-                        <span class="spec">Intel/ARM64</span>
-                        <span class="spec">Homebrew</span>
-                    </div>
-                </div>
-                
-                <div class="platform-card">
-                    <div class="platform-icon">🪟</div>
-                    <div class="platform-title">Windows</div>
-                    <div class="platform-status supported">
-                        <span>✅</span>
-                        <span>Fully Supported</span>
-                    </div>
-                    <div class="platform-specs">
-                        <span class="spec">MSVC 2019+</span>
-                        <span class="spec">x86_64</span>
-                        <span class="spec">PowerShell</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>AK</h4>
-                    <p>Secure API Key Manager</p>
-                    <div class="footer-links">
-                        <a href="https://github.com/ApertaCodex/ak">GitHub</a>
-                        <a href="#installation">Install</a>
-                        <a href="ak-apt-repo/">Repository</a>
-                    </div>
-                </div>
-                
-                <div class="footer-section">
-                    <h4>Documentation</h4>
-                    <div class="footer-links">
-                        <a href="docs/MANUAL.md">Manual</a>
-                        <a href="docs/README.md">README</a>
-                        <a href="DEBIAN_PUBLISHING.md">Publishing Guide</a>
-                    </div>
-                </div>
-                
-                <div class="footer-section">
-                    <h4>Community</h4>
-                    <div class="footer-links">
-                        <a href="https://github.com/ApertaCodex/ak/issues">Issues</a>
-                        <a href="https://github.com/ApertaCodex/ak/discussions">Discussions</a>
-                        <a href="https://github.com/ApertaCodex">ApertaCodex</a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="footer-bottom">
-                <div class="footer-copyright">
-                    <p>&copy; 2025 ApertaCodex. Released under EULA license.</p>
-                </div>
-                <div class="footer-version">
-                    <span>v2.1.0</span>
-                </div>
-            </div>
-        </div>
-    </footer>
-
-    <!-- JavaScript -->
+    <title>AK - API Key Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link type="text/css" rel="stylesheet" id="dark-mode-custom-link">
+    <link type="text/css" rel="stylesheet" id="dark-mode-general-link">
+    <style lang="en" type="text/css" id="dark-mode-custom-style"></style>
+    <style lang="en" type="text/css" id="dark-mode-native-style"></style>
+    <style lang="en" type="text/css" id="dark-mode-native-sheet"></style>
     <script>
-        // Copy functionality
-        document.querySelectorAll('.copy-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const codeBlock = this.parentNode.querySelector('code');
-                navigator.clipboard.writeText(codeBlock.textContent.replace(/\n/g, '\n'));
-                this.textContent = '✅';
-                setTimeout(() => this.textContent = '📋', 2000);
-            });
-        });
-
-        // Smooth scrolling for navigation links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
-        });
-
-        // Mobile navigation toggle
-        const navToggle = document.querySelector('.nav-toggle');
-        const navLinks = document.querySelector('.nav-links');
-        
-        if (navToggle) {
-            navToggle.addEventListener('click', () => {
-                navLinks.classList.toggle('active');
-            });
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'slate-900': '#0F172A',
+                        'slate-800': '#1E293B',
+                        'slate-700': '#334155',
+                        'slate-300': '#CBD5E1',
+                        'purple-400': '#A78BFA',
+                        'teal-400': '#2DD4BF',
+                        'sky-400': '#38BDF8',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    animation: {
+                        'aurora': 'aurora 60s linear infinite',
+                    },
+                    keyframes: {
+                        aurora: {
+                            from: {
+                                backgroundPosition: '50% 50%, 50% 50%',
+                            },
+                            to: {
+                                backgroundPosition: '350% 50%, 350% 50%',
+                            },
+                        },
+                    },
+                },
+            },
         }
     </script>
-</body>
-</html>
-    <!-- JavaScript -->
-    <script>
-        // Installation tabs functionality
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                // Remove active class from all tabs and panels
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-                
-                // Add active class to clicked tab
-                this.classList.add('active');
-                
-                // Show corresponding panel
-                const targetTab = this.getAttribute('data-tab');
-                document.getElementById(`tab-${targetTab}`).classList.add('active');
-            });
-        });
-
-        // Copy functionality
-        document.querySelectorAll('.copy-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const codeBlock = this.closest('.code-block').querySelector('code');
-                const textToCopy = codeBlock.textContent.trim();
-                
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    const originalText = this.textContent;
-                    this.textContent = '✅';
-                    setTimeout(() => this.textContent = originalText, 2000);
-                });
-            });
-        });
-
-        // Smooth scrolling for navigation links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
-        });
-
-        // Mobile navigation toggle
-        const navToggle = document.querySelector('.nav-toggle');
-        const navLinks = document.querySelector('.nav-links');
-        
-        if (navToggle) {
-            navToggle.addEventListener('click', () => {
-                navLinks.classList.toggle('active');
-            });
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;family=Fira+Code:wght@400;500;600&amp;display=swap"
+        rel="stylesheet">
+    <style>
+        html {
+            scroll-behavior: smooth;
         }
 
-        // Add scroll effect to navigation
-        window.addEventListener('scroll', () => {
-            const nav = document.querySelector('.nav');
-            if (window.scrollY > 50) {
-                nav.style.background = 'rgba(255, 255, 255, 0.98)';
-                nav.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-            } else {
-                nav.style.background = 'rgba(255, 255, 255, 0.95)';
-                nav.style.boxShadow = 'none';
+        .tab-panel[data-state='inactive'] {
+            display: none;
+        }
+    </style>
+    <style>
+        *,
+        ::before,
+        ::after {
+            --tw-border-spacing-x: 0;
+            --tw-border-spacing-y: 0;
+            --tw-translate-x: 0;
+            --tw-translate-y: 0;
+            --tw-rotate: 0;
+            --tw-skew-x: 0;
+            --tw-skew-y: 0;
+            --tw-scale-x: 1;
+            --tw-scale-y: 1;
+            --tw-pan-x: ;
+            --tw-pan-y: ;
+            --tw-pinch-zoom: ;
+            --tw-scroll-snap-strictness: proximity;
+            --tw-gradient-from-position: ;
+            --tw-gradient-via-position: ;
+            --tw-gradient-to-position: ;
+            --tw-ordinal: ;
+            --tw-slashed-zero: ;
+            --tw-numeric-figure: ;
+            --tw-numeric-spacing: ;
+            --tw-numeric-fraction: ;
+            --tw-ring-inset: ;
+            --tw-ring-offset-width: 0px;
+            --tw-ring-offset-color: #fff;
+            --tw-ring-color: rgb(59 130 246 / 0.5);
+            --tw-ring-offset-shadow: 0 0 #0000;
+            --tw-ring-shadow: 0 0 #0000;
+            --tw-shadow: 0 0 #0000;
+            --tw-shadow-colored: 0 0 #0000;
+            --tw-blur: ;
+            --tw-brightness: ;
+            --tw-contrast: ;
+            --tw-grayscale: ;
+            --tw-hue-rotate: ;
+            --tw-invert: ;
+            --tw-saturate: ;
+            --tw-sepia: ;
+            --tw-drop-shadow: ;
+            --tw-backdrop-blur: ;
+            --tw-backdrop-brightness: ;
+            --tw-backdrop-contrast: ;
+            --tw-backdrop-grayscale: ;
+            --tw-backdrop-hue-rotate: ;
+            --tw-backdrop-invert: ;
+            --tw-backdrop-opacity: ;
+            --tw-backdrop-saturate: ;
+            --tw-backdrop-sepia: ;
+            --tw-contain-size: ;
+            --tw-contain-layout: ;
+            --tw-contain-paint: ;
+            --tw-contain-style:
+        }
+
+        ::backdrop {
+            --tw-border-spacing-x: 0;
+            --tw-border-spacing-y: 0;
+            --tw-translate-x: 0;
+            --tw-translate-y: 0;
+            --tw-rotate: 0;
+            --tw-skew-x: 0;
+            --tw-skew-y: 0;
+            --tw-scale-x: 1;
+            --tw-scale-y: 1;
+            --tw-pan-x: ;
+            --tw-pan-y: ;
+            --tw-pinch-zoom: ;
+            --tw-scroll-snap-strictness: proximity;
+            --tw-gradient-from-position: ;
+            --tw-gradient-via-position: ;
+            --tw-gradient-to-position: ;
+            --tw-ordinal: ;
+            --tw-slashed-zero: ;
+            --tw-numeric-figure: ;
+            --tw-numeric-spacing: ;
+            --tw-numeric-fraction: ;
+            --tw-ring-inset: ;
+            --tw-ring-offset-width: 0px;
+            --tw-ring-offset-color: #fff;
+            --tw-ring-color: rgb(59 130 246 / 0.5);
+            --tw-ring-offset-shadow: 0 0 #0000;
+            --tw-ring-shadow: 0 0 #0000;
+            --tw-shadow: 0 0 #0000;
+            --tw-shadow-colored: 0 0 #0000;
+            --tw-blur: ;
+            --tw-brightness: ;
+            --tw-contrast: ;
+            --tw-grayscale: ;
+            --tw-hue-rotate: ;
+            --tw-invert: ;
+            --tw-saturate: ;
+            --tw-sepia: ;
+            --tw-drop-shadow: ;
+            --tw-backdrop-blur: ;
+            --tw-backdrop-brightness: ;
+            --tw-backdrop-contrast: ;
+            --tw-backdrop-grayscale: ;
+            --tw-backdrop-hue-rotate: ;
+            --tw-backdrop-invert: ;
+            --tw-backdrop-opacity: ;
+            --tw-backdrop-saturate: ;
+            --tw-backdrop-sepia: ;
+            --tw-contain-size: ;
+            --tw-contain-layout: ;
+            --tw-contain-paint: ;
+            --tw-contain-style:
+        }
+
+        /* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */
+        *,
+        ::after,
+        ::before {
+            box-sizing: border-box;
+            border-width: 0;
+            border-style: solid;
+            border-color: #e5e7eb
+        }
+
+        ::after,
+        ::before {
+            --tw-content: ''
+        }
+
+        :host,
+        html {
+            line-height: 1.5;
+            -webkit-text-size-adjust: 100%;
+            -moz-tab-size: 4;
+            tab-size: 4;
+            font-family: Inter, sans-serif;
+            font-feature-settings: normal;
+            font-variation-settings: normal;
+            -webkit-tap-highlight-color: transparent
+        }
+
+        body {
+            margin: 0;
+            line-height: inherit
+        }
+
+        hr {
+            height: 0;
+            color: inherit;
+            border-top-width: 1px
+        }
+
+        abbr:where([title]) {
+            -webkit-text-decoration: underline dotted;
+            text-decoration: underline dotted
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            font-size: inherit;
+            font-weight: inherit
+        }
+
+        a {
+            color: inherit;
+            text-decoration: inherit
+        }
+
+        b,
+        strong {
+            font-weight: bolder
+        }
+
+        code,
+        kbd,
+        pre,
+        samp {
+            font-family: Fira Code, monospace;
+            font-feature-settings: normal;
+            font-variation-settings: normal;
+            font-size: 1em
+        }
+
+        small {
+            font-size: 80%
+        }
+
+        sub,
+        sup {
+            font-size: 75%;
+            line-height: 0;
+            position: relative;
+            vertical-align: baseline
+        }
+
+        sub {
+            bottom: -.25em
+        }
+
+        sup {
+            top: -.5em
+        }
+
+        table {
+            text-indent: 0;
+            border-color: inherit;
+            border-collapse: collapse
+        }
+
+        button,
+        input,
+        optgroup,
+        select,
+        textarea {
+            font-family: inherit;
+            font-feature-settings: inherit;
+            font-variation-settings: inherit;
+            font-size: 100%;
+            font-weight: inherit;
+            line-height: inherit;
+            letter-spacing: inherit;
+            color: inherit;
+            margin: 0;
+            padding: 0
+        }
+
+        button,
+        select {
+            text-transform: none
+        }
+
+        button,
+        input:where([type=button]),
+        input:where([type=reset]),
+        input:where([type=submit]) {
+            -webkit-appearance: button;
+            background-color: transparent;
+            background-image: none
+        }
+
+        :-moz-focusring {
+            outline: auto
+        }
+
+        :-moz-ui-invalid {
+            box-shadow: none
+        }
+
+        progress {
+            vertical-align: baseline
+        }
+
+        ::-webkit-inner-spin-button,
+        ::-webkit-outer-spin-button {
+            height: auto
+        }
+
+        [type=search] {
+            -webkit-appearance: textfield;
+            outline-offset: -2px
+        }
+
+        ::-webkit-search-decoration {
+            -webkit-appearance: none
+        }
+
+        ::-webkit-file-upload-button {
+            -webkit-appearance: button;
+            font: inherit
+        }
+
+        summary {
+            display: list-item
+        }
+
+        blockquote,
+        dd,
+        dl,
+        figure,
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6,
+        hr,
+        p,
+        pre {
+            margin: 0
+        }
+
+        fieldset {
+            margin: 0;
+            padding: 0
+        }
+
+        legend {
+            padding: 0
+        }
+
+        menu,
+        ol,
+        ul {
+            list-style: none;
+            margin: 0;
+            padding: 0
+        }
+
+        dialog {
+            padding: 0
+        }
+
+        textarea {
+            resize: vertical
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            opacity: 1;
+            color: #9ca3af
+        }
+
+        [role=button],
+        button {
+            cursor: pointer
+        }
+
+        :disabled {
+            cursor: default
+        }
+
+        audio,
+        canvas,
+        embed,
+        iframe,
+        img,
+        object,
+        svg,
+        video {
+            display: block;
+            vertical-align: middle
+        }
+
+        img,
+        video {
+            max-width: 100%;
+            height: auto
+        }
+
+        [hidden]:where(:not([hidden=until-found])) {
+            display: none
+        }
+
+        .container {
+            width: 100%
+        }
+
+        @media (min-width: 640px) {
+            .container {
+                max-width: 640px
+            }
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                max-width: 768px
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .container {
+                max-width: 1024px
+            }
+        }
+
+        @media (min-width: 1280px) {
+            .container {
+                max-width: 1280px
+            }
+        }
+
+        @media (min-width: 1536px) {
+            .container {
+                max-width: 1536px
+            }
+        }
+
+        .pointer-events-none {
+            pointer-events: none
+        }
+
+        .absolute {
+            position: absolute
+        }
+
+        .relative {
+            position: relative
+        }
+
+        .inset-0 {
+            inset: 0px
+        }
+
+        .left-0 {
+            left: 0px
+        }
+
+        .top-0 {
+            top: 0px
+        }
+
+        .z-0 {
+            z-index: 0
+        }
+
+        .z-10 {
+            z-index: 10
+        }
+
+        .z-50 {
+            z-index: 50
+        }
+
+        .mx-auto {
+            margin-left: auto;
+            margin-right: auto
+        }
+
+        .-ml-0\.5 {
+            margin-left: -0.125rem
+        }
+
+        .mb-10 {
+            margin-bottom: 2.5rem
+        }
+
+        .mb-12 {
+            margin-bottom: 3rem
+        }
+
+        .mb-16 {
+            margin-bottom: 4rem
+        }
+
+        .mb-2 {
+            margin-bottom: 0.5rem
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem
+        }
+
+        .mb-6 {
+            margin-bottom: 1.5rem
+        }
+
+        .mr-1\.5 {
+            margin-right: 0.375rem
+        }
+
+        .mt-1 {
+            margin-top: 0.25rem
+        }
+
+        .mt-2 {
+            margin-top: 0.5rem
+        }
+
+        .mt-24 {
+            margin-top: 6rem
+        }
+
+        .mt-4 {
+            margin-top: 1rem
+        }
+
+        .mt-6 {
+            margin-top: 1.5rem
+        }
+
+        .flex {
+            display: flex
+        }
+
+        .inline-flex {
+            display: inline-flex
+        }
+
+        .grid {
+            display: grid
+        }
+
+        .hidden {
+            display: none
+        }
+
+        .h-2 {
+            height: 0.5rem
+        }
+
+        .h-3 {
+            height: 0.75rem
+        }
+
+        .h-5 {
+            height: 1.25rem
+        }
+
+        .h-8 {
+            height: 2rem
+        }
+
+        .h-full {
+            height: 100%
+        }
+
+        .min-h-screen {
+            min-height: 100vh
+        }
+
+        .w-2 {
+            width: 0.5rem
+        }
+
+        .w-3 {
+            width: 0.75rem
+        }
+
+        .w-5 {
+            width: 1.25rem
+        }
+
+        .w-8 {
+            width: 2rem
+        }
+
+        .w-full {
+            width: 100%
+        }
+
+        .max-w-3xl {
+            max-width: 48rem
+        }
+
+        .max-w-4xl {
+            max-width: 56rem
+        }
+
+        .transform {
+            transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))
+        }
+
+        .grid-cols-4 {
+            grid-template-columns: repeat(4, minmax(0, 1fr))
+        }
+
+        .items-center {
+            align-items: center
+        }
+
+        .justify-center {
+            justify-content: center
+        }
+
+        .justify-between {
+            justify-content: space-between
+        }
+
+        .gap-4 {
+            gap: 1rem
+        }
+
+        .gap-8 {
+            gap: 2rem
+        }
+
+        .space-x-1> :not([hidden])~ :not([hidden]) {
+            --tw-space-x-reverse: 0;
+            margin-right: calc(0.25rem * var(--tw-space-x-reverse));
+            margin-left: calc(0.25rem * calc(1 - var(--tw-space-x-reverse)))
+        }
+
+        .space-x-2> :not([hidden])~ :not([hidden]) {
+            --tw-space-x-reverse: 0;
+            margin-right: calc(0.5rem * var(--tw-space-x-reverse));
+            margin-left: calc(0.5rem * calc(1 - var(--tw-space-x-reverse)))
+        }
+
+        .space-x-8> :not([hidden])~ :not([hidden]) {
+            --tw-space-x-reverse: 0;
+            margin-right: calc(2rem * var(--tw-space-x-reverse));
+            margin-left: calc(2rem * calc(1 - var(--tw-space-x-reverse)))
+        }
+
+        .overflow-hidden {
+            overflow: hidden
+        }
+
+        .overflow-x-auto {
+            overflow-x: auto
+        }
+
+        .rounded-full {
+            border-radius: 9999px
+        }
+
+        .rounded-lg {
+            border-radius: 0.5rem
+        }
+
+        .rounded-md {
+            border-radius: 0.375rem
+        }
+
+        .rounded-xl {
+            border-radius: 0.75rem
+        }
+
+        .border {
+            border-width: 1px
+        }
+
+        .border-2 {
+            border-width: 2px
+        }
+
+        .border-b {
+            border-bottom-width: 1px
+        }
+
+        .border-t {
+            border-top-width: 1px
+        }
+
+        .border-slate-700 {
+            --tw-border-opacity: 1;
+            border-color: rgb(51 65 85 / var(--tw-border-opacity, 1))
+        }
+
+        .border-slate-800 {
+            --tw-border-opacity: 1;
+            border-color: rgb(30 41 59 / var(--tw-border-opacity, 1))
+        }
+
+        .border-transparent {
+            border-color: transparent
+        }
+
+        .bg-green-500 {
+            --tw-bg-opacity: 1;
+            background-color: rgb(34 197 94 / var(--tw-bg-opacity, 1))
+        }
+
+        .bg-red-500 {
+            --tw-bg-opacity: 1;
+            background-color: rgb(239 68 68 / var(--tw-bg-opacity, 1))
+        }
+
+        .bg-sky-400 {
+            --tw-bg-opacity: 1;
+            background-color: rgb(56 189 248 / var(--tw-bg-opacity, 1))
+        }
+
+        .bg-slate-700\/50 {
+            background-color: rgb(51 65 85 / 0.5)
+        }
+
+        .bg-slate-800\/50 {
+            background-color: rgb(30 41 59 / 0.5)
+        }
+
+        .bg-slate-800\/80 {
+            background-color: rgb(30 41 59 / 0.8)
+        }
+
+        .bg-slate-900 {
+            --tw-bg-opacity: 1;
+            background-color: rgb(15 23 42 / var(--tw-bg-opacity, 1))
+        }
+
+        .bg-teal-400\/20 {
+            background-color: rgb(45 212 191 / 0.2)
+        }
+
+        .bg-yellow-500 {
+            --tw-bg-opacity: 1;
+            background-color: rgb(234 179 8 / var(--tw-bg-opacity, 1))
+        }
+
+        .bg-\[linear-gradient\(to_right\2c \#8080800a_1px\2c transparent_1px\)\2c linear-gradient\(to_bottom\2c \#8080800a_1px\2c transparent_1px\)\] {
+            background-image: linear-gradient(to right, #8080800a 1px, transparent 1px), linear-gradient(to bottom, #8080800a 1px, transparent 1px)
+        }
+
+        .bg-gradient-to-b {
+            background-image: linear-gradient(to bottom, var(--tw-gradient-stops))
+        }
+
+        .bg-gradient-to-r {
+            background-image: linear-gradient(to right, var(--tw-gradient-stops))
+        }
+
+        .from-purple-400 {
+            --tw-gradient-from: #A78BFA var(--tw-gradient-from-position);
+            --tw-gradient-to: rgb(167 139 250 / 0) var(--tw-gradient-to-position);
+            --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to)
+        }
+
+        .from-slate-700 {
+            --tw-gradient-from: #334155 var(--tw-gradient-from-position);
+            --tw-gradient-to: rgb(51 65 85 / 0) var(--tw-gradient-to-position);
+            --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to)
+        }
+
+        .to-teal-400 {
+            --tw-gradient-to: #2DD4BF var(--tw-gradient-to-position)
+        }
+
+        .to-transparent {
+            --tw-gradient-to: transparent var(--tw-gradient-to-position)
+        }
+
+        .bg-\[size\:14px_24px\] {
+            background-size: 14px 24px
+        }
+
+        .bg-clip-text {
+            -webkit-background-clip: text;
+            background-clip: text
+        }
+
+        .p-1 {
+            padding: 0.25rem
+        }
+
+        .p-1\.5 {
+            padding: 0.375rem
+        }
+
+        .p-4 {
+            padding: 1rem
+        }
+
+        .p-8 {
+            padding: 2rem
+        }
+
+        .p-px {
+            padding: 1px
+        }
+
+        .px-2\.5 {
+            padding-left: 0.625rem;
+            padding-right: 0.625rem
+        }
+
+        .px-4 {
+            padding-left: 1rem;
+            padding-right: 1rem
+        }
+
+        .px-6 {
+            padding-left: 1.5rem;
+            padding-right: 1.5rem
+        }
+
+        .px-8 {
+            padding-left: 2rem;
+            padding-right: 2rem
+        }
+
+        .py-0\.5 {
+            padding-top: 0.125rem;
+            padding-bottom: 0.125rem
+        }
+
+        .py-2 {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem
+        }
+
+        .py-20 {
+            padding-top: 5rem;
+            padding-bottom: 5rem
+        }
+
+        .py-3 {
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem
+        }
+
+        .py-32 {
+            padding-top: 8rem;
+            padding-bottom: 8rem
+        }
+
+        .py-4 {
+            padding-top: 1rem;
+            padding-bottom: 1rem
+        }
+
+        .py-8 {
+            padding-top: 2rem;
+            padding-bottom: 2rem
+        }
+
+        .text-center {
+            text-align: center
+        }
+
+        .font-mono {
+            font-family: Fira Code, monospace
+        }
+
+        .font-sans {
+            font-family: Inter, sans-serif
+        }
+
+        .text-2xl {
+            font-size: 1.5rem;
+            line-height: 2rem
+        }
+
+        .text-4xl {
+            font-size: 2.25rem;
+            line-height: 2.5rem
+        }
+
+        .text-5xl {
+            font-size: 3rem;
+            line-height: 1
+        }
+
+        .text-lg {
+            font-size: 1.125rem;
+            line-height: 1.75rem
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+            line-height: 1.25rem
+        }
+
+        .text-xl {
+            font-size: 1.25rem;
+            line-height: 1.75rem
+        }
+
+        .text-xs {
+            font-size: 0.75rem;
+            line-height: 1rem
+        }
+
+        .font-black {
+            font-weight: 900
+        }
+
+        .font-bold {
+            font-weight: 700
+        }
+
+        .font-medium {
+            font-weight: 500
+        }
+
+        .font-semibold {
+            font-weight: 600
+        }
+
+        .uppercase {
+            text-transform: uppercase
+        }
+
+        .leading-tight {
+            line-height: 1.25
+        }
+
+        .tracking-tighter {
+            letter-spacing: -0.05em
+        }
+
+        .tracking-wider {
+            letter-spacing: 0.05em
+        }
+
+        .text-purple-400 {
+            --tw-text-opacity: 1;
+            color: rgb(167 139 250 / var(--tw-text-opacity, 1))
+        }
+
+        .text-slate-300 {
+            --tw-text-opacity: 1;
+            color: rgb(203 213 225 / var(--tw-text-opacity, 1))
+        }
+
+        .text-slate-400 {
+            --tw-text-opacity: 1;
+            color: rgb(148 163 184 / var(--tw-text-opacity, 1))
+        }
+
+        .text-teal-300 {
+            --tw-text-opacity: 1;
+            color: rgb(94 234 212 / var(--tw-text-opacity, 1))
+        }
+
+        .text-teal-400 {
+            --tw-text-opacity: 1;
+            color: rgb(45 212 191 / var(--tw-text-opacity, 1))
+        }
+
+        .text-transparent {
+            color: transparent
+        }
+
+        .text-white {
+            --tw-text-opacity: 1;
+            color: rgb(255 255 255 / var(--tw-text-opacity, 1))
+        }
+
+        .antialiased {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale
+        }
+
+        .shadow-lg {
+            --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
+            box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)
+        }
+
+        .backdrop-blur-sm {
+            --tw-backdrop-blur: blur(4px);
+            -webkit-backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);
+            backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)
+        }
+
+        .transition-all {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms
+        }
+
+        .transition-colors {
+            transition-property: color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;
+            transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+            transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms
+        }
+
+        .duration-300 {
+            transition-duration: 300ms
+        }
+
+        .\[background\:radial-gradient\(125\%_125\%_at_50\%_10\%\2c \#0F172A_40\%\2c \#6366F1_100\%\)\] {
+            background: radial-gradient(125% 125% at 50% 10%, #0F172A 40%, #6366F1 100%)
+        }
+
+        .last\:border-b-0:last-child {
+            border-bottom-width: 0px
+        }
+
+        .hover\:scale-105:hover {
+            --tw-scale-x: 1.05;
+            --tw-scale-y: 1.05;
+            transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))
+        }
+
+        .hover\:border-purple-400:hover {
+            --tw-border-opacity: 1;
+            border-color: rgb(167 139 250 / var(--tw-border-opacity, 1))
+        }
+
+        .hover\:bg-slate-700:hover {
+            --tw-bg-opacity: 1;
+            background-color: rgb(51 65 85 / var(--tw-bg-opacity, 1))
+        }
+
+        .hover\:bg-slate-800:hover {
+            --tw-bg-opacity: 1;
+            background-color: rgb(30 41 59 / var(--tw-bg-opacity, 1))
+        }
+
+        .hover\:text-purple-400:hover {
+            --tw-text-opacity: 1;
+            color: rgb(167 139 250 / var(--tw-text-opacity, 1))
+        }
+
+        .hover\:text-white:hover {
+            --tw-text-opacity: 1;
+            color: rgb(255 255 255 / var(--tw-text-opacity, 1))
+        }
+
+        .hover\:opacity-90:hover {
+            opacity: 0.9
+        }
+
+        .group:hover .group-hover\:border-teal-400 {
+            --tw-border-opacity: 1;
+            border-color: rgb(45 212 191 / var(--tw-border-opacity, 1))
+        }
+
+        @media (min-width: 640px) {
+            .sm\:py-24 {
+                padding-top: 6rem;
+                padding-bottom: 6rem
+            }
+
+            .sm\:py-48 {
+                padding-top: 12rem;
+                padding-bottom: 12rem
+            }
+        }
+
+        @media (min-width: 768px) {
+            .md\:flex {
+                display: flex
+            }
+
+            .md\:grid-cols-2 {
+                grid-template-columns: repeat(2, minmax(0, 1fr))
+            }
+
+            .md\:text-7xl {
+                font-size: 4.5rem;
+                line-height: 1
+            }
+
+            .md\:text-xl {
+                font-size: 1.25rem;
+                line-height: 1.75rem
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .lg\:grid-cols-4 {
+                grid-template-columns: repeat(4, minmax(0, 1fr))
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-300 font-sans antialiased" inmaintabuse="1">
+    <div class="min-h-screen bg-slate-900 relative overflow-hidden">
+        <!-- Animated background -->
+        <div
+            class="absolute top-0 left-0 w-full h-full [background:radial-gradient(125%_125%_at_50%_10%,#0F172A_40%,#6366F1_100%)]">
+        </div>
+        <div
+            class="absolute inset-0 z-0 h-full w-full bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
+        </div>
+
+        <div class="relative z-10">
+            <header class="absolute top-0 left-0 w-full z-50">
+                <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+                    <div class="text-2xl font-bold text-white tracking-wider">
+                        <span class="text-purple-400">A</span>K
+                    </div>
+                    <ul class="hidden md:flex items-center space-x-8 text-sm font-medium">
+                        <li><a href="#features"
+                                class="text-slate-300 hover:text-purple-400 transition-colors">Features</a></li>
+                        <li><a href="#quick-start"
+                                class="text-slate-300 hover:text-purple-400 transition-colors">Install</a></li>
+                        <li><a href="#usage" class="text-slate-300 hover:text-purple-400 transition-colors">Usage</a>
+                        </li>
+                    </ul>
+                </nav>
+            </header>
+
+            <main>
+                <!-- Hero Section -->
+                <section class="py-32 sm:py-48 text-center">
+                    <div class="container mx-auto px-6">
+                        <h1
+                            class="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-teal-400 leading-tight tracking-tighter mb-6">
+                            Secure &amp; Simple API Key Management
+                        </h1>
+                        <p class="max-w-3xl mx-auto text-lg md:text-xl text-slate-300 mb-10">
+                            AK is a cross-platform C++17 command-line tool for managing API keys securely with a local,
+                            encrypted vault.
+                        </p>
+                        <div class="flex justify-center items-center gap-4">
+                            <a href="#quick-start"
+                                class="bg-gradient-to-r from-purple-400 to-teal-400 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:opacity-90 transition-all duration-300 transform hover:scale-105">
+                                Get Started
+                            </a>
+                            <a href="https://github.com/apertacodex/ak" target="_blank" rel="noopener noreferrer"
+                                class="bg-slate-800/50 border border-slate-700 text-white font-bold py-3 px-8 rounded-lg hover:border-purple-400 transition-colors duration-300">
+                                View on GitHub
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Features Section -->
+                <section id="features" class="py-20 sm:py-24">
+                    <div class="container mx-auto px-6">
+                        <div class="text-center mb-16">
+                            <h2 class="text-4xl font-bold text-white">Why AK?</h2>
+                            <p class="text-lg text-slate-300 mt-2">Everything you need for secure and efficient key
+                                management.</p>
+                        </div>
+                        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                            <!-- Feature 1: Cross-Platform -->
+                            <div class="relative group p-px rounded-xl bg-gradient-to-b from-slate-700 to-transparent">
+                                <div class="rounded-xl bg-slate-900 h-full p-8">
+                                    <div class="mb-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-400"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M12 21a9 9 0 100-18 9 9 0 000 18z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M3.6 9h16.8M3.6 15h16.8"></path>
+                                            <ellipse cx="12" cy="12" rx="4" ry="9" stroke-linecap="round"
+                                                stroke-linejoin="round"></ellipse>
+                                        </svg>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white mb-2">Cross-Platform</h3>
+                                    <p class="text-slate-300">Runs natively on Linux, macOS, and Windows for a
+                                        consistent experience everywhere.</p>
+                                </div>
+                                <div
+                                    class="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-teal-400 transition-all duration-300 pointer-events-none">
+                                </div>
+                            </div>
+                            <!-- Feature 2: Secure Storage -->
+                            <div class="relative group p-px rounded-xl bg-gradient-to-b from-slate-700 to-transparent">
+                                <div class="rounded-xl bg-slate-900 h-full p-8">
+                                    <div class="mb-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-400"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.956 11.956 0 0112 3c2.35 0 4.54.633 6.465 1.714m-12.93 0A11.956 11.956 0 0112 3c-2.35 0-4.54.633-6.465 1.714M12 21c-3.13 0-6.01-.97-8.465-2.686M20.465 18.314A11.956 11.956 0 0112 21c3.13 0 6.01-.97 8.465-2.686m-16.93 0a11.956 11.956 0 0116.93 0z">
+                                            </path>
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M12 12a3 3 0 100-6 3 3 0 000 6z"></path>
+                                        </svg>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white mb-2">Secure Storage</h3>
+                                    <p class="text-slate-300">Encrypts your API keys in a local vault, keeping your
+                                        credentials safe from prying eyes.</p>
+                                </div>
+                                <div
+                                    class="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-teal-400 transition-all duration-300 pointer-events-none">
+                                </div>
+                            </div>
+                            <!-- Feature 3: Service Integration -->
+                            <div class="relative group p-px rounded-xl bg-gradient-to-b from-slate-700 to-transparent">
+                                <div class="rounded-xl bg-slate-900 h-full p-8">
+                                    <div class="mb-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-400"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white mb-2">Service Integration</h3>
+                                    <p class="text-slate-300">Built-in support for popular services like OpenAI, GitHub,
+                                        AWS, and more.</p>
+                                </div>
+                                <div
+                                    class="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-teal-400 transition-all duration-300 pointer-events-none">
+                                </div>
+                            </div>
+                            <!-- Feature 4: Shell Completions -->
+                            <div class="relative group p-px rounded-xl bg-gradient-to-b from-slate-700 to-transparent">
+                                <div class="rounded-xl bg-slate-900 h-full p-8">
+                                    <div class="mb-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-400"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white mb-2">Shell Completions</h3>
+                                    <p class="text-slate-300">Boost your productivity with shell completions for Bash,
+                                        Zsh, and Fish.</p>
+                                </div>
+                                <div
+                                    class="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-teal-400 transition-all duration-300 pointer-events-none">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quick Start Section -->
+                <section id="quick-start" class="py-20 sm:py-24">
+                    <div class="container mx-auto px-6">
+                        <div class="text-center mb-12">
+                            <h2 class="text-4xl font-bold text-white">Quick Start</h2>
+                            <p class="text-lg text-slate-300 mt-2">Get up and running in minutes.</p>
+                        </div>
+                        <div class="max-w-4xl mx-auto">
+                            <div class="flex justify-center mb-6">
+                                <div id="tab-buttons"
+                                    class="bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-full p-1 flex space-x-1">
+                                    <button data-tab-target="linux"
+                                        class="tab-button py-2 px-6 text-sm font-medium rounded-full transition-colors bg-sky-400 text-white">Linux/macOS</button>
+                                    <button data-tab-target="windows"
+                                        class="tab-button py-2 px-6 text-sm font-medium rounded-full transition-colors text-slate-300 hover:bg-slate-700">Windows</button>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <!-- Linux/macOS Panel -->
+                                <div id="linux-panel" class="tab-panel" data-state="active">
+                                    <h3 class="text-lg font-semibold text-white mb-2">1. Prerequisites</h3>
+                                    <div
+                                        class="code-block bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg relative">
+                                        <div
+                                            class="flex items-center justify-between px-4 py-2 border-b border-slate-700">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-400 font-mono uppercase">bash</span>
+                                            <button aria-label="Copy code"
+                                                class="copy-button p-1.5 bg-slate-700/50 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 transition-all">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 copy-icon"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                                    </path>
+                                                </svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                    class="h-5 w-5 text-teal-400 check-icon" style="display: none;"
+                                                    viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd"
+                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                        clip-rule="evenodd"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <pre class="p-4 text-sm overflow-x-auto font-mono text-slate-300"><code>sudo apt install build-essential cmake git  # Debian/Ubuntu
+brew install cmake git                  # macOS</code></pre>
+                                    </div>
+                                    <h3 class="text-lg font-semibold text-white mt-6 mb-2">2. Build</h3>
+                                    <div
+                                        class="code-block bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg relative">
+                                        <div
+                                            class="flex items-center justify-between px-4 py-2 border-b border-slate-700">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-400 font-mono uppercase">bash</span>
+                                            <button aria-label="Copy code"
+                                                class="copy-button p-1.5 bg-slate-700/50 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 transition-all">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 copy-icon"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                                    </path>
+                                                </svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                    class="h-5 w-5 text-teal-400 check-icon" style="display: none;"
+                                                    viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd"
+                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                        clip-rule="evenodd"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <pre
+                                            class="p-4 text-sm overflow-x-auto font-mono text-slate-300"><code>./build.sh</code></pre>
+                                    </div>
+                                </div>
+                                <!-- Windows Panel -->
+                                <div id="windows-panel" class="tab-panel" data-state="inactive">
+                                    <h3 class="text-lg font-semibold text-white mb-2">1. Prerequisites</h3>
+                                    <div
+                                        class="code-block bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg relative">
+                                        <div
+                                            class="flex items-center justify-between px-4 py-2 border-b border-slate-700">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-400 font-mono uppercase">bash</span>
+                                            <button aria-label="Copy code"
+                                                class="copy-button p-1.5 bg-slate-700/50 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 transition-all">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 copy-icon"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                                    </path>
+                                                </svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                    class="h-5 w-5 text-teal-400 check-icon" style="display: none;"
+                                                    viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd"
+                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                        clip-rule="evenodd"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <pre class="p-4 text-sm overflow-x-auto font-mono text-slate-300"><code># Install Visual Studio 2019+ with C++ tools
+# Install CMake &amp; Git for Windows</code></pre>
+                                    </div>
+                                    <h3 class="text-lg font-semibold text-white mt-6 mb-2">2. Build</h3>
+                                    <div
+                                        class="code-block bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg relative">
+                                        <div
+                                            class="flex items-center justify-between px-4 py-2 border-b border-slate-700">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-400 font-mono uppercase">bash</span>
+                                            <button aria-label="Copy code"
+                                                class="copy-button p-1.5 bg-slate-700/50 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 transition-all">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 copy-icon"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                                    </path>
+                                                </svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                    class="h-5 w-5 text-teal-400 check-icon" style="display: none;"
+                                                    viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd"
+                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                        clip-rule="evenodd"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <pre
+                                            class="p-4 text-sm overflow-x-auto font-mono text-slate-300"><code>.\\build.ps1</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Usage Section -->
+                <section id="usage" class="py-20 sm:py-24">
+                    <div class="container mx-auto px-6">
+                        <div class="text-center mb-16">
+                            <h2 class="text-4xl font-bold text-white">Powerful &amp; Intuitive</h2>
+                            <p class="text-lg text-slate-300 mt-2">Manage keys, test services, and more with simple
+                                commands.</p>
+                        </div>
+                        <div class="max-w-4xl mx-auto">
+                            <div
+                                class="code-block bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg relative">
+                                <div class="flex items-center justify-between px-4 py-2 border-b border-slate-700">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                        <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                    </div>
+                                    <span class="text-xs text-slate-400 font-mono uppercase">bash</span>
+                                    <button aria-label="Copy code"
+                                        class="copy-button p-1.5 bg-slate-700/50 rounded-md text-slate-300 hover:text-white hover:bg-slate-700 transition-all">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 copy-icon" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                            </path>
+                                        </svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-400 check-icon"
+                                            style="display: none;" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd"
+                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                clip-rule="evenodd"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <pre class="p-4 text-sm overflow-x-auto font-mono text-slate-300"><code># Add a new key
+ak add my-openai-key "sk-..."
+
+# List all keys
+ak list
+
+# Get a specific key
+ak get my-openai-key
+
+# Remove a key
+ak remove my-openai-key
+
+# Test a service configuration
+ak test openai</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Supported Platforms -->
+                <section id="platforms" class="py-20 sm:py-24">
+                    <div class="container mx-auto px-6">
+                        <div class="text-center mb-16">
+                            <h2 class="text-4xl font-bold text-white">Supported Platforms</h2>
+                            <p class="text-lg text-slate-300 mt-2">Built and tested to run on your favorite OS.</p>
+                        </div>
+                        <div
+                            class="max-w-4xl mx-auto bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl overflow-hidden">
+                            <div
+                                class="grid grid-cols-4 text-sm font-semibold text-white uppercase border-b border-slate-700">
+                                <div class="p-4">Platform</div>
+                                <div class="p-4">Architecture</div>
+                                <div class="p-4">Compiler</div>
+                                <div class="p-4 text-center">Status</div>
+                            </div>
+                            <div>
+                                <div
+                                    class="grid grid-cols-4 items-center border-b border-slate-800 last:border-b-0 hover:bg-slate-800 transition-colors">
+                                    <div class="p-4 font-mono text-sm">Linux</div>
+                                    <div class="p-4 font-mono text-sm">x86_64</div>
+                                    <div class="p-4 font-mono text-sm">GCC 7+</div>
+                                    <div class="p-4 text-center"><span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-400/20 text-teal-300"><svg
+                                                class="-ml-0.5 mr-1.5 h-2 w-2 text-teal-400" fill="currentColor"
+                                                viewBox="0 0 8 8">
+                                                <circle cx="4" cy="4" r="3"></circle>
+                                            </svg>Supported</span></div>
+                                </div>
+                                <div
+                                    class="grid grid-cols-4 items-center border-b border-slate-800 last:border-b-0 hover:bg-slate-800 transition-colors">
+                                    <div class="p-4 font-mono text-sm">Linux</div>
+                                    <div class="p-4 font-mono text-sm">x86_64</div>
+                                    <div class="p-4 font-mono text-sm">Clang 8+</div>
+                                    <div class="p-4 text-center"><span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-400/20 text-teal-300"><svg
+                                                class="-ml-0.5 mr-1.5 h-2 w-2 text-teal-400" fill="currentColor"
+                                                viewBox="0 0 8 8">
+                                                <circle cx="4" cy="4" r="3"></circle>
+                                            </svg>Supported</span></div>
+                                </div>
+                                <div
+                                    class="grid grid-cols-4 items-center border-b border-slate-800 last:border-b-0 hover:bg-slate-800 transition-colors">
+                                    <div class="p-4 font-mono text-sm">macOS</div>
+                                    <div class="p-4 font-mono text-sm">x86_64</div>
+                                    <div class="p-4 font-mono text-sm">Clang</div>
+                                    <div class="p-4 text-center"><span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-400/20 text-teal-300"><svg
+                                                class="-ml-0.5 mr-1.5 h-2 w-2 text-teal-400" fill="currentColor"
+                                                viewBox="0 0 8 8">
+                                                <circle cx="4" cy="4" r="3"></circle>
+                                            </svg>Supported</span></div>
+                                </div>
+                                <div
+                                    class="grid grid-cols-4 items-center border-b border-slate-800 last:border-b-0 hover:bg-slate-800 transition-colors">
+                                    <div class="p-4 font-mono text-sm">macOS</div>
+                                    <div class="p-4 font-mono text-sm">ARM64</div>
+                                    <div class="p-4 font-mono text-sm">Clang</div>
+                                    <div class="p-4 text-center"><span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-400/20 text-teal-300"><svg
+                                                class="-ml-0.5 mr-1.5 h-2 w-2 text-teal-400" fill="currentColor"
+                                                viewBox="0 0 8 8">
+                                                <circle cx="4" cy="4" r="3"></circle>
+                                            </svg>Supported</span></div>
+                                </div>
+                                <div
+                                    class="grid grid-cols-4 items-center border-b border-slate-800 last:border-b-0 hover:bg-slate-800 transition-colors">
+                                    <div class="p-4 font-mono text-sm">Windows</div>
+                                    <div class="p-4 font-mono text-sm">x86_64</div>
+                                    <div class="p-4 font-mono text-sm">MSVC 2019+</div>
+                                    <div class="p-4 text-center"><span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-400/20 text-teal-300"><svg
+                                                class="-ml-0.5 mr-1.5 h-2 w-2 text-teal-400" fill="currentColor"
+                                                viewBox="0 0 8 8">
+                                                <circle cx="4" cy="4" r="3"></circle>
+                                            </svg>Supported</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <footer class="border-t border-slate-800 mt-24">
+                <div class="container mx-auto px-6 py-8 text-center text-slate-400 text-sm">
+                    <p>© 2025 AK Project. All rights reserved.</p>
+                    <p class="mt-1">Licensed under the MIT License.</p>
+                </div>
+            </footer>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Tab Switching Logic ---
+            const tabContainer = document.getElementById('tab-buttons');
+            const tabButtons = tabContainer.querySelectorAll('.tab-button');
+            const tabPanels = document.querySelectorAll('.tab-panel');
+
+            tabContainer.addEventListener('click', (e) => {
+                const clickedButton = e.target.closest('.tab-button');
+                if (!clickedButton) return;
+
+                const targetPanelId = clickedButton.dataset.tabTarget + '-panel';
+
+                // Update button styles
+                tabButtons.forEach(button => {
+                    button.classList.remove('bg-sky-400', 'text-white');
+                    button.classList.add('text-slate-300', 'hover:bg-slate-700');
+                });
+                clickedButton.classList.add('bg-sky-400', 'text-white');
+                clickedButton.classList.remove('text-slate-300', 'hover:bg-slate-700');
+
+                // Update panel visibility
+                tabPanels.forEach(panel => {
+                    if (panel.id === targetPanelId) {
+                        panel.dataset.state = 'active';
+                    } else {
+                        panel.dataset.state = 'inactive';
+                    }
+                });
+            });
+
+            // --- Copy to Clipboard Logic ---
+            const allCodeBlocks = document.querySelectorAll('.code-block');
+
+            allCodeBlocks.forEach(block => {
+                const copyButton = block.querySelector('.copy-button');
+                const codeEl = block.querySelector('pre > code');
+                const copyIcon = block.querySelector('.copy-icon');
+                const checkIcon = block.querySelector('.check-icon');
+
+                if (copyButton && codeEl) {
+                    copyButton.addEventListener('click', () => {
+                        const code = codeEl.innerText.trim();
+                        navigator.clipboard.writeText(code).then(() => {
+                            copyIcon.style.display = 'none';
+                            checkIcon.style.display = 'inline-block';
+
+                            setTimeout(() => {
+                                copyIcon.style.display = 'inline-block';
+                                checkIcon.style.display = 'none';
+                            }, 2000);
+                        }).catch(err => {
+                            console.error('Failed to copy text: ', err);
+                        });
+                    });
+                }
+            });
+
+            // --- Update Copyright Year ---
+            const footer = document.querySelector('footer p');
+            if (footer) {
+                footer.innerHTML = `&copy; ${new Date().getFullYear()} AK Project. All rights reserved.`;
             }
         });
     </script>
+
 </body>
+
 </html>
