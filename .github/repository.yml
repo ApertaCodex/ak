@@ -1,0 +1,39 @@
+# GitHub Repository Metadata
+name: "AK - API Key Manager"
+description: "Cross-platform C++17 command-line tool for secure API key management with encrypted storage, service integration, and shell completions"
+homepage: "https://apertacodex.github.io/ak"
+
+# Topics/Keywords for GitHub discovery
+topics:
+  - api-keys
+  - security
+  - encryption
+  - command-line-tool
+  - cpp17
+  - cross-platform
+  - secret-management
+  - vault
+  - shell-completion
+  - openai
+  - github
+  - aws
+  - api-testing
+  - ubuntu
+  - debian
+  - apt-package
+  - linux
+  - macos
+  - windows
+  - apertacodex
+
+# Repository settings
+features:
+  issues: true
+  discussions: true
+  wiki: true
+  sponsorships: true
+
+# Social preview
+social:
+  image: "https://apertacodx.github.io/ak/social-preview.png"
+  alt: "AK - Secure API Key Manager"

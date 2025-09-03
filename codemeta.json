@@ -1,0 +1,75 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "identifier": "ak-api-key-manager",
+  "name": "AK - API Key Manager",
+  "description": "Cross-platform C++17 command-line tool for secure API key management with encrypted storage, service integration, and shell completions",
+  "version": "2.2.0",
+  "author": [
+    {
+      "@type": "Organization",
+      "name": "ApertaCodex",
+      "email": "developers@apertacodex.ai",
+      "url": "https://apertacodex.com"
+    }
+  ],
+  "maintainer": [
+    {
+      "@type": "Organization", 
+      "name": "ApertaCodex",
+      "email": "developers@apertacodex.ai"
+    }
+  ],
+  "license": "MIT",
+  "url": "https://github.com/ApertaCodex/ak",
+  "codeRepository": "https://github.com/ApertaCodex/ak",
+  "issueTracker": "https://github.com/ApertaCodex/ak/issues",
+  "downloadUrl": "https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_2.2.0-1_amd64.deb",
+  "applicationCategory": "Security",
+  "operatingSystem": [
+    "Linux",
+    "macOS", 
+    "Windows"
+  ],
+  "programmingLanguage": [
+    "C++17"
+  ],
+  "runtimePlatform": [
+    "Linux x86_64",
+    "macOS x86_64", 
+    "macOS ARM64",
+    "Windows x86_64"
+  ],
+  "keywords": [
+    "api-keys",
+    "security",
+    "encryption",
+    "command-line-tool",
+    "cpp17", 
+    "cross-platform",
+    "secret-management",
+    "vault",
+    "shell-completion",
+    "openai",
+    "github",
+    "aws",
+    "api-testing",
+    "ubuntu",
+    "debian",
+    "apt-package",
+    "apertacodex"
+  ],
+  "readme": "https://raw.githubusercontent.com/ApertaCodex/ak/main/README.md",
+  "buildInstructions": "https://raw.githubusercontent.com/ApertaCodex/ak/main/README.md#building",
+  "installUrl": "https://apertacodx.github.io/ak/#quick-start",
+  "contIntegration": "https://github.com/ApertaCodex/ak/actions",
+  "developmentStatus": "active",
+  "embargoDate": null,
+  "funding": null,
+  "issueTracker": "https://github.com/ApertaCodex/ak/issues",
+  "referencePublication": null,
+  "relatedLink": [
+    "https://apertacodex.github.io/ak/",
+    "https://apertacodex.github.io/ak/ak-apt-repo/"
+  ]
+}

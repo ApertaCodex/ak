@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "AK - API Key Manager"
+abstract: "Cross-platform C++17 command-line tool for secure API key management with encrypted storage, service integration, and shell completions"
+authors:
+  - family-names: "ApertaCodex"
+    email: "developers@apertacodx.ai"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/ApertaCodex/ak"
+url: "https://apertacodex.github.io/ak"
+license: MIT
+version: "2.2.0"
+date-released: "2025-09-03"
+keywords:
+  - "api-keys"
+  - "security" 
+  - "encryption"
+  - "command-line-tool"
+  - "cpp17"
+  - "cross-platform"
+  - "secret-management"
+  - "vault"
+  - "shell-completion"
+  - "openai"
+  - "github"
+  - "aws"
+  - "api-testing"
+  - "ubuntu"
+  - "debian"
+  - "apt-package"
+  - "apertacodx"
