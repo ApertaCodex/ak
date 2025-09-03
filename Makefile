@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 2.10.1
+VERSION   ?= 2.10.2
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -290,8 +290,8 @@ publish-major:
 #   V_BUMP=major make release    # override default with flag
 # -------------------------
 
-VERSION   ?= 2.10.1
-VERSION   ?= 2.10.1
+VERSION   ?= 2.10.2
+VERSION   ?= 2.10.2
 
 release:
 	@echo "🚀 Starting comprehensive release ($(V_BUMP) version bump)..."
@@ -336,7 +336,10 @@ bump-patch:
 	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
 	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
-	echo "✅ Updated version to $$new_version in all files"
+	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" index.html; \
+	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?_amd64\.deb/ak_$$new_version\_amd64.deb/g" ak-apt-repo/index.html; \
+	sed -i "s/Latest version:[^<]*/Latest version: $$new_version/g" ak-apt-repo/index.html; \
+	echo "✅ Updated version to $$new_version in all files (including HTML pages)"
 
 bump-minor:
 	@echo "🔄 Bumping minor version..."
@@ -351,7 +354,10 @@ bump-minor:
 	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
 	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
-	echo "✅ Updated version to $$new_version in all files"
+	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" index.html; \
+	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?_amd64\.deb/ak_$$new_version\_amd64.deb/g" ak-apt-repo/index.html; \
+	sed -i "s/Latest version:[^<]*/Latest version: $$new_version/g" ak-apt-repo/index.html; \
+	echo "✅ Updated version to $$new_version in all files (including HTML pages)"
 
 bump-major:
 	@echo "🔄 Bumping major version..."
@@ -365,7 +371,10 @@ bump-major:
 	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
 	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
-	echo "✅ Updated version to $$new_version in all files"
+	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" index.html; \
+	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?_amd64\.deb/ak_$$new_version\_amd64.deb/g" ak-apt-repo/index.html; \
+	sed -i "s/Latest version:[^<]*/Latest version: $$new_version/g" ak-apt-repo/index.html; \
+	echo "✅ Updated version to $$new_version in all files (including HTML pages)"
 
 build-release: clean
 	@echo "🏗️  Building complete production release..."
