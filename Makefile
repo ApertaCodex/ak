@@ -179,21 +179,21 @@ clean-obj:
 package-deb: strip
 	@which dpkg-deb >/dev/null 2>&1 || (echo "dpkg-deb not found"; exit 1)
 	@rm -rf $(PKGROOT) $(DISTDIR)
-	@mkdir -p $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN
-	@mkdir -p $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/usr/bin
-	@cp -f $(BIN) $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/usr/bin/$(APP)
-	@chmod 0755 $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/usr/bin/$(APP)
-	@echo "Package: $(APP)"                                              >  $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
-	@echo "Version: $(VERSION)-1"                                       >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
-	@echo "Section: utils"                                              >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
-	@echo "Priority: optional"                                          >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
-	@echo "Architecture: $(DEB_ARCH)"                                   >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
-	@echo "Maintainer: Moussa Mokhtari <me@moussamokhtari.com>"         >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
-	@echo "Depends: gpg, coreutils, bash, curl"                         >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
-	@echo "Description: $(APP) — secure API key manager (CLI, C++)"     >> $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH)/DEBIAN/control
+	@mkdir -p $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN
+	@mkdir -p $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin
+	@cp -f $(BIN) $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin/$(APP)
+	@chmod 0755 $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin/$(APP)
+	@echo "Package: $(APP)"                                              >  $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
+	@echo "Version: $(VERSION)"                                          >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
+	@echo "Section: utils"                                              >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
+	@echo "Priority: optional"                                          >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
+	@echo "Architecture: $(DEB_ARCH)"                                   >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
+	@echo "Maintainer: Moussa Mokhtari <me@moussamokhtari.com>"         >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
+	@echo "Depends: gpg, coreutils, bash, curl"                         >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
+	@echo "Description: $(APP) — secure API key manager (CLI, C++)"     >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
 	@mkdir -p $(DISTDIR)
-	@dpkg-deb --build $(PKGROOT)/deb/$(APP)_$(VERSION)-1_$(DEB_ARCH) $(DISTDIR)/$(APP)_$(VERSION)-1_$(DEB_ARCH).deb
-	@echo "🎁 Built $(DISTDIR)/$(APP)_$(VERSION)-1_$(DEB_ARCH).deb"
+	@dpkg-deb --build $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH) $(DISTDIR)/$(APP)_$(VERSION)_$(DEB_ARCH).deb
+	@echo "🎁 Built $(DISTDIR)/$(APP)_$(VERSION)_$(DEB_ARCH).deb"
 
 # -------------------------
 # RPM package (.rpm)
@@ -335,7 +335,7 @@ bump-patch:
 	sed -i "s/const std::string AK_VERSION = \".*\";/const std::string AK_VERSION = \"$$new_version\";/" src/core/config.cpp; \
 	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
-	sed -i "s/^ak (.*)/ak ($$new_version-1)/" debian/changelog; \
+	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
 	echo "✅ Updated version to $$new_version in all files"
 
 bump-minor:
@@ -350,7 +350,7 @@ bump-minor:
 	sed -i "s/const std::string AK_VERSION = \".*\";/const std::string AK_VERSION = \"$$new_version\";/" src/core/config.cpp; \
 	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
-	sed -i "s/^ak (.*)/ak ($$new_version-1)/" debian/changelog; \
+	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
 	echo "✅ Updated version to $$new_version in all files"
 
 bump-major:
@@ -364,7 +364,7 @@ bump-major:
 	sed -i "s/const std::string AK_VERSION = \".*\";/const std::string AK_VERSION = \"$$new_version\";/" src/core/config.cpp; \
 	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
-	sed -i "s/^ak (.*)/ak ($$new_version-1)/" debian/changelog; \
+	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
 	echo "✅ Updated version to $$new_version in all files"
 
 build-release: clean
