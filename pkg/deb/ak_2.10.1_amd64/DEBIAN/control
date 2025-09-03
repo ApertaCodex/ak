@@ -1,8 +1,0 @@
-Package: ak
-Version: 2.10.1
-Section: utils
-Priority: optional
-Architecture: amd64
-Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
-Depends: gpg, coreutils, bash, curl
-Description: ak — secure API key manager (CLI, C++)

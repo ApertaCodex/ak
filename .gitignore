@@ -4,7 +4,10 @@ ak.exe
 ak_tests
 ak_tests.exe
 obj/
+obj-*/
 build/
+pkg/
+dist/
 *.o
 *.gcno
 *.gcda
@@ -12,6 +15,14 @@ build/
 coverage_html/
 coverage.info
 .coverage
+
+# Debian packaging artifacts
+debian/files
+debian/debhelper-build-stamp
+debian/.debhelper/
+debian/ak.substvars
+debian/ak.debhelper.log
+debian/tmp/
 
 # CMake artifacts
 CMakeCache.txt
