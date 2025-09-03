@@ -85,6 +85,9 @@ void cmd_help() {
     std::cout << "  " << ui::colorize("ak", ui::Colors::BRIGHT_CYAN) << ui::colorize(" <command> [options] [arguments]", ui::Colors::WHITE) << "\n\n";
 
     std::cout << ui::colorize("SECRET MANAGEMENT:", ui::Colors::BRIGHT_GREEN + ui::Colors::BOLD) << "\n";
+    std::cout << "  " << ui::colorize("ak add <NAME> <VALUE>", ui::Colors::BRIGHT_CYAN) << "           Add a secret with value directly\n";
+    std::cout << "  " << ui::colorize("ak add <NAME=VALUE>", ui::Colors::BRIGHT_CYAN) << "             Add a secret using NAME=VALUE format\n";
+    std::cout << "  " << ui::colorize("ak add -p <profile> <NAME> <VALUE>", ui::Colors::BRIGHT_CYAN) << " Add a secret and add to profile\n";
     std::cout << "  " << ui::colorize("ak set <NAME>", ui::Colors::BRIGHT_CYAN) << "                   Set a secret (prompts for value)\n";
     std::cout << "  " << ui::colorize("ak get <NAME> [--full]", ui::Colors::BRIGHT_CYAN) << "          Get a secret value (--full shows unmasked)\n";
     std::cout << "  " << ui::colorize("ak ls [--json]", ui::Colors::BRIGHT_CYAN) << "                  List all secret names (--json for JSON output)\n";
