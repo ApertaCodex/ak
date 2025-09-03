@@ -62,7 +62,7 @@
   ],
   "readme": "https://raw.githubusercontent.com/ApertaCodex/ak/main/README.md",
   "buildInstructions": "https://raw.githubusercontent.com/ApertaCodex/ak/main/README.md#building",
-  "installUrl": "https://apertacodx.github.io/ak/#quick-start",
+  "installUrl": "https://apertacodex.github.io/ak/#quick-start",
   "contIntegration": "https://github.com/ApertaCodex/ak/actions",
   "developmentStatus": "active",
   "embargoDate": null,
