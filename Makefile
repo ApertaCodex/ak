@@ -12,11 +12,12 @@
 #   make release        # minor version bump + test + commit + tag + publish everywhere
 #   make release-patch  # patch version bump + test + commit + tag + publish everywhere
 #   make release-major  # major version bump + test + commit + tag + publish everywhere
-#   VERSION_BUMP=patch make release     # override default (minor) with patch
+#   V_BUMP=patch make release     # override default (minor) with patch
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 2.5.0
+VERSION   ?= 2.8.0
+V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
 # Map to Debian/RPM arch tags
@@ -211,7 +212,7 @@ package-rpm: strip
 	  echo "Release:        1%{?dist}"                                 >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "Summary:        $(APP) — secure API key manager (CLI)"     >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "License:        MIT"                                       >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
-	  echo "URL:            https://example.com/$(APP)"                >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
+	  echo "URL:            https://apertacodex.github.io/$(APP)"                >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "BuildArch:      $(RPM_ARCH)"                               >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "Requires:       gpg, coreutils, bash, curl"                >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "%description"                                             >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
@@ -285,19 +286,20 @@ publish-major:
 #   make release-patch        # patch version bump + publish everywhere
 #   make release-minor        # minor version bump + publish everywhere
 #   make release-major        # major version bump + publish everywhere
-#   VERSION_BUMP=patch make release    # override default with flag
-#   VERSION_BUMP=major make release    # override default with flag
+#   V_BUMP=patch make release    # override default with flag
+#   V_BUMP=major make release    # override default with flag
 # -------------------------
 
-VERSION   ?= 2.5.0
+VERSION   ?= 2.8.0
+VERSION   ?= 2.8.0
 
 release:
-	@echo "🚀 Starting comprehensive release ($(VERSION_BUMP) version bump)..."
-	@case "$(VERSION_BUMP)" in \
+	@echo "🚀 Starting comprehensive release ($(V_BUMP) version bump)..."
+	@case "$(V_BUMP)" in \
 		patch) $(MAKE) release-patch ;; \
 		minor) $(MAKE) release-minor ;; \
 		major) $(MAKE) release-major ;; \
-		*) echo "❌ Invalid VERSION_BUMP: $(VERSION_BUMP). Use: patch, minor, or major"; exit 1 ;; \
+		*) echo "❌ Invalid V_BUMP: $(V_BUMP). Use: patch, minor, or major"; exit 1 ;; \
 	esac
 
 release-patch:
@@ -314,12 +316,10 @@ release-major:
 
 publish-all:
 	@echo "📦 Publishing to all repositories..."
-	@echo "📦 1/3 Publishing to APT repository (GitHub Pages)..."
+	@echo "📦 1/2 Publishing to APT repository (GitHub Pages)..."
 	@$(MAKE) publish-apt
-	@echo "📦 2/3 Publishing to Launchpad PPA..."
+	@echo "📦 2/2 Publishing to Launchpad PPA..."
 	@$(MAKE) publish-ppa || (echo "⚠️  PPA publish failed - continuing with other targets"; true)
-	@echo "📦 3/3 Building distribution packages..."
-	@$(MAKE) dist || (echo "⚠️  Package build failed - continuing"; true)
 	@echo "✅ Published to all repositories"
 
 bump-patch:
@@ -333,7 +333,10 @@ bump-patch:
 	echo "📈 Version: $$current_version → $$new_version"; \
 	sed -i "s/^VERSION.*=.*/VERSION   ?= $$new_version/" Makefile; \
 	sed -i "s/const std::string AK_VERSION = \".*\";/const std::string AK_VERSION = \"$$new_version\";/" src/core/config.cpp; \
-	echo "✅ Updated version to $$new_version"
+	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
+	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
+	sed -i "s/^ak (.*)/ak ($$new_version-1)/" debian/changelog; \
+	echo "✅ Updated version to $$new_version in all files"
 
 bump-minor:
 	@echo "🔄 Bumping minor version..."
@@ -345,7 +348,10 @@ bump-minor:
 	echo "📈 Version: $$current_version → $$new_version"; \
 	sed -i "s/^VERSION.*=.*/VERSION   ?= $$new_version/" Makefile; \
 	sed -i "s/const std::string AK_VERSION = \".*\";/const std::string AK_VERSION = \"$$new_version\";/" src/core/config.cpp; \
-	echo "✅ Updated version to $$new_version"
+	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
+	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
+	sed -i "s/^ak (.*)/ak ($$new_version-1)/" debian/changelog; \
+	echo "✅ Updated version to $$new_version in all files"
 
 bump-major:
 	@echo "🔄 Bumping major version..."
@@ -356,13 +362,27 @@ bump-major:
 	echo "📈 Version: $$current_version → $$new_version"; \
 	sed -i "s/^VERSION.*=.*/VERSION   ?= $$new_version/" Makefile; \
 	sed -i "s/const std::string AK_VERSION = \".*\";/const std::string AK_VERSION = \"$$new_version\";/" src/core/config.cpp; \
-	echo "✅ Updated version to $$new_version"
+	sed -i "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$$new_version\"/" src/core/config.cpp; \
+	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
+	sed -i "s/^ak (.*)/ak ($$new_version-1)/" debian/changelog; \
+	echo "✅ Updated version to $$new_version in all files"
 
 build-release: clean
-	@echo "🏗️  Building release version..."
+	@echo "🏗️  Building complete production release..."
+	@echo "📋 Step 1/4: Building optimized binary..."
 	@$(MAKE) all
 	@$(MAKE) strip
-	@echo "✅ Release build complete"
+	@echo "📦 Step 2/4: Building Debian package..."
+	@$(MAKE) package-deb
+	@echo "📦 Step 3/4: Building RPM package (if available)..."
+	@$(MAKE) package-rpm || (echo "⚠️  RPM build skipped (tools not available)"; true)
+	@echo "📦 Step 4/4: Building distribution packages..."
+	@$(MAKE) dist || (echo "⚠️  Some distribution packages failed"; true)
+	@echo "✅ Complete production release build finished"
+	@echo "📁 Artifacts created:"
+	@echo "   - Binary: ./ak (stripped, optimized)"
+	@echo "   - Packages: ./dist/"
+	@ls -la ./dist/ 2>/dev/null || echo "   (No dist directory - packages may be in parent directory)"
 
 test-release:
 	@echo "🧪 Running tests before release..."
