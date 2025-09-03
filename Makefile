@@ -5,12 +5,18 @@
 #   make                # build ./ak
 #   sudo make install   # install to /usr/local/bin/ak
 #   sudo make uninstall # remove installed binary
+#   make test           # run unit tests
 #   make package-deb    # builds ./dist/ak_<ver>_<arch>.deb (needs dpkg-deb)
 #   make package-rpm    # builds ./dist/ak-<ver>-1.<arch>.rpm (needs rpmbuild or fpm)
+#   make publish-ppa    # build signed source and upload to Launchpad PPA
+#   make release        # minor version bump + test + commit + tag + publish everywhere
+#   make release-patch  # patch version bump + test + commit + tag + publish everywhere
+#   make release-major  # major version bump + test + commit + tag + publish everywhere
+#   VERSION_BUMP=patch make release     # override default (minor) with patch
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 2.3.0
+VERSION   ?= 2.5.0
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
 # Map to Debian/RPM arch tags
@@ -25,6 +31,9 @@ LDFLAGS_COV := --coverage
 PREFIX    ?= /usr/local
 BINDIR    ?= $(PREFIX)/bin
 
+# Launchpad PPA settings
+SERIES    ?= $(shell dpkg-parsechangelog -S Distribution 2>/dev/null || echo noble)
+PPA       ?= ppa:apertacodex/ak
 # Source files
 CORE_SRC  := src/core/config.cpp
 CRYPTO_SRC := src/crypto/crypto.cpp
@@ -66,7 +75,8 @@ DISTDIR   := dist
 .PHONY: all test strip install install-user uninstall uninstall-user \
         coverage coverage-html coverage-summary clean-coverage clean-obj \
         package-deb package-rpm dist publish publish-patch publish-minor publish-major \
-        bump-patch bump-minor bump-major build-release test-release commit-and-push clean
+        bump-patch bump-minor bump-major build-release test-release commit-and-push publish-ppa \
+        release release-patch release-minor release-major publish-all clean
 
 all: $(BIN)
 
@@ -251,6 +261,14 @@ publish-apt:
 	@echo "📦 Updating APT repository..."
 	@cmake -DPROJECT_DIR=$(CURDIR) -P cmake/apt_publish.cmake
 
+# -------------------------
+# Launchpad PPA (one command)
+# -------------------------
+publish-ppa:
+	@echo "🚀 Publishing to Launchpad PPA $(PPA) (series=$(SERIES))..."
+	@chmod +x ./publish-ppa.sh || true
+	@PPA="$(PPA)" SERIES="$(SERIES)" ./publish-ppa.sh
+
 publish-patch:
 	@$(MAKE) bump-patch build-release test-release publish-apt commit-and-push
 
@@ -259,6 +277,50 @@ publish-minor:
 
 publish-major:
 	@$(MAKE) bump-major build-release test-release publish-apt commit-and-push
+
+# -------------------------
+# Comprehensive Release Commands (Default: minor)
+# Usage:
+#   make release              # minor version bump + publish everywhere
+#   make release-patch        # patch version bump + publish everywhere
+#   make release-minor        # minor version bump + publish everywhere
+#   make release-major        # major version bump + publish everywhere
+#   VERSION_BUMP=patch make release    # override default with flag
+#   VERSION_BUMP=major make release    # override default with flag
+# -------------------------
+
+VERSION   ?= 2.5.0
+
+release:
+	@echo "🚀 Starting comprehensive release ($(VERSION_BUMP) version bump)..."
+	@case "$(VERSION_BUMP)" in \
+		patch) $(MAKE) release-patch ;; \
+		minor) $(MAKE) release-minor ;; \
+		major) $(MAKE) release-major ;; \
+		*) echo "❌ Invalid VERSION_BUMP: $(VERSION_BUMP). Use: patch, minor, or major"; exit 1 ;; \
+	esac
+
+release-patch:
+	@echo "🚀 Release: patch version bump + publish to all repositories..."
+	@$(MAKE) bump-patch build-release test-release publish-all commit-and-push
+
+release-minor:
+	@echo "🚀 Release: minor version bump + publish to all repositories..."
+	@$(MAKE) bump-minor build-release test-release publish-all commit-and-push
+
+release-major:
+	@echo "🚀 Release: major version bump + publish to all repositories..."
+	@$(MAKE) bump-major build-release test-release publish-all commit-and-push
+
+publish-all:
+	@echo "📦 Publishing to all repositories..."
+	@echo "📦 1/3 Publishing to APT repository (GitHub Pages)..."
+	@$(MAKE) publish-apt
+	@echo "📦 2/3 Publishing to Launchpad PPA..."
+	@$(MAKE) publish-ppa || (echo "⚠️  PPA publish failed - continuing with other targets"; true)
+	@echo "📦 3/3 Building distribution packages..."
+	@$(MAKE) dist || (echo "⚠️  Package build failed - continuing"; true)
+	@echo "✅ Published to all repositories"
 
 bump-patch:
 	@echo "🔄 Bumping patch version..."
