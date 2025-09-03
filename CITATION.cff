@@ -4,8 +4,9 @@ type: software
 title: "AK - API Key Manager"
 abstract: "Cross-platform C++17 command-line tool for secure API key management with encrypted storage, service integration, and shell completions"
 authors:
-  - family-names: "ApertaCodex"
-    email: "developers@apertacodx.ai"
+  - family-names: "Mokhtari"
+    given-names: "Moussa"
+    email: "me@moussamokhtari.com"
     orcid: "https://orcid.org/0000-0000-0000-0000"
 repository-code: "https://github.com/ApertaCodex/ak"
 url: "https://apertacodex.github.io/ak"
