@@ -339,7 +339,14 @@ bump-patch:
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" index.html; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?_amd64\.deb/ak_$$new_version\_amd64.deb/g" ak-apt-repo/index.html; \
 	sed -i "s/Latest version:[^<]*/Latest version: $$new_version/g" ak-apt-repo/index.html; \
-	echo "✅ Updated version to $$new_version in all files (including HTML pages)"
+	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?/- **Version**: $$new_version/" README.md; \
+	sed -i "s/version: \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version: \"$$new_version\"/" CITATION.cff; \
+	sed -i "s/\"version\": \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/\"version\": \"$$new_version\"/" codemeta.json; \
+	sed -i "s/- \*\*Version\*\*: \`\?[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?\`\?/- **Version**: \`$$new_version\`/" DEBIAN_PUBLISHING.md; \
+	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/MANUAL.md; \
+	sed -i "s/\"AK [0-9]\+\.[0-9]\+\.[0-9]\+\"/\"AK $$new_version\"/" docs/ak.1; \
+	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/ak.1; \
+	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata)"
 
 bump-minor:
 	@echo "🔄 Bumping minor version..."
