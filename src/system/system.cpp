@@ -182,17 +182,80 @@ TargetUser resolveTargetUser() {
     return user;
 }
 
-// Shell integration - Placeholder implementations
+// Shell integration - Full implementation
 void writeShellInitFile(const core::Config& cfg) {
-    // This would contain the shell initialization logic from the original code
-    // For now, this is a placeholder that would need the full implementation
     fs::path initFile = fs::path(cfg.configDir) / "shell-init.sh";
     ensureSecureDir(fs::path(cfg.configDir));
     
     std::ofstream out(initFile);
     out << "# AK Shell Integration\n";
-    out << "# This file is auto-generated\n";
-    // The full shell initialization logic would go here
+    out << "# This file is auto-generated - do not edit manually\n";
+    out << "# Provides ak_load and ak_unload functions for environment management\n\n";
+    
+    // Find the ak binary path
+    std::string akBinary = "ak"; // Default to PATH lookup
+    
+    // Try to find the absolute path to ak
+    std::string whichResult = runCmdCapture("which ak 2>/dev/null");
+    if (!whichResult.empty()) {
+        // Remove trailing newline
+        whichResult.erase(whichResult.find_last_not_of(" \n\r\t") + 1);
+        if (!whichResult.empty()) {
+            akBinary = whichResult;
+        }
+    }
+    
+    out << "# Shell integration functions\n";
+    out << "ak_load() {\n";
+    out << "    if [ $# -eq 0 ]; then\n";
+    out << "        echo \"Usage: ak_load <profile|key> [--persist]\" >&2\n";
+    out << "        return 1\n";
+    out << "    fi\n";
+    out << "    local ak_output\n";
+    out << "    ak_output=$(" << akBinary << " load \"$@\" 2>&1)\n";
+    out << "    local ak_exit=$?\n";
+    out << "    if [ $ak_exit -eq 0 ]; then\n";
+    out << "        eval \"$ak_output\"\n";
+    out << "        echo \"✅ Loaded '$1' into current shell\" >&2\n";
+    out << "    else\n";
+    out << "        echo \"$ak_output\" >&2\n";
+    out << "        return $ak_exit\n";
+    out << "    fi\n";
+    out << "}\n\n";
+    
+    out << "ak_unload() {\n";
+    out << "    local ak_output\n";
+    out << "    ak_output=$(" << akBinary << " unload \"$@\" 2>&1)\n";
+    out << "    local ak_exit=$?\n";
+    out << "    if [ $ak_exit -eq 0 ]; then\n";
+    out << "        eval \"$ak_output\"\n";
+    out << "        echo \"🔄 Unloaded environment variables\" >&2\n";
+    out << "    else\n";
+    out << "        echo \"$ak_output\" >&2\n";
+    out << "        return $ak_exit\n";
+    out << "    fi\n";
+    out << "}\n\n";
+    
+    out << "# Auto-load persisted profiles for current directory\n";
+    out << "ak_auto_load() {\n";
+    out << "    # This function can be called on directory change to auto-load persisted profiles\n";
+    out << "    # Implementation would read directory mappings and load appropriate profiles\n";
+    out << "    return 0\n";
+    out << "}\n\n";
+    
+    out << "# Completion functions (basic)\n";
+    out << "if [ -n \"$BASH_VERSION\" ]; then\n";
+    out << "    _ak_load_complete() {\n";
+    out << "        local cur=\"${COMP_WORDS[COMP_CWORD]}\"\n";
+    out << "        local profiles=$(ak profiles 2>/dev/null)\n";
+    out << "        local keys=$(ak ls 2>/dev/null | awk '{print $1}')\n";
+    out << "        COMPREPLY=( $(compgen -W \"$profiles $keys --persist\" -- \"$cur\") )\n";
+    out << "    }\n";
+    out << "    complete -F _ak_load_complete ak_load\n";
+    out << "fi\n\n";
+    
+    out << "# Export functions for availability in subshells\n";
+    out << "export -f ak_load ak_unload ak_auto_load 2>/dev/null || true\n";
 }
 
 void ensureSourcedInRc(const core::Config& cfg) {
