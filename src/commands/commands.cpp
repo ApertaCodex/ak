@@ -115,6 +115,7 @@ int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
     
     // Add to vault
     core::KeyStore ks = storage::loadVault(cfg);
+    bool keyExistsInVault = ks.kv.find(name) != ks.kv.end();
     ks.kv[name] = value;
     storage::saveVault(cfg, ks);
     
@@ -125,16 +126,33 @@ int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
         
         // Check if key already exists in profile
         auto it = std::find(profileKeys.begin(), profileKeys.end(), name);
-        if (it == profileKeys.end()) {
+        bool keyExistsInProfile = (it != profileKeys.end());
+        
+        if (!keyExistsInProfile) {
             profileKeys.push_back(name);
             storage::writeProfile(cfg, profileName, profileKeys);
         }
         
-        core::ok(cfg, "Added " + name + " to vault and profile '" + profileName + "'.");
-        core::auditLog(cfg, "add_profile", {name, profileName});
+        // Provide appropriate feedback based on whether key existed
+        if (keyExistsInVault && keyExistsInProfile) {
+            core::ok(cfg, "Updated " + name + " in vault and profile '" + profileName + "'.");
+        } else if (keyExistsInVault && !keyExistsInProfile) {
+            core::ok(cfg, "Updated " + name + " in vault and added to profile '" + profileName + "'.");
+        } else if (!keyExistsInVault && keyExistsInProfile) {
+            core::ok(cfg, "Added " + name + " to vault (already in profile '" + profileName + "').");
+        } else {
+            core::ok(cfg, "Added " + name + " to vault and profile '" + profileName + "'.");
+        }
+        
+        core::auditLog(cfg, keyExistsInVault ? "update_profile" : "add_profile", {name, profileName});
     } else {
-        core::ok(cfg, "Added " + name + ".");
-        core::auditLog(cfg, "add", {name});
+        // Provide appropriate feedback for vault-only operations
+        if (keyExistsInVault) {
+            core::ok(cfg, "Updated " + name + " in vault.");
+        } else {
+            core::ok(cfg, "Added " + name + " to vault.");
+        }
+        core::auditLog(cfg, keyExistsInVault ? "update" : "add", {name});
     }
     
     return 0;
@@ -367,14 +385,78 @@ int cmd_purge(const core::Config& cfg, const std::vector<std::string>& args) {
 
 int cmd_load(const core::Config& cfg, const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        core::error(cfg, "Usage: ak load <profile> [--persist]");
+        core::error(cfg, "Usage: ak load <profile|key> [--persist]");
     }
     
-    std::string profile = args[1];
-    std::string exports = makeExportsForProfile(cfg, profile);
-    std::cout << exports;
+    std::string name = args[1];
+    bool persist = (args.size() >= 3 && args[2] == "--persist");
     
-    core::auditLog(cfg, "load", {profile});
+    // Check if it's a profile first
+    auto profiles = storage::listProfiles(cfg);
+    bool isProfile = std::find(profiles.begin(), profiles.end(), name) != profiles.end();
+    
+    std::string exports;
+    
+    if (isProfile) {
+        // Load profile
+        exports = makeExportsForProfile(cfg, name);
+        
+        if (persist) {
+            // Get current directory and store profile for persistence
+            std::string currentDir = system::getCwd();
+            auto existingProfiles = storage::readDirProfiles(cfg, currentDir);
+            if (std::find(existingProfiles.begin(), existingProfiles.end(), name) == existingProfiles.end()) {
+                existingProfiles.push_back(name);
+                storage::writeDirProfiles(cfg, currentDir, existingProfiles);
+            }
+        }
+        
+        core::auditLog(cfg, "load_profile", {name});
+    } else {
+        // Try to load as individual key
+        core::KeyStore ks = storage::loadVault(cfg);
+        auto it = ks.kv.find(name);
+        if (it == ks.kv.end()) {
+            core::error(cfg, "Neither profile nor key '" + name + "' found.");
+        }
+        
+        // Create export statement for single key
+        std::string value = it->second;
+        std::string escaped;
+        escaped.reserve(value.size() * 2);
+        
+        for (char c : value) {
+            if (c == '\\' || c == '"') {
+                escaped.push_back('\\');
+            }
+            if (c == '\n') {
+                escaped += "\\n";
+                continue;
+            }
+            escaped.push_back(c);
+        }
+        
+        exports = "export " + name + "=\"" + escaped + "\"\n";
+        
+        if (persist) {
+            // For individual keys, create a temporary profile and persist it
+            std::string currentDir = system::getCwd();
+            auto existingProfiles = storage::readDirProfiles(cfg, currentDir);
+            
+            // Create a temporary profile name based on the key
+            std::string tempProfileName = "_key_" + name;
+            storage::writeProfile(cfg, tempProfileName, {name});
+            
+            if (std::find(existingProfiles.begin(), existingProfiles.end(), tempProfileName) == existingProfiles.end()) {
+                existingProfiles.push_back(tempProfileName);
+                storage::writeDirProfiles(cfg, currentDir, existingProfiles);
+            }
+        }
+        
+        core::auditLog(cfg, "load_key", {name});
+    }
+    
+    std::cout << exports;
     return 0;
 }
 
