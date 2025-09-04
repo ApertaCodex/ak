@@ -1,15 +1,15 @@
 Package: ak
-Version: 2.11.3
+Version: 2.11.5
 Architecture: amd64
 Maintainer: AK Maintainer <maintainer@example.com>
 Installed-Size: 217
 Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
 Recommends: gnupg
-Filename: pool/main/ak_2.11.3_amd64.deb
+Filename: pool/main/ak_2.11.5_amd64.deb
 Size: 82882
-MD5sum: 437420f436e0a03e041e7aa0c87487e7
-SHA1: a06b0cb0277b6dbd0c2b7e19bc5256c050e7fe38
-SHA256: 49ac11bb60f7950a17f3b50ead83b1dbcc5f4e2d4936a97d7aef8ee2e233cdfb
+MD5sum: 2c022aa05ceb8802a29e279f31f65c99
+SHA1: ec70b7f6084277aa98848afa3a66110aeebee241
+SHA256: a3e25f43881033fb60ca1669768d4e4b20c9d077c1736cbb639235a88b0d640c
 Section: utils
 Priority: optional
 Homepage: https://github.com/apertacodex/ak
