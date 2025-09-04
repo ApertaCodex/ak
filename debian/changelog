@@ -1,4 +1,4 @@
-ak (2.11.3-1ubuntu1~jammy1) jammy; urgency=medium
+ak (2.11.5) jammy; urgency=medium
 
   * Multi-distribution build for Ubuntu jammy
   * Updated copyright to ApertaCodex with open source MIT license
@@ -8,68 +8,9 @@ ak (2.11.3-1ubuntu1~jammy1) jammy; urgency=medium
   * Fixed repository metadata and package paths
   * Attribution required for derivative works
 
- -- ApertaCodex <developers@apertacodex.ai>  Fri, 05 Sep 2025 01:58:59 +0300
+ -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 23:04:00 +0000
 
-
-  * Updated copyright to ApertaCodex with open source MIT license
-  * Restored beautiful homepage design with TailwindCSS
-  * Added full automation for APT repository publishing
-  * Enhanced release process with automated version management
-  * Fixed repository metadata and package paths
-  * Attribution required for derivative works
-  * Added support for Debian 12 (Bookworm)
-
- -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 22:57:00 +0000
-
-ak (2.11.3-1ubuntu4) oracular; urgency=medium
-
-  * Updated copyright to ApertaCodex with open source MIT license
-  * Restored beautiful homepage design with TailwindCSS
-  * Added full automation for APT repository publishing
-  * Enhanced release process with automated version management
-  * Fixed repository metadata and package paths
-  * Attribution required for derivative works
-  * Added support for Ubuntu 24.10 (Oracular)
-
- -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 22:57:00 +0000
-
-ak (2.11.3-1ubuntu3) focal; urgency=medium
-
-  * Updated copyright to ApertaCodex with open source MIT license
-  * Restored beautiful homepage design with TailwindCSS
-  * Added full automation for APT repository publishing
-  * Enhanced release process with automated version management
-  * Fixed repository metadata and package paths
-  * Attribution required for derivative works
-  * Added support for Ubuntu 20.04 LTS (Focal)
-
- -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 22:57:00 +0000
-
-ak (2.11.3-1ubuntu2) jammy; urgency=medium
-
-  * Updated copyright to ApertaCodex with open source MIT license
-  * Restored beautiful homepage design with TailwindCSS
-  * Added full automation for APT repository publishing
-  * Enhanced release process with automated version management
-  * Fixed repository metadata and package paths
-  * Attribution required for derivative works
-  * Added support for Ubuntu 22.04 LTS (Jammy)
-
- -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 22:57:00 +0000
-
-ak (2.11.3) plucky; urgency=medium
-
-  * Updated copyright to ApertaCodex with open source MIT license
-  * Restored beautiful homepage design with TailwindCSS
-  * Added full automation for APT repository publishing
-  * Enhanced release process with automated version management
-  * Fixed repository metadata and package paths
-  * Attribution required for derivative works
-  * Added support for Ubuntu 25.04 (plucky)
-
- -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 22:40:00 +0000
-
-ak (2.11.3) noble; urgency=medium
+ak (2.11.5) noble; urgency=medium
 
   * Updated copyright to ApertaCodex with open source MIT license
   * Restored beautiful homepage design with TailwindCSS
@@ -80,7 +21,7 @@ ak (2.11.3) noble; urgency=medium
 
  -- ApertaCodex <developers@apertacodex.ai>  Wed, 03 Sep 2025 06:37:00 +0000
 
-ak (2.11.3) noble; urgency=medium
+ak (2.11.5) noble; urgency=medium
 
   * Updated GoogleTest to v1.15.2 to fix CMake deprecation warnings
   * Resolved CMake compatibility warnings for modern builds
@@ -89,7 +30,7 @@ ak (2.11.3) noble; urgency=medium
 
  -- AK Maintainer <maintainer@example.com>  Tue, 03 Sep 2025 00:29:00 +0000
 
-ak (2.11.3) noble; urgency=medium
+ak (2.11.5) noble; urgency=medium
 
   * Major version 2.0.0 release
   * Cross-platform API Key Manager with secure storage
