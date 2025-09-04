@@ -115,6 +115,7 @@ int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
     
     // Add to vault
     core::KeyStore ks = storage::loadVault(cfg);
+    bool keyExistsInVault = ks.kv.find(name) != ks.kv.end();
     ks.kv[name] = value;
     storage::saveVault(cfg, ks);
     
@@ -125,16 +126,33 @@ int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
         
         // Check if key already exists in profile
         auto it = std::find(profileKeys.begin(), profileKeys.end(), name);
-        if (it == profileKeys.end()) {
+        bool keyExistsInProfile = (it != profileKeys.end());
+        
+        if (!keyExistsInProfile) {
             profileKeys.push_back(name);
             storage::writeProfile(cfg, profileName, profileKeys);
         }
         
-        core::ok(cfg, "Added " + name + " to vault and profile '" + profileName + "'.");
-        core::auditLog(cfg, "add_profile", {name, profileName});
+        // Provide appropriate feedback based on whether key existed
+        if (keyExistsInVault && keyExistsInProfile) {
+            core::ok(cfg, "Updated " + name + " in vault and profile '" + profileName + "'.");
+        } else if (keyExistsInVault && !keyExistsInProfile) {
+            core::ok(cfg, "Updated " + name + " in vault and added to profile '" + profileName + "'.");
+        } else if (!keyExistsInVault && keyExistsInProfile) {
+            core::ok(cfg, "Added " + name + " to vault (already in profile '" + profileName + "').");
+        } else {
+            core::ok(cfg, "Added " + name + " to vault and profile '" + profileName + "'.");
+        }
+        
+        core::auditLog(cfg, keyExistsInVault ? "update_profile" : "add_profile", {name, profileName});
     } else {
-        core::ok(cfg, "Added " + name + ".");
-        core::auditLog(cfg, "add", {name});
+        // Provide appropriate feedback for vault-only operations
+        if (keyExistsInVault) {
+            core::ok(cfg, "Updated " + name + " in vault.");
+        } else {
+            core::ok(cfg, "Added " + name + " to vault.");
+        }
+        core::auditLog(cfg, keyExistsInVault ? "update" : "add", {name});
     }
     
     return 0;
