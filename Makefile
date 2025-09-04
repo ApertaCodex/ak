@@ -263,9 +263,14 @@ publish-apt:
 	@cmake -DPROJECT_DIR=$(CURDIR) -P cmake/apt_publish.cmake
 
 # -------------------------
-# Launchpad PPA (one command)
+# Launchpad PPA (multi-distribution)
 # -------------------------
 publish-ppa:
+	@echo "🚀 Publishing to Launchpad PPA for all major Ubuntu distributions..."
+	@chmod +x ./publish-ppa-multi.sh || true
+	@PPA="$(PPA)" ./publish-ppa-multi.sh
+
+publish-ppa-single:
 	@echo "🚀 Publishing to Launchpad PPA $(PPA) (series=$(SERIES))..."
 	@chmod +x ./publish-ppa.sh || true
 	@PPA="$(PPA)" SERIES="$(SERIES)" ./publish-ppa.sh
