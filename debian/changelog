@@ -1,3 +1,15 @@
+ak (2.11.2-1ubuntu1) plucky; urgency=medium
+
+  * Updated copyright to ApertaCodex with open source MIT license
+  * Restored beautiful homepage design with TailwindCSS
+  * Added full automation for APT repository publishing
+  * Enhanced release process with automated version management
+  * Fixed repository metadata and package paths
+  * Attribution required for derivative works
+  * Added support for Ubuntu 25.04 (plucky)
+
+ -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 22:40:00 +0000
+
 ak (2.11.2) noble; urgency=medium
 
   * Updated copyright to ApertaCodex with open source MIT license
