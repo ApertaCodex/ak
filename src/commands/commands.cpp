@@ -133,6 +133,18 @@ int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
             storage::writeProfile(cfg, profileName, profileKeys);
         }
         
+        // Update encrypted bundles for persistence
+        // Generate updated exports for this profile
+        std::string exports = makeExportsForProfile(cfg, profileName);
+        if (!exports.empty()) {
+            storage::writeEncryptedBundle(cfg, profileName, exports);
+        }
+        
+        // Also update any temporary profile bundles for individual keys that might reference this key
+        std::string tempProfileName = "_key_" + name;
+        std::string tempExports = "export " + name + "=\"" + value + "\"\n";
+        storage::writeEncryptedBundle(cfg, tempProfileName, tempExports);
+        
         // Provide appropriate feedback based on whether key existed
         if (keyExistsInVault && keyExistsInProfile) {
             core::ok(cfg, "Updated " + name + " in vault and profile '" + profileName + "'.");
@@ -146,6 +158,12 @@ int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
         
         core::auditLog(cfg, keyExistsInVault ? "update_profile" : "add_profile", {name, profileName});
     } else {
+        // Even without a profile, we might need to update individual key bundles
+        // that were created during persistent loading
+        std::string tempProfileName = "_key_" + name;
+        std::string tempExports = "export " + name + "=\"" + value + "\"\n";
+        storage::writeEncryptedBundle(cfg, tempProfileName, tempExports);
+        
         // Provide appropriate feedback for vault-only operations
         if (keyExistsInVault) {
             core::ok(cfg, "Updated " + name + " in vault.");
