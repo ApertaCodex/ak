@@ -290,7 +290,7 @@ TEST(ModuleTest, BasicFunctionality) {
 
 ## 📊 Current Status
 
-- **Version**: 2.10.7
+- **Version**: 2.11.0
 - **Test Coverage**: ~60% line coverage, ~67% function coverage
 - **Tests**: 65 tests across 21 test suites
 - **Build System**: CMake 3.16+ with cross-platform support
