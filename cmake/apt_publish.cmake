@@ -129,14 +129,14 @@ file(WRITE "${REPO_DIR}/dists/stable/Release" ${RELEASE_CONTENT})
 # Sign Release file
 message(STATUS "✍️  Signing Release file...")
 execute_process(
-    COMMAND gpg --clearsign -o InRelease Release
+    COMMAND gpg --yes --clearsign -o InRelease Release
     WORKING_DIRECTORY "${REPO_DIR}/dists/stable"
     INPUT_FILE /dev/null
     RESULT_VARIABLE SIGN1_RESULT
 )
 
 execute_process(
-    COMMAND gpg --armor --detach-sig -o Release.gpg Release
+    COMMAND gpg --yes --armor --detach-sig -o Release.gpg Release
     WORKING_DIRECTORY "${REPO_DIR}/dists/stable"
     INPUT_FILE /dev/null
     RESULT_VARIABLE SIGN2_RESULT
