@@ -1,3 +1,51 @@
+ak (2.11.3-1ubuntu5) bookworm; urgency=medium
+
+  * Updated copyright to ApertaCodex with open source MIT license
+  * Restored beautiful homepage design with TailwindCSS
+  * Added full automation for APT repository publishing
+  * Enhanced release process with automated version management
+  * Fixed repository metadata and package paths
+  * Attribution required for derivative works
+  * Added support for Debian 12 (Bookworm)
+
+ -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 22:57:00 +0000
+
+ak (2.11.3-1ubuntu4) oracular; urgency=medium
+
+  * Updated copyright to ApertaCodex with open source MIT license
+  * Restored beautiful homepage design with TailwindCSS
+  * Added full automation for APT repository publishing
+  * Enhanced release process with automated version management
+  * Fixed repository metadata and package paths
+  * Attribution required for derivative works
+  * Added support for Ubuntu 24.10 (Oracular)
+
+ -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 22:57:00 +0000
+
+ak (2.11.3-1ubuntu3) focal; urgency=medium
+
+  * Updated copyright to ApertaCodex with open source MIT license
+  * Restored beautiful homepage design with TailwindCSS
+  * Added full automation for APT repository publishing
+  * Enhanced release process with automated version management
+  * Fixed repository metadata and package paths
+  * Attribution required for derivative works
+  * Added support for Ubuntu 20.04 LTS (Focal)
+
+ -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 22:57:00 +0000
+
+ak (2.11.3-1ubuntu2) jammy; urgency=medium
+
+  * Updated copyright to ApertaCodex with open source MIT license
+  * Restored beautiful homepage design with TailwindCSS
+  * Added full automation for APT repository publishing
+  * Enhanced release process with automated version management
+  * Fixed repository metadata and package paths
+  * Attribution required for derivative works
+  * Added support for Ubuntu 22.04 LTS (Jammy)
+
+ -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 22:57:00 +0000
+
 ak (2.11.3) plucky; urgency=medium
 
   * Updated copyright to ApertaCodex with open source MIT license
