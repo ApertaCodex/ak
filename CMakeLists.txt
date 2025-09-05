@@ -59,7 +59,15 @@ set(CORE_SOURCES
 add_executable(ak
     src/main.cpp
     ${CORE_SOURCES}
+    ${GUI_SOURCES}
 )
+
+# Link Qt6 libraries if GUI is enabled
+if(BUILD_GUI)
+    target_link_libraries(ak Qt6::Core Qt6::Widgets)
+    target_include_directories(ak PRIVATE include/gui)
+    target_compile_definitions(ak PRIVATE BUILD_GUI)
+endif()
 
 # Pass version to C++ code
 target_compile_definitions(ak PRIVATE AK_VERSION_STRING="${AK_VERSION}")
@@ -82,6 +90,31 @@ endif()
 # Linux-specific settings
 if(UNIX AND NOT APPLE)
     target_link_libraries(ak pthread)
+endif()
+
+# ============================================================================
+# GUI Configuration
+# ============================================================================
+
+option(BUILD_GUI "Build GUI support with Qt 6" OFF)
+
+if(BUILD_GUI)
+    # Find Qt 6 components
+    find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+    
+    # Enable Qt 6 MOC (Meta-Object Compiler)
+    set(CMAKE_AUTOMOC ON)
+    
+    message(STATUS "Qt6 found: Building with GUI support")
+    
+    # Add GUI sources to core sources
+    set(GUI_SOURCES
+        src/gui/gui.cpp
+        src/gui/mainwindow.cpp
+    )
+else()
+    message(STATUS "Qt6 not enabled: Building CLI-only version")
+    set(GUI_SOURCES "")
 endif()
 
 # ============================================================================
@@ -117,7 +150,13 @@ if(BUILD_TESTS)
     add_executable(ak_tests
         ${TEST_SOURCES}
         ${CORE_SOURCES}
+        ${GUI_SOURCES}
     )
+    
+    # Link Qt6 to tests if GUI enabled
+    if(BUILD_GUI)
+        target_link_libraries(ak_tests Qt6::Core Qt6::Widgets)
+    endif()
     
     target_include_directories(ak_tests PRIVATE tests)
     target_link_libraries(ak_tests 
