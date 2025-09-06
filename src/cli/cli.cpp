@@ -103,6 +103,7 @@ void cmd_help() {
     std::cout << "                                  " << ui::colorize("--persist: remember profile for current directory", ui::Colors::DIM) << "\n";
     std::cout << "  " << ui::colorize("ak unload [<profile>] [--persist]", ui::Colors::BRIGHT_CYAN) << " Unload profile environment variables\n";
     std::cout << "  " << ui::colorize("ak profiles", ui::Colors::BRIGHT_CYAN) << "                     List all available profiles\n";
+    std::cout << "  " << ui::colorize("ak duplicate <src> <dest>", ui::Colors::BRIGHT_CYAN) << "      Duplicate a profile with a new name\n";
     std::cout << "  " << ui::colorize("ak env --profile|-p <name>", ui::Colors::BRIGHT_CYAN) << "      Show profile as export statements\n\n";
 
     std::cout << ui::colorize("EXPORT/IMPORT:", ui::Colors::BRIGHT_MAGENTA + ui::Colors::BOLD) << "\n";
