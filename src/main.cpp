@@ -57,7 +57,17 @@ int main(int argc, char** argv) {
         }
     }
     
-    std::string cmd = args.empty() ? "welcome" : args[0];
+    // Check if no arguments provided - launch GUI if available, otherwise welcome
+    std::string cmd;
+    if (args.empty()) {
+#ifdef BUILD_GUI
+        cmd = "gui";
+#else
+        cmd = "welcome";
+#endif
+    } else {
+        cmd = args[0];
+    }
     
     // Ensure default profile exists
     storage::ensureDefaultProfile(cfg);
@@ -105,7 +115,10 @@ int main(int argc, char** argv) {
         // System
         {"install-shell", commands::cmd_install_shell},
         {"uninstall", commands::cmd_uninstall},
-        {"completion", commands::cmd_completion}
+        {"completion", commands::cmd_completion},
+        
+        // GUI
+        {"gui", commands::cmd_gui}
     };
     
     // Dispatch to appropriate command handler
