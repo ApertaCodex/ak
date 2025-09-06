@@ -167,13 +167,13 @@ int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
         
         // Provide appropriate feedback based on whether key existed
         if (keyExistsInVault && keyExistsInProfile) {
-            core::ok(cfg, "Updated " + name + " in vault and profile '" + profileName + "'.");
+            core::success(cfg, "Updated " + name + " in vault and profile '" + profileName + "'");
         } else if (keyExistsInVault && !keyExistsInProfile) {
-            core::ok(cfg, "Updated " + name + " in vault and added to profile '" + profileName + "'.");
+            core::success(cfg, "Updated " + name + " in vault and added to profile '" + profileName + "'");
         } else if (!keyExistsInVault && keyExistsInProfile) {
-            core::ok(cfg, "Added " + name + " to vault (already in profile '" + profileName + "').");
+            core::success(cfg, "Added " + name + " to vault (already in profile '" + profileName + "')");
         } else {
-            core::ok(cfg, "Added " + name + " to vault and profile '" + profileName + "'.");
+            core::success(cfg, "Added " + name + " to vault and profile '" + profileName + "'");
         }
         
         core::auditLog(cfg, keyExistsInVault ? "update_profile" : "add_profile", {name, profileName});
@@ -200,9 +200,9 @@ int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
         
         // Provide appropriate feedback for vault-only operations
         if (keyExistsInVault) {
-            core::ok(cfg, "Updated " + name + " in vault.");
+            core::success(cfg, "Successfully updated " + name);
         } else {
-            core::ok(cfg, "Added " + name + " to vault.");
+            core::success(cfg, "Successfully stored " + name);
         }
         core::auditLog(cfg, keyExistsInVault ? "update" : "add", {name});
     }
@@ -226,7 +226,7 @@ int cmd_set(const core::Config& cfg, const std::vector<std::string>& args) {
     ks.kv[name] = value;
     storage::saveVault(cfg, ks);
     
-    core::ok(cfg, "Stored " + name + ".");
+    core::success(cfg, "Successfully stored " + name);
     core::auditLog(cfg, "set", {name});
     
     return 0;
@@ -275,8 +275,22 @@ int cmd_ls(const core::Config& cfg, const std::vector<std::string>& args) {
         }
         std::cout << "]\n";
     } else {
+        if (names.empty()) {
+            core::info(cfg, "No secrets stored yet. Use 'ak add <NAME> <VALUE>' to get started!");
+            return 0;
+        }
+        
+        std::cout << ui::colorize("📂 Available Keys:", ui::Colors::BRIGHT_MAGENTA) << "\n";
         for (const auto& name : names) {
-            std::cout << std::left << std::setw(34) << name << " " << core::maskValue(ks.kv[name]) << "\n";
+            std::string keyName = ui::colorize(name, ui::Colors::BRIGHT_CYAN);
+            std::string maskedValue = ui::colorize(core::maskValue(ks.kv[name]), ui::Colors::BRIGHT_BLACK);
+            std::cout << "  " << std::left << std::setw(42) << keyName << " " << maskedValue << "\n";
+        }
+        
+        if (names.size() == 1) {
+            std::cout << "\n" << ui::colorize("Total: 1 key stored securely", ui::Colors::DIM) << "\n";
+        } else {
+            std::cout << "\n" << ui::colorize("Total: " + std::to_string(names.size()) + " keys stored securely", ui::Colors::DIM) << "\n";
         }
     }
     
@@ -300,7 +314,7 @@ int cmd_rm(const core::Config& cfg, const std::vector<std::string>& args) {
         std::string profilePath = cfg.profilesDir + "/" + profileName + ".profile";
         if (std::filesystem::exists(profilePath)) {
             std::filesystem::remove(profilePath);
-            core::ok(cfg, "Removed profile '" + profileName + "'.");
+            core::success(cfg, "Successfully removed profile '" + profileName + "'");
             core::auditLog(cfg, "rm_profile", {profileName});
         } else {
             core::error(cfg, "Profile file not found: " + profilePath);
@@ -316,7 +330,7 @@ int cmd_rm(const core::Config& cfg, const std::vector<std::string>& args) {
     }
     
     storage::saveVault(cfg, ks);
-    core::ok(cfg, "Removed " + name + ".");
+    core::success(cfg, "Successfully removed " + name);
     core::auditLog(cfg, "rm", {name});
     
     return 0;
@@ -337,9 +351,19 @@ int cmd_search(const core::Config& cfg, const std::vector<std::string>& args) {
         }
     }
     
+    if (hits.empty()) {
+        core::info(cfg, "No keys found matching pattern '" + pattern + "'");
+        return 0;
+    }
+    
     std::sort(hits.begin(), hits.end());
+    
+    std::cout << ui::colorize("🔍 Found " + std::to_string(hits.size()) + " key" + (hits.size() == 1 ? "" : "s") + " matching '" + pattern + "':", ui::Colors::BRIGHT_BLUE) << "\n";
+    
     for (const auto& hit : hits) {
-        std::cout << hit << "\n";
+        std::string keyName = ui::colorize(hit, ui::Colors::BRIGHT_CYAN);
+        std::string maskedValue = ui::colorize(core::maskValue(ks.kv[hit]), ui::Colors::BRIGHT_BLACK);
+        std::cout << "  " << std::left << std::setw(42) << keyName << " " << maskedValue << "\n";
     }
     
     core::auditLog(cfg, "search", hits);
@@ -362,7 +386,7 @@ int cmd_cp(const core::Config& cfg, const std::vector<std::string>& args) {
         core::error(cfg, "No clipboard utility found (pbcopy/wl-copy/xclip).");
     }
     
-    core::ok(cfg, "Copied " + name + " to clipboard.");
+    core::success(cfg, "Successfully copied " + name + " to clipboard");
     core::auditLog(cfg, "cp", {name});
     
     return 0;
@@ -386,7 +410,7 @@ int cmd_save(const core::Config& cfg, const std::vector<std::string>& args) {
     }
     
     storage::writeProfile(cfg, profile, names);
-    core::ok(cfg, "Saved profile '" + profile + "' (" + std::to_string(names.size()) + " keys).");
+    core::success(cfg, "Successfully saved profile '" + profile + "' with " + std::to_string(names.size()) + " key" + (names.size() == 1 ? "" : "s"));
     core::auditLog(cfg, "save_profile", names);
     
     return 0;
@@ -394,9 +418,35 @@ int cmd_save(const core::Config& cfg, const std::vector<std::string>& args) {
 
 int cmd_profiles(const core::Config& cfg, const std::vector<std::string>& args) {
     (void)args; // Parameter intentionally unused
-    for (const auto& name : storage::listProfiles(cfg)) {
-        std::cout << name << "\n";
+    auto profiles = storage::listProfiles(cfg);
+    
+    if (profiles.empty()) {
+        core::info(cfg, "No profiles created yet. Use 'ak save <profile> [KEYS...]' to create one!");
+        return 0;
     }
+    
+    std::cout << ui::colorize("📁 Available Profiles:", ui::Colors::BRIGHT_MAGENTA) << "\n";
+    
+    for (const auto& name : profiles) {
+        // Get profile keys count
+        auto keys = storage::readProfile(cfg, name);
+        std::string profileName = ui::colorize(name, ui::Colors::BRIGHT_CYAN);
+        std::string keyInfo = ui::colorize(std::to_string(keys.size()) + " key" + (keys.size() == 1 ? "" : "s"), ui::Colors::DIM);
+        
+        // Show key names if not too many
+        if (keys.size() <= 3 && !keys.empty()) {
+            std::string keyList = "";
+            for (size_t i = 0; i < keys.size(); ++i) {
+                if (i > 0) keyList += ", ";
+                keyList += keys[i];
+            }
+            keyInfo += ui::colorize(" (" + keyList + ")", ui::Colors::DIM);
+        }
+        
+        std::cout << "  " << profileName << " - " << keyInfo << "\n";
+    }
+    
+    std::cout << "\n" << ui::colorize("Use 'ak load <profile>' to switch profiles", ui::Colors::DIM) << "\n";
     return 0;
 }
 
