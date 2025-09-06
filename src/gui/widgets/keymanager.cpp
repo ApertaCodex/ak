@@ -1,0 +1,521 @@
+#ifdef BUILD_GUI
+
+#include "gui/widgets/keymanager.hpp"
+#include "gui/widgets/common/dialogs.hpp"
+#include "gui/widgets/common/secureinput.hpp"
+#include "storage/vault.hpp"
+#include "services/services.hpp"
+#include "core/config.hpp"
+#include <QApplication>
+#include <QClipboard>
+#include <QHeaderView>
+#include <QMessageBox>
+#include <QProgressDialog>
+#include <QTimer>
+#include <QRegularExpression>
+#include <QMap>
+#include <algorithm>
+
+namespace ak {
+namespace gui {
+namespace widgets {
+
+// MaskedTableItem Implementation
+MaskedTableItem::MaskedTableItem(const QString &actualValue)
+    : QTableWidgetItem(), actualValue(actualValue), masked(true)
+{
+    updateDisplayValue();
+}
+
+void MaskedTableItem::setMasked(bool masked)
+{
+    this->masked = masked;
+    updateDisplayValue();
+}
+
+bool MaskedTableItem::isMasked() const
+{
+    return masked;
+}
+
+QString MaskedTableItem::getActualValue() const
+{
+    return actualValue;
+}
+
+void MaskedTableItem::updateDisplayValue()
+{
+    if (masked) {
+        QString maskedValue;
+        if (actualValue.length() > 8) {
+            maskedValue = actualValue.left(4) + QString("*").repeated(actualValue.length() - 8) + actualValue.right(4);
+        } else {
+            maskedValue = QString("*").repeated(actualValue.length());
+        }
+        setText(maskedValue);
+        setToolTip("Click the eye button to reveal value");
+    } else {
+        setText(actualValue);
+        setToolTip("");
+    }
+}
+
+// KeyManagerWidget Implementation
+KeyManagerWidget::KeyManagerWidget(const core::Config& config, QWidget *parent)
+    : QWidget(parent), config(config), mainLayout(nullptr), toolbarLayout(nullptr),
+      searchEdit(nullptr), addButton(nullptr), editButton(nullptr), deleteButton(nullptr),
+      toggleVisibilityButton(nullptr), refreshButton(nullptr), statusLabel(nullptr),
+      table(nullptr), contextMenu(nullptr), addAction(nullptr), editAction(nullptr),
+      deleteAction(nullptr), copyNameAction(nullptr), copyValueAction(nullptr),
+      toggleVisibilityAction(nullptr), globalVisibilityState(true)
+{
+    setupUi();
+    loadKeys();
+    updateTable();
+}
+
+void KeyManagerWidget::setupUi()
+{
+    mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+    mainLayout->setSpacing(10);
+    
+    setupToolbar();
+    setupTable();
+    setupContextMenu();
+    
+    // Status label
+    statusLabel = new QLabel("Ready", this);
+    statusLabel->setStyleSheet("color: #666; font-size: 12px;");
+    mainLayout->addWidget(statusLabel);
+}
+
+void KeyManagerWidget::setupToolbar()
+{
+    toolbarLayout = new QHBoxLayout();
+    
+    // Search box
+    searchEdit = new QLineEdit(this);
+    searchEdit->setPlaceholderText("Search keys...");
+    searchEdit->setMaximumWidth(200);
+    connect(searchEdit, &QLineEdit::textChanged, this, &KeyManagerWidget::searchKeys);
+    
+    // Buttons
+    addButton = new QPushButton("Add Key", this);
+    addButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileIcon));
+    connect(addButton, &QPushButton::clicked, this, &KeyManagerWidget::addKey);
+    
+    editButton = new QPushButton("Edit", this);
+    editButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+    editButton->setEnabled(false);
+    connect(editButton, &QPushButton::clicked, this, &KeyManagerWidget::editKey);
+    
+    deleteButton = new QPushButton("Delete", this);
+    deleteButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_TrashIcon));
+    deleteButton->setEnabled(false);
+    connect(deleteButton, &QPushButton::clicked, this, &KeyManagerWidget::deleteKey);
+    
+    toggleVisibilityButton = new QPushButton("Show All", this);
+    toggleVisibilityButton->setCheckable(true);
+    toggleVisibilityButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
+    connect(toggleVisibilityButton, &QPushButton::clicked, this, &KeyManagerWidget::toggleKeyVisibility);
+    
+    refreshButton = new QPushButton("Refresh", this);
+    refreshButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_BrowserReload));
+    connect(refreshButton, &QPushButton::clicked, this, &KeyManagerWidget::refreshKeys);
+    
+    // Layout
+    toolbarLayout->addWidget(searchEdit);
+    toolbarLayout->addStretch();
+    toolbarLayout->addWidget(addButton);
+    toolbarLayout->addWidget(editButton);
+    toolbarLayout->addWidget(deleteButton);
+    toolbarLayout->addWidget(toggleVisibilityButton);
+    toolbarLayout->addWidget(refreshButton);
+    
+    mainLayout->addLayout(toolbarLayout);
+}
+
+void KeyManagerWidget::setupTable()
+{
+    table = new QTableWidget(this);
+    table->setColumnCount(ColumnCount);
+    
+    QStringList headers = {"Key Name", "Service", "Value", "Actions"};
+    table->setHorizontalHeaderLabels(headers);
+    
+    // Configure table appearance
+    table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    table->setSelectionMode(QAbstractItemView::SingleSelection);
+    table->setAlternatingRowColors(true);
+    table->setSortingEnabled(true);
+    table->setContextMenuPolicy(Qt::CustomContextMenu);
+    
+    // Configure column widths
+    QHeaderView *header = table->horizontalHeader();
+    header->setSectionResizeMode(ColumnName, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(ColumnService, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(ColumnValue, QHeaderView::Stretch);
+    header->setSectionResizeMode(ColumnActions, QHeaderView::ResizeToContents);
+    
+    // Connect signals
+    connect(table, &QTableWidget::itemSelectionChanged, this, &KeyManagerWidget::onSelectionChanged);
+    connect(table, &QTableWidget::itemChanged, this, &KeyManagerWidget::onTableItemChanged);
+    connect(table, &QTableWidget::customContextMenuRequested, this, &KeyManagerWidget::showContextMenu);
+    connect(table, &QTableWidget::itemDoubleClicked, this, &KeyManagerWidget::editKey);
+    
+    mainLayout->addWidget(table);
+}
+
+void KeyManagerWidget::setupContextMenu()
+{
+    contextMenu = new QMenu(this);
+    
+    addAction = contextMenu->addAction("Add Key");
+    addAction->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileIcon));
+    connect(addAction, &QAction::triggered, this, &KeyManagerWidget::addKey);
+    
+    editAction = contextMenu->addAction("Edit Key");
+    editAction->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+    connect(editAction, &QAction::triggered, this, &KeyManagerWidget::editKey);
+    
+    deleteAction = contextMenu->addAction("Delete Key");
+    deleteAction->setIcon(QApplication::style()->standardIcon(QStyle::SP_TrashIcon));
+    connect(deleteAction, &QAction::triggered, this, &KeyManagerWidget::deleteKey);
+    
+    contextMenu->addSeparator();
+    
+    copyNameAction = contextMenu->addAction("Copy Name");
+    copyNameAction->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogApplyButton));
+    connect(copyNameAction, &QAction::triggered, [this]() {
+        int row = table->currentRow();
+        if (row >= 0) {
+            QString name = table->item(row, ColumnName)->text();
+            QApplication::clipboard()->setText(name);
+            showSuccess("Key name copied to clipboard");
+        }
+    });
+    
+    copyValueAction = contextMenu->addAction("Copy Value");
+    copyValueAction->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogApplyButton));
+    connect(copyValueAction, &QAction::triggered, [this]() {
+        int row = table->currentRow();
+        if (row >= 0) {
+            MaskedTableItem *item = dynamic_cast<MaskedTableItem*>(table->item(row, ColumnValue));
+            if (item) {
+                QApplication::clipboard()->setText(item->getActualValue());
+                showSuccess("Key value copied to clipboard");
+            }
+        }
+    });
+    
+    toggleVisibilityAction = contextMenu->addAction("Toggle Visibility");
+    connect(toggleVisibilityAction, &QAction::triggered, [this]() {
+        int row = table->currentRow();
+        if (row >= 0) {
+            MaskedTableItem *item = dynamic_cast<MaskedTableItem*>(table->item(row, ColumnValue));
+            if (item) {
+                item->setMasked(!item->isMasked());
+            }
+        }
+    });
+}
+
+void KeyManagerWidget::loadKeys()
+{
+    try {
+        keyStore = ak::storage::loadVault(config);
+        emit statusMessage(QString("Loaded %1 keys").arg(keyStore.kv.size()));
+    } catch (const std::exception& e) {
+        showError(QString("Failed to load keys: %1").arg(e.what()));
+        keyStore = core::KeyStore(); // Empty keystore on error
+    }
+}
+
+void KeyManagerWidget::saveKeys()
+{
+    try {
+        ak::storage::saveVault(config, keyStore);
+        emit statusMessage("Keys saved successfully");
+    } catch (const std::exception& e) {
+        showError(QString("Failed to save keys: %1").arg(e.what()));
+    }
+}
+
+void KeyManagerWidget::updateTable()
+{
+    // Clear table
+    table->setRowCount(0);
+    
+    // Add keys to table
+    int row = 0;
+    for (const auto& [name, value] : keyStore.kv) {
+        QString qname = QString::fromStdString(name);
+        QString qvalue = QString::fromStdString(value);
+        
+        // Apply filter if active
+        if (!currentFilter.isEmpty()) {
+            if (!qname.contains(currentFilter, Qt::CaseInsensitive)) {
+                continue;
+            }
+        }
+        
+        QString service = detectService(qname);
+        addKeyToTable(qname, qvalue, service);
+        row++;
+    }
+    
+    // Update status
+    statusLabel->setText(QString("Showing %1 keys").arg(table->rowCount()));
+    
+    // Update button states
+    onSelectionChanged();
+}
+
+void KeyManagerWidget::addKeyToTable(const QString &name, const QString &value, const QString &service)
+{
+    int row = table->rowCount();
+    table->insertRow(row);
+    
+    // Name column
+    QTableWidgetItem *nameItem = new QTableWidgetItem(name);
+    nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
+    table->setItem(row, ColumnName, nameItem);
+    
+    // Service column
+    QTableWidgetItem *serviceItem = new QTableWidgetItem(service);
+    serviceItem->setFlags(serviceItem->flags() & ~Qt::ItemIsEditable);
+    table->setItem(row, ColumnService, serviceItem);
+    
+    // Value column (masked)
+    MaskedTableItem *valueItem = new MaskedTableItem(value);
+    valueItem->setMasked(globalVisibilityState);
+    valueItem->setFlags(valueItem->flags() & ~Qt::ItemIsEditable);
+    table->setItem(row, ColumnValue, valueItem);
+    
+    // Actions column (placeholder)
+    QTableWidgetItem *actionsItem = new QTableWidgetItem("••• ");
+    actionsItem->setFlags(actionsItem->flags() & ~Qt::ItemIsEditable);
+    actionsItem->setTextAlignment(Qt::AlignCenter);
+    actionsItem->setToolTip("Right-click for actions");
+    table->setItem(row, ColumnActions, actionsItem);
+}
+
+QString KeyManagerWidget::detectService(const QString &keyName)
+{
+    QString lowerName = keyName.toLower();
+    
+    // Map key patterns to services
+    static const QMap<QString, QString> servicePatterns = {
+        {"openai", "OpenAI"},
+        {"anthropic", "Anthropic"},
+        {"google", "Google"},
+        {"azure", "Azure"},
+        {"aws", "AWS"},
+        {"github", "GitHub"},
+        {"slack", "Slack"},
+        {"discord", "Discord"},
+        {"stripe", "Stripe"},
+        {"twilio", "Twilio"},
+        {"sendgrid", "SendGrid"},
+        {"mailgun", "Mailgun"},
+        {"cloudflare", "Cloudflare"},
+        {"vercel", "Vercel"},
+        {"netlify", "Netlify"},
+        {"heroku", "Heroku"}
+    };
+    
+    for (auto it = servicePatterns.begin(); it != servicePatterns.end(); ++it) {
+        if (lowerName.contains(it.key())) {
+            return it.value();
+        }
+    }
+    
+    return "Custom";
+}
+
+void KeyManagerWidget::refreshKeys()
+{
+    loadKeys();
+    updateTable();
+    showSuccess("Keys refreshed");
+}
+
+void KeyManagerWidget::selectKey(const QString &keyName)
+{
+    for (int row = 0; row < table->rowCount(); ++row) {
+        if (table->item(row, ColumnName)->text() == keyName) {
+            table->selectRow(row);
+            table->scrollToItem(table->item(row, ColumnName));
+            break;
+        }
+    }
+}
+
+void KeyManagerWidget::addKey()
+{
+    KeyEditDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted) {
+        QString name = dialog.getKeyName();
+        QString value = dialog.getKeyValue();
+        
+        // Check if key already exists
+        if (keyStore.kv.find(name.toStdString()) != keyStore.kv.end()) {
+            showError("Key with this name already exists!");
+            return;
+        }
+        
+        // Add to keystore
+        keyStore.kv[name.toStdString()] = value.toStdString();
+        saveKeys();
+        updateTable();
+        selectKey(name);
+        
+        showSuccess(QString("Added key: %1").arg(name));
+    }
+}
+
+void KeyManagerWidget::editKey()
+{
+    int row = table->currentRow();
+    if (row < 0) return;
+    
+    QString name = table->item(row, ColumnName)->text();
+    MaskedTableItem *valueItem = dynamic_cast<MaskedTableItem*>(table->item(row, ColumnValue));
+    QString service = table->item(row, ColumnService)->text();
+    
+    if (!valueItem) return;
+    
+    KeyEditDialog dialog(name, valueItem->getActualValue(), service, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        QString newValue = dialog.getKeyValue();
+        
+        // Update keystore
+        keyStore.kv[name.toStdString()] = newValue.toStdString();
+        saveKeys();
+        
+        // Update table item
+        valueItem = new MaskedTableItem(newValue);
+        valueItem->setMasked(globalVisibilityState);
+        valueItem->setFlags(valueItem->flags() & ~Qt::ItemIsEditable);
+        table->setItem(row, ColumnValue, valueItem);
+        
+        showSuccess(QString("Updated key: %1").arg(name));
+    }
+}
+
+void KeyManagerWidget::deleteKey()
+{
+    int row = table->currentRow();
+    if (row < 0) return;
+    
+    QString name = table->item(row, ColumnName)->text();
+    
+    if (ConfirmationDialog::confirm(this, "Delete Key", 
+        QString("Are you sure you want to delete the key '%1'?").arg(name),
+        "This action cannot be undone.")) {
+        
+        // Remove from keystore
+        keyStore.kv.erase(name.toStdString());
+        saveKeys();
+        updateTable();
+        
+        showSuccess(QString("Deleted key: %1").arg(name));
+    }
+}
+
+void KeyManagerWidget::searchKeys(const QString &text)
+{
+    currentFilter = text.trimmed();
+    updateTable();
+}
+
+void KeyManagerWidget::toggleKeyVisibility()
+{
+    globalVisibilityState = !globalVisibilityState;
+    
+    // Update all masked items
+    for (int row = 0; row < table->rowCount(); ++row) {
+        MaskedTableItem *item = dynamic_cast<MaskedTableItem*>(table->item(row, ColumnValue));
+        if (item) {
+            item->setMasked(globalVisibilityState);
+        }
+    }
+    
+    // Update button text
+    toggleVisibilityButton->setText(globalVisibilityState ? "Show All" : "Hide All");
+    toggleVisibilityButton->setChecked(!globalVisibilityState);
+}
+
+void KeyManagerWidget::showContextMenu(const QPoint &pos)
+{
+    QTableWidgetItem *item = table->itemAt(pos);
+    if (!item) return;
+    
+    int row = item->row();
+    bool hasSelection = row >= 0;
+    
+    editAction->setEnabled(hasSelection);
+    deleteAction->setEnabled(hasSelection);
+    copyNameAction->setEnabled(hasSelection);
+    copyValueAction->setEnabled(hasSelection);
+    toggleVisibilityAction->setEnabled(hasSelection);
+    
+    contextMenu->exec(table->mapToGlobal(pos));
+}
+
+void KeyManagerWidget::onTableItemChanged(QTableWidgetItem *item)
+{
+    // Currently all items are read-only, so this shouldn't be called
+    Q_UNUSED(item)
+}
+
+void KeyManagerWidget::onSelectionChanged()
+{
+    bool hasSelection = table->currentRow() >= 0;
+    editButton->setEnabled(hasSelection);
+    deleteButton->setEnabled(hasSelection);
+}
+
+bool KeyManagerWidget::validateKeyName(const QString &name)
+{
+    if (name.isEmpty()) return false;
+    
+    // Check for valid environment variable name format
+    QRegularExpression regex("^[A-Z][A-Z0-9_]*$");
+    return regex.match(name).hasMatch();
+}
+
+void KeyManagerWidget::showError(const QString &message)
+{
+    statusLabel->setText(QString("Error: %1").arg(message));
+    statusLabel->setStyleSheet("color: #ff4444; font-size: 12px;");
+    
+    // Reset to normal after 5 seconds
+    QTimer::singleShot(5000, [this]() {
+        statusLabel->setText("Ready");
+        statusLabel->setStyleSheet("color: #666; font-size: 12px;");
+    });
+    
+    emit statusMessage(QString("Error: %1").arg(message));
+}
+
+void KeyManagerWidget::showSuccess(const QString &message)
+{
+    statusLabel->setText(message);
+    statusLabel->setStyleSheet("color: #00aa00; font-size: 12px;");
+    
+    // Reset to normal after 3 seconds
+    QTimer::singleShot(3000, [this]() {
+        statusLabel->setText("Ready");
+        statusLabel->setStyleSheet("color: #666; font-size: 12px;");
+    });
+    
+    emit statusMessage(message);
+}
+
+} // namespace widgets
+} // namespace gui
+} // namespace ak
+
+#endif // BUILD_GUI
