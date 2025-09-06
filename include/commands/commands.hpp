@@ -46,6 +46,12 @@ int cmd_help(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_welcome(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_gui(const core::Config& cfg, const std::vector<std::string>& args);
 
+// Custom service management
+int cmd_service(const core::Config& cfg, const std::vector<std::string>& args);
+
+// Profile duplication
+int cmd_duplicate(const core::Config& cfg, const std::vector<std::string>& args);
+
 // Utility functions
 std::string makeExportsForProfile(const core::Config& cfg, const std::string& name);
 void printExportsForProfile(const core::Config& cfg, const std::string& name);
