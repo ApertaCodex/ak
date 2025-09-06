@@ -4,8 +4,8 @@
 
 #include "core/config.hpp"
 #include "gui/widgets/keymanager.hpp"
-#include "gui/widgets/servicetester.hpp"
 #include "gui/widgets/profilemanager.hpp"
+#include "gui/widgets/servicemanager.hpp"
 #include <QMainWindow>
 #include <QTabWidget>
 #include <QVBoxLayout>
@@ -42,8 +42,8 @@ private:
     // UI Components
     QTabWidget *tabWidget;
     widgets::KeyManagerWidget *keyManagerWidget;
-    widgets::ServiceTesterWidget *serviceTesterWidget;
     widgets::ProfileManagerWidget *profileManagerWidget;
+    widgets::ServiceManagerWidget *serviceManagerWidget;
     QWidget *settingsTab;
 
     // Menu actions
