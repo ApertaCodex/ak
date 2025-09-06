@@ -96,9 +96,37 @@ EOF
     # Clean previous builds
     rm -f ../ak_${DIST_VERSION}* || true
     
+    # Temporarily backup and remove ignored directories to avoid dpkg-source errors
+    TEMP_BACKUP_DIR="/tmp/ak_ppa_backup_$$_${DIST}"
+    mkdir -p "${TEMP_BACKUP_DIR}"
+    BACKED_UP_DIRS=()
+
+    if [ -d ".vscode" ]; then
+        cp -r .vscode "${TEMP_BACKUP_DIR}/"
+        rm -rf .vscode
+        BACKED_UP_DIRS+=(".vscode")
+    fi
+    if [ -d "tests/googletest" ]; then
+        cp -r tests/googletest "${TEMP_BACKUP_DIR}/"
+        rm -rf tests/googletest
+        BACKED_UP_DIRS+=("tests/googletest")
+    fi
+    
     # Build source package
     BUILD_OUTPUT=$(debuild -S -sa -k"${KEYID}" 2>&1)
-    if [ $? -eq 0 ]; then
+    BUILD_SUCCESS=$?
+    
+    # Restore backed up directories
+    for dir in "${BACKED_UP_DIRS[@]}"; do
+        if [ -d "${TEMP_BACKUP_DIR}/${dir}" ]; then
+            cp -r "${TEMP_BACKUP_DIR}/${dir}" .
+        fi
+    done
+
+    # Clean up temp backup
+    rm -rf "${TEMP_BACKUP_DIR}"
+    
+    if [ $BUILD_SUCCESS -eq 0 ]; then
         echo "  ✅ Source package built successfully"
         
         # Upload to PPA
