@@ -294,4 +294,4 @@ For complete documentation, visit: https://github.com/apertacodex/ak
 
 ## VERSION
 
-This manual page corresponds to AK version 3.1.8.
+This manual page corresponds to AK version 3.1.9.
