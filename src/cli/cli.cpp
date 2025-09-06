@@ -103,6 +103,7 @@ void cmd_help() {
     std::cout << "                                  " << ui::colorize("--persist: remember profile for current directory", ui::Colors::DIM) << "\n";
     std::cout << "  " << ui::colorize("ak unload [<profile>] [--persist]", ui::Colors::BRIGHT_CYAN) << " Unload profile environment variables\n";
     std::cout << "  " << ui::colorize("ak profiles", ui::Colors::BRIGHT_CYAN) << "                     List all available profiles\n";
+    std::cout << "  " << ui::colorize("ak duplicate <src> <dest>", ui::Colors::BRIGHT_CYAN) << "      Duplicate a profile with a new name\n";
     std::cout << "  " << ui::colorize("ak env --profile|-p <name>", ui::Colors::BRIGHT_CYAN) << "      Show profile as export statements\n\n";
 
     std::cout << ui::colorize("EXPORT/IMPORT:", ui::Colors::BRIGHT_MAGENTA + ui::Colors::BOLD) << "\n";
@@ -113,6 +114,12 @@ void cmd_help() {
     std::cout << "                                  " << ui::colorize("--keys: only import known service provider keys", ui::Colors::BRIGHT_YELLOW) << "\n";
     std::cout << "                                  \n";
     std::cout << "  " << ui::colorize("Supported formats:", ui::Colors::WHITE) << " env, dotenv, json, yaml\n\n";
+
+    std::cout << ui::colorize("SERVICE MANAGEMENT:", ui::Colors::BRIGHT_MAGENTA + ui::Colors::BOLD) << "\n";
+    std::cout << "  " << ui::colorize("ak service add", ui::Colors::BRIGHT_CYAN) << "                   Create a new custom API service\n";
+    std::cout << "  " << ui::colorize("ak service list", ui::Colors::BRIGHT_CYAN) << "                  List all custom services\n";
+    std::cout << "  " << ui::colorize("ak service edit <name>", ui::Colors::BRIGHT_CYAN) << "          Edit an existing custom service\n";
+    std::cout << "  " << ui::colorize("ak service delete <name>", ui::Colors::BRIGHT_CYAN) << "        Delete a custom service\n\n";
 
     std::cout << ui::colorize("UTILITIES:", ui::Colors::BRIGHT_YELLOW + ui::Colors::BOLD) << "\n";
     std::cout << "  " << ui::colorize("ak run --profile|-p <p> -- <cmd>", ui::Colors::BRIGHT_CYAN) << "  Run command with profile environment loaded\n";
@@ -153,7 +160,7 @@ _ak_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Main commands
-    local commands="set get ls rm search cp purge save load unload profiles env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome"
+    local commands="add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit service install-shell uninstall completion version backend help welcome"
 
     case "${prev}" in
         ak)
@@ -178,8 +185,12 @@ _ak_completion() {
             COMPREPLY=($(compgen -W "enable disable" -- ${cur}))
             return 0
             ;;
+        service)
+            COMPREPLY=($(compgen -W "add list edit delete" -- ${cur}))
+            return 0
+            ;;
         test)
-            local services="anthropic azure_openai brave cohere deepseek exa fireworks gemini groq huggingface mistral openai openrouter perplexity sambanova tavily together xai"
+            local services="anthropic azure_openai brave cohere deepseek exa fireworks gemini groq huggingface inference langchain continue composio hyperbolic logfire mistral openai openrouter perplexity sambanova tavily together xai"
             COMPREPLY=($(compgen -W "${services} --all --json --fail-fast" -- ${cur}))
             return 0
             ;;
