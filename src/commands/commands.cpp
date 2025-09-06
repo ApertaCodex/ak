@@ -5,6 +5,9 @@
 #include "services/services.hpp"
 #include "ui/ui.hpp"
 #include "cli/cli.hpp"
+#ifdef BUILD_GUI
+#include "gui/gui.hpp"
+#endif
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -502,6 +505,24 @@ int cmd_load(const core::Config& cfg, const std::vector<std::string>& args) {
         core::auditLog(cfg, "load_key", {name});
     }
     
+    // Smart injection solution: Check if user is in an interactive shell environment
+    bool isInteractive = (getenv("PS1") != nullptr);  // Check if PS1 is set (interactive shell)
+    std::string shellInitPath = cfg.configDir + "/shell-init.sh";
+    bool hasShellIntegration = std::filesystem::exists(shellInitPath);
+    
+    if (isInteractive && hasShellIntegration) {
+        // User has shell integration available and is in interactive shell
+        std::cerr << "💡 To load into your current shell, use: " << ui::colorize("ak_load " + name + (persist ? " --persist" : ""), ui::Colors::BRIGHT_CYAN) << "\n";
+        std::cerr << "   Or run: " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_YELLOW) << "\n";
+    } else if (isInteractive) {
+        // User is in interactive shell but doesn't have shell integration
+        std::cerr << "💡 To load into your current shell, run: " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_CYAN) << "\n";
+        std::cerr << "   Or install shell integration: " << ui::colorize("ak install-shell", ui::Colors::BRIGHT_YELLOW) << "\n";
+    } else {
+        // Non-interactive or scripting context - just output the exports
+        std::cerr << "💡 In a script, use: " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_CYAN) << "\n";
+    }
+    
     std::cout << exports;
     return 0;
 }
@@ -558,8 +579,199 @@ int cmd_export(const core::Config& cfg, const std::vector<std::string>& args) {
 }
 
 int cmd_import(const core::Config& cfg, const std::vector<std::string>& args) {
-    (void)args; // Parameter intentionally unused
-    core::ok(cfg, "Import command - implementation needed");
+    if (args.size() < 2) {
+        core::error(cfg, "Usage: ak import --profile|-p <profile> [--format|-f <format>] --file|-i <file> [--keys]");
+    }
+    
+    std::string profileName;
+    std::string format = "env"; // Default to env format
+    std::string filePath;
+    bool keysOnly = false;
+    
+    // Parse arguments
+    for (size_t i = 1; i < args.size(); ++i) {
+        if ((args[i] == "--profile" || args[i] == "-p") && i + 1 < args.size()) {
+            profileName = args[i + 1];
+            ++i;
+        } else if ((args[i] == "--format" || args[i] == "-f") && i + 1 < args.size()) {
+            format = args[i + 1];
+            ++i;
+        } else if ((args[i] == "--file" || args[i] == "-i") && i + 1 < args.size()) {
+            filePath = args[i + 1];
+            ++i;
+        } else if (args[i] == "--keys") {
+            keysOnly = true;
+        }
+    }
+    
+    // Validate required arguments
+    if (profileName.empty()) {
+        core::error(cfg, "Profile name is required. Use --profile|-p <profile>");
+    }
+    if (filePath.empty()) {
+        core::error(cfg, "File path is required. Use --file|-i <file>");
+    }
+    
+    // Validate format
+    if (format != "env" && format != "dotenv" && format != "json" && format != "yaml") {
+        core::error(cfg, "Unsupported format '" + format + "'. Supported formats: env, dotenv, json, yaml");
+    }
+    
+    // Check if file exists
+    if (!std::filesystem::exists(filePath)) {
+        core::error(cfg, "File not found: " + filePath);
+    }
+    
+    // Parse the file based on format
+    std::vector<std::pair<std::string, std::string>> keyValuePairs;
+    
+    try {
+        if (format == "env" || format == "dotenv") {
+            std::ifstream file(filePath);
+            if (!file.is_open()) {
+                core::error(cfg, "Failed to open file: " + filePath);
+            }
+            keyValuePairs = storage::parse_env_file(file);
+        } else if (format == "json") {
+            std::ifstream file(filePath);
+            if (!file.is_open()) {
+                core::error(cfg, "Failed to open file: " + filePath);
+            }
+            std::ostringstream buffer;
+            buffer << file.rdbuf();
+            keyValuePairs = storage::parse_json_min(buffer.str());
+        } else if (format == "yaml") {
+            // Simple YAML parsing - just handle key: value pairs
+            std::ifstream file(filePath);
+            if (!file.is_open()) {
+                core::error(cfg, "Failed to open file: " + filePath);
+            }
+            
+            std::string line;
+            while (std::getline(file, line)) {
+                line = core::trim(line);
+                if (line.empty() || line[0] == '#') {
+                    continue;
+                }
+                
+                auto colon = line.find(':');
+                if (colon == std::string::npos) {
+                    continue;
+                }
+                
+                std::string key = core::trim(line.substr(0, colon));
+                std::string value = core::trim(line.substr(colon + 1));
+                
+                // Remove quotes if present
+                if (!value.empty() && ((value.front() == '"' && value.back() == '"') ||
+                                      (value.front() == '\'' && value.back() == '\''))) {
+                    value = value.substr(1, value.size() - 2);
+                }
+                
+                // Validate key name
+                if (!key.empty() && (std::isalpha(key[0]) || key[0] == '_')) {
+                    bool validKey = true;
+                    for (char c : key) {
+                        if (!std::isalnum(c) && c != '_') {
+                            validKey = false;
+                            break;
+                        }
+                    }
+                    if (validKey) {
+                        keyValuePairs.push_back({key, value});
+                    }
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        core::error(cfg, "Failed to parse file: " + std::string(e.what()));
+    }
+    
+    if (keyValuePairs.empty()) {
+        core::error(cfg, "No valid key-value pairs found in file");
+    }
+    
+    // Filter for known service keys if --keys flag is used
+    if (keysOnly) {
+        auto knownKeys = services::getKnownServiceKeys();
+        auto filtered = keyValuePairs;
+        keyValuePairs.clear();
+        
+        for (const auto& [key, value] : filtered) {
+            if (knownKeys.find(key) != knownKeys.end()) {
+                keyValuePairs.push_back({key, value});
+            }
+        }
+        
+        if (keyValuePairs.empty()) {
+            core::error(cfg, "No known service provider keys found in file");
+        }
+    }
+    
+    // Load existing vault and profile
+    core::KeyStore ks = storage::loadVault(cfg);
+    std::vector<std::string> profileKeys = storage::readProfile(cfg, profileName);
+    
+    // Track what we're doing
+    int addedToVault = 0;
+    int updatedInVault = 0;
+    int addedToProfile = 0;
+    
+    // Add each key-value pair
+    for (const auto& [key, value] : keyValuePairs) {
+        if (key.empty() || value.empty()) {
+            continue;
+        }
+        
+        // Check if key exists in vault
+        bool keyExistsInVault = ks.kv.find(key) != ks.kv.end();
+        bool keyExistsInProfile = std::find(profileKeys.begin(), profileKeys.end(), key) != profileKeys.end();
+        
+        // Add/update in vault
+        ks.kv[key] = value;
+        if (keyExistsInVault) {
+            updatedInVault++;
+        } else {
+            addedToVault++;
+        }
+        
+        // Add to profile if not already there
+        if (!keyExistsInProfile) {
+            profileKeys.push_back(key);
+            addedToProfile++;
+        }
+    }
+    
+    // Save vault and profile
+    storage::saveVault(cfg, ks);
+    storage::writeProfile(cfg, profileName, profileKeys);
+    
+    // Generate updated exports for the profile
+    std::string exports = makeExportsForProfile(cfg, profileName);
+    if (!exports.empty()) {
+        storage::writeEncryptedBundle(cfg, profileName, exports);
+    }
+    
+    // Provide feedback
+    std::string message = "Imported " + std::to_string(keyValuePairs.size()) + " key(s) to profile '" + profileName + "' ";
+    message += "(" + std::to_string(addedToVault) + " new in vault, " + std::to_string(updatedInVault) + " updated in vault, ";
+    message += std::to_string(addedToProfile) + " new in profile)";
+    
+    if (keysOnly) {
+        message += " [known service keys only]";
+    }
+    
+    core::ok(cfg, message);
+    
+    // Log the operation
+    std::vector<std::string> logKeys;
+    logKeys.reserve(keyValuePairs.size() + 1);
+    logKeys.push_back(profileName);
+    for (const auto& [key, value] : keyValuePairs) {
+        logKeys.push_back(key);
+    }
+    core::auditLog(cfg, "import", logKeys);
+    
     return 0;
 }
 
@@ -592,27 +804,120 @@ int cmd_guard(const core::Config& cfg, const std::vector<std::string>& args) {
 }
 
 int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
-    std::vector<std::string> servicesToTest = services::detectConfiguredServices(cfg);
+    std::vector<std::string> servicesToTest;
+    bool failFast = std::find(args.begin(), args.end(), "--fail-fast") != args.end();
     
-    if (servicesToTest.empty()) {
-        if (cfg.json) {
-            std::cout << "[]\n";
-        } else {
-            std::cerr << "ℹ️  No services to test.\n";
+    // Parse arguments for specific testing modes
+    std::string profileName;
+    std::string specificService;
+    std::string specificKey;
+    
+    for (size_t i = 1; i < args.size(); ++i) {
+        if (args[i] == "-p" || args[i] == "--profile") {
+            if (i + 1 < args.size()) {
+                profileName = args[i + 1];
+                i++; // Skip next argument
+            }
+        } else if (args[i] != "--fail-fast" && args[i] != "--all" && args[i] != "--json") {
+            // Determine if this is a key name or service name
+            std::string arg = args[i];
+            if (arg.find('_') != std::string::npos && std::all_of(arg.begin(), arg.end(),
+                [](char c) { return std::isupper(c) || std::isdigit(c) || c == '_'; })) {
+                specificKey = arg;
+            } else {
+                specificService = arg;
+            }
         }
-        return 0;
     }
     
-    bool failFast = std::find(args.begin(), args.end(), "--fail-fast") != args.end();
+    // Determine what to test based on arguments
+    if (!profileName.empty()) {
+        // Test profile keys: ./ak test -p default
+        try {
+            auto profileKeys = storage::readProfile(cfg, profileName);
+            auto vault = storage::loadVault(cfg);
+            
+            // Map profile keys to services they belong to
+            for (const auto& keyName : profileKeys) {
+                for (const auto& [service, serviceKey] : services::SERVICE_KEYS) {
+                    if (serviceKey == keyName && services::TESTABLE_SERVICES.find(service) != services::TESTABLE_SERVICES.end()) {
+                        // Check if key exists in vault or environment
+                        bool hasKey = false;
+                        if (vault.kv.find(keyName) != vault.kv.end()) {
+                            hasKey = true;
+                        } else {
+                            const char* envValue = getenv(keyName.c_str());
+                            hasKey = (envValue && *envValue);
+                        }
+                        
+                        if (hasKey && std::find(servicesToTest.begin(), servicesToTest.end(), service) == servicesToTest.end()) {
+                            servicesToTest.push_back(service);
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            if (servicesToTest.empty()) {
+                if (cfg.json) {
+                    std::cout << "[]\n";
+                } else {
+                    std::cerr << "ℹ️  No testable services found in profile '" << profileName << "'.\n";
+                }
+                return 0;
+            }
+            
+        } catch (const std::exception& e) {
+            core::error(cfg, "Failed to load profile '" + profileName + "': " + std::string(e.what()));
+            return 1;
+        }
+    } else if (!specificKey.empty()) {
+        // Test specific key: ./ak test OPENAI_API_KEY
+        // Find which service this key belongs to
+        for (const auto& [service, serviceKey] : services::SERVICE_KEYS) {
+            if (serviceKey == specificKey && services::TESTABLE_SERVICES.find(service) != services::TESTABLE_SERVICES.end()) {
+                servicesToTest.push_back(service);
+                break;
+            }
+        }
+        
+        if (servicesToTest.empty()) {
+            core::error(cfg, "Key '" + specificKey + "' is not associated with any testable service");
+            return 1;
+        }
+    } else if (!specificService.empty()) {
+        // Test specific service: ./ak test openai
+        if (services::TESTABLE_SERVICES.find(specificService) != services::TESTABLE_SERVICES.end()) {
+            servicesToTest.push_back(specificService);
+        } else {
+            core::error(cfg, "Service '" + specificService + "' is not testable");
+            return 1;
+        }
+    } else {
+        // Test all configured services (default behavior)
+        servicesToTest = services::detectConfiguredServices(cfg);
+        
+        if (servicesToTest.empty()) {
+            if (cfg.json) {
+                std::cout << "[]\n";
+            } else {
+                std::cerr << "ℹ️  No services to test.\n";
+            }
+            return 0;
+        }
+    }
+    
+    // Run the tests
     auto results = services::run_tests_parallel(cfg, servicesToTest, failFast);
     
+    // Output results
     if (cfg.json) {
         std::cout << "[";
         bool first = true;
         for (const auto& result : results) {
             if (!first) std::cout << ",";
             first = false;
-            std::cout << "{\"service\":\"" << result.service << "\",\"ok\":" 
+            std::cout << "{\"service\":\"" << result.service << "\",\"ok\":"
                      << (result.ok ? "true" : "false") << "}";
         }
         std::cout << "]\n";
@@ -681,8 +986,29 @@ int cmd_audit(const core::Config& cfg, const std::vector<std::string>& args) {
 
 int cmd_install_shell(const core::Config& cfg, const std::vector<std::string>& args) {
     (void)args; // Parameter intentionally unused
-    system::writeShellInitFile(cfg);
-    system::ensureSourcedInRc(cfg);
+    
+    // When running under sudo, we need to use the target user's config directory
+    // instead of root's directory
+    core::Config targetCfg = cfg;
+    system::TargetUser targetUser = system::resolveTargetUser();
+    
+    // If we detected a different user (i.e., running under sudo), adjust the config
+    if (!targetUser.home.empty() && targetUser.home != core::getenvs("HOME")) {
+        std::string base = targetUser.home + "/.config";
+        targetCfg.configDir = base + "/ak";
+        targetCfg.profilesDir = targetCfg.configDir + "/profiles";
+        targetCfg.persistDir = targetCfg.configDir + "/persist";
+        
+        // Update vault path to use target user's directory
+        if (targetCfg.gpgAvailable && !targetCfg.forcePlain) {
+            targetCfg.vaultPath = targetCfg.configDir + "/vault.gpg";
+        } else {
+            targetCfg.vaultPath = targetCfg.configDir + "/vault.env";
+        }
+    }
+    
+    system::writeShellInitFile(targetCfg);
+    system::ensureSourcedInRc(targetCfg);
     std::cerr << "✅ Installed shell auto-load. Restart your terminal or source your config.\n";
     return 0;
 }
@@ -710,6 +1036,25 @@ int cmd_completion(const core::Config& cfg, const std::vector<std::string>& args
     }
     
     return 0;
+}
+
+int cmd_gui(const core::Config& cfg, const std::vector<std::string>& args) {
+#ifdef BUILD_GUI
+    // Check if GUI is available
+    if (!gui::isGuiAvailable()) {
+        core::error(cfg, "GUI support not available. Please build with -DBUILD_GUI=ON");
+        return 1;
+    }
+    
+    // Launch GUI application
+    core::auditLog(cfg, "gui", {"launched"});
+    return gui::runGuiApplication(cfg, args);
+#else
+    (void)cfg;  // Suppress unused parameter warning
+    (void)args; // Suppress unused parameter warning
+    std::cerr << "Error: GUI support not compiled. Please build with -DBUILD_GUI=ON" << std::endl;
+    return 1;
+#endif
 }
 
 } // namespace commands

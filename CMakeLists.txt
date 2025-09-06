@@ -55,11 +55,57 @@ set(CORE_SOURCES
     src/commands/commands.cpp
 )
 
+# ============================================================================
+# GUI Configuration
+# ============================================================================
+
+option(BUILD_GUI "Build GUI support with Qt 6" OFF)
+
+if(BUILD_GUI)
+    # Find Qt 6 components
+    find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+    
+    # Enable Qt 6 MOC (Meta-Object Compiler) globally
+    set(CMAKE_AUTOMOC ON)
+    set(CMAKE_AUTOUIC ON)
+    set(CMAKE_AUTORCC ON)
+    
+    message(STATUS "Qt6 found: Building with GUI support")
+    
+    # Add GUI sources and headers for AUTOMOC discovery
+    set(GUI_SOURCES
+        src/gui/gui.cpp
+        src/gui/mainwindow.cpp
+        src/gui/widgets/keymanager.cpp
+        src/gui/widgets/servicetester.cpp
+        src/gui/widgets/profilemanager.cpp
+        src/gui/widgets/common/secureinput.cpp
+        src/gui/widgets/common/dialogs.cpp
+        include/gui/mainwindow.hpp
+        include/gui/widgets/keymanager.hpp
+        include/gui/widgets/servicetester.hpp
+        include/gui/widgets/profilemanager.hpp
+        include/gui/widgets/common/secureinput.hpp
+        include/gui/widgets/common/dialogs.hpp
+    )
+else()
+    message(STATUS "Qt6 not enabled: Building CLI-only version")
+    set(GUI_SOURCES "")
+endif()
+
 # Main executable
 add_executable(ak
     src/main.cpp
     ${CORE_SOURCES}
+    ${GUI_SOURCES}
 )
+
+# Link Qt6 libraries if GUI is enabled
+if(BUILD_GUI)
+    target_link_libraries(ak Qt6::Core Qt6::Widgets)
+    target_include_directories(ak PRIVATE include/gui)
+    target_compile_definitions(ak PRIVATE BUILD_GUI)
+endif()
 
 # Pass version to C++ code
 target_compile_definitions(ak PRIVATE AK_VERSION_STRING="${AK_VERSION}")
@@ -117,11 +163,21 @@ if(BUILD_TESTS)
     add_executable(ak_tests
         ${TEST_SOURCES}
         ${CORE_SOURCES}
+        ${GUI_SOURCES}
     )
     
+    # Link Qt6 to tests if GUI enabled
+    if(BUILD_GUI)
+        target_link_libraries(ak_tests Qt6::Core Qt6::Widgets)
+        target_compile_definitions(ak_tests PRIVATE BUILD_GUI)
+    endif()
+    
+    # Pass version to test target
+    target_compile_definitions(ak_tests PRIVATE AK_VERSION_STRING="${AK_VERSION}")
+    
     target_include_directories(ak_tests PRIVATE tests)
-    target_link_libraries(ak_tests 
-        gtest 
+    target_link_libraries(ak_tests
+        gtest
         gtest_main
     )
     
