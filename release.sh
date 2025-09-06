@@ -65,10 +65,26 @@ echo -e "${YELLOW}Step 5: Git Commit & Push${NC}"
 cmake --build . --target commit-and-push
 
 echo ""
+echo -e "${YELLOW}Step 6: PPA Upload${NC}"
+if [ -z "${DEBSIGN_KEYID}" ]; then
+    echo -e "${RED}❌ Warning: DEBSIGN_KEYID is not set. PPA upload will likely fail.${NC}"
+    echo -e "${RED}Please set it: export DEBSIGN_KEYID=YOUR_GPG_KEY_ID${NC}"
+    read -p "Continue with PPA upload anyway? (y/N): " -r
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "PPA upload skipped."
+    else
+        ../ppa-upload.sh -s noble
+    fi
+else
+    ../ppa-upload.sh -s noble -k "${DEBSIGN_KEYID}"
+fi
+
+echo ""
 echo -e "${GREEN}🎉 Release completed successfully!${NC}"
 echo ""
 echo -e "${BLUE}📦 Users can now install with:${NC}"
 echo "  curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash"
 echo "  sudo apt install ak"
 echo ""
-echo -e "${BLUE}📍 Repository: https://apertacodex.github.io/ak/ak-apt-repo${NC}"
+echo -e "${BLUE}📍 GitHub Pages Repository: https://apertacodex.github.io/ak/ak-apt-repo${NC}"
+echo -e "${BLUE}📍 Launchpad PPA: https://launchpad.net/~apertacodex/+archive/ubuntu/ak${NC}"
