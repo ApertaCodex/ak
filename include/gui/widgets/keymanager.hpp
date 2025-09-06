@@ -116,9 +116,10 @@ private:
     enum TableColumn {
         ColumnName = 0,
         ColumnService = 1,
-        ColumnValue = 2,
-        ColumnActions = 3,
-        ColumnCount = 4
+        ColumnUrl = 2,
+        ColumnValue = 3,
+        ColumnActions = 4,
+        ColumnCount = 5
     };
     
     // State
