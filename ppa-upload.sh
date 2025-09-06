@@ -98,15 +98,20 @@ echo "Building signed source package for ${PKG_NAME} ${VERSION}..."
 # Clean previous source changes
 rm -f ../${PKG_NAME}_*_source.changes || true
 
-# Temporarily move ignored directories to avoid dpkg-source errors
-TEMP_DIRS=()
+# Temporarily backup and remove ignored directories to avoid dpkg-source errors
+TEMP_BACKUP_DIR="/tmp/ak_ppa_backup_$$"
+mkdir -p "${TEMP_BACKUP_DIR}"
+BACKED_UP_DIRS=()
+
 if [ -d ".vscode" ]; then
-  mv .vscode .vscode.tmp
-  TEMP_DIRS+=(".vscode")
+  cp -r .vscode "${TEMP_BACKUP_DIR}/"
+  rm -rf .vscode
+  BACKED_UP_DIRS+=(".vscode")
 fi
 if [ -d "tests/googletest" ]; then
-  mv tests/googletest tests/googletest.tmp
-  TEMP_DIRS+=("tests/googletest")
+  cp -r tests/googletest "${TEMP_BACKUP_DIR}/"
+  rm -rf tests/googletest
+  BACKED_UP_DIRS+=("tests/googletest")
 fi
 
 # Build source package (-S) with full orig upload (-sa)
@@ -121,14 +126,15 @@ else
   fi
 fi
 
-# Restore temporarily moved directories
-for dir in "${TEMP_DIRS[@]}"; do
-  if [ "$dir" = ".vscode" ]; then
-    mv .vscode.tmp .vscode
-  elif [ "$dir" = "tests/googletest" ]; then
-    mv tests/googletest.tmp tests/googletest
+# Restore backed up directories
+for dir in "${BACKED_UP_DIRS[@]}"; do
+  if [ -d "${TEMP_BACKUP_DIR}/${dir}" ]; then
+    cp -r "${TEMP_BACKUP_DIR}/${dir}" .
   fi
 done
+
+# Clean up temp backup
+rm -rf "${TEMP_BACKUP_DIR}"
 
 if [ "$BUILD_SUCCESS" = false ]; then
   echo "debuild failed."
