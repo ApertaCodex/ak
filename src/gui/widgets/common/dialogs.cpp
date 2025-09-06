@@ -326,10 +326,19 @@ void ProgressDialog::setDetailText(const QString &text)
 // ProfileImportExportDialog Implementation
 ProfileImportExportDialog::ProfileImportExportDialog(Mode mode, QWidget *parent)
     : BaseDialog(mode == Import ? "Import Profile" : "Export Profile", parent),
-      mode(mode), filePathEdit(nullptr), browseButton(nullptr), 
+      mode(mode), filePathEdit(nullptr), browseButton(nullptr),
       formatCombo(nullptr), profileNameEdit(nullptr)
 {
     setupUi();
+}
+
+ProfileImportExportDialog::ProfileImportExportDialog(Mode mode, const QString &defaultProfileName, QWidget *parent)
+    : BaseDialog(mode == Import ? "Import Profile" : "Export Profile", parent),
+      mode(mode), filePathEdit(nullptr), browseButton(nullptr),
+      formatCombo(nullptr), profileNameEdit(nullptr)
+{
+    setupUi();
+    setDefaultProfileName(defaultProfileName);
 }
 
 void ProfileImportExportDialog::setupUi()
@@ -416,6 +425,13 @@ QString ProfileImportExportDialog::getFormat() const
 QString ProfileImportExportDialog::getProfileName() const
 {
     return profileNameEdit->text().trimmed();
+}
+
+void ProfileImportExportDialog::setDefaultProfileName(const QString &profileName)
+{
+    if (profileNameEdit) {
+        profileNameEdit->setText(profileName);
+    }
 }
 
 void ProfileImportExportDialog::validateInput()
