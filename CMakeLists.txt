@@ -369,12 +369,22 @@ add_custom_target(update-apt-repo
     COMMENT "📦 Updating APT repository..."
 )
 
+# Homebrew repository update target
+add_custom_target(update-brew-repo
+    COMMAND ${CMAKE_COMMAND}
+        -DPROJECT_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+        -DAK_VERSION=${AK_VERSION}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/brew_publish.cmake
+    COMMENT "🍺 Updating Homebrew formula..."
+)
+
 # Publish targets
 add_custom_target(publish
     COMMAND ${CMAKE_COMMAND} --build . --target bump-patch
     COMMAND ${CMAKE_COMMAND} --build . --target test-release
     COMMAND ${CMAKE_COMMAND} --build . --target build-release
     COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
+    COMMAND ${CMAKE_COMMAND} --build . --target update-brew-repo
     COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
     COMMENT "🚀 Publishing patch release..."
 )
@@ -384,6 +394,7 @@ add_custom_target(publish-minor
     COMMAND ${CMAKE_COMMAND} --build . --target test-release
     COMMAND ${CMAKE_COMMAND} --build . --target build-release
     COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
+    COMMAND ${CMAKE_COMMAND} --build . --target update-brew-repo
     COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
     COMMENT "🚀 Publishing minor release..."
 )
@@ -393,6 +404,7 @@ add_custom_target(publish-major
     COMMAND ${CMAKE_COMMAND} --build . --target test-release
     COMMAND ${CMAKE_COMMAND} --build . --target build-release
     COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
+    COMMAND ${CMAKE_COMMAND} --build . --target update-brew-repo
     COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
     COMMENT "🚀 Publishing major release..."
 )
