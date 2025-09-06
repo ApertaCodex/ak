@@ -47,7 +47,8 @@ COMMANDS_SRC := src/commands/commands.cpp
 MAIN_SRC  := src/main.cpp
 
 APP_SRCS  := $(CORE_SRC) $(CRYPTO_SRC) $(STORAGE_SRC) $(UI_SRC) $(SYSTEM_SRC) $(CLI_SRC) $(SERVICES_SRC) $(COMMANDS_SRC) $(MAIN_SRC)
-BIN       := $(APP)
+BIN       := ak-core
+WRAPPER   := ak
 
 # Test files
 TEST_UNIT_SRCS := tests/core/test_config.cpp \
@@ -79,7 +80,48 @@ DISTDIR   := dist
         bump-patch bump-minor bump-major build-release test-release commit-and-push publish-ppa \
         release release-patch release-minor release-major publish-all clean
 
-all: $(BIN)
+all: $(BIN) $(WRAPPER)
+
+$(WRAPPER): $(BIN)
+	@echo "#!/bin/bash" > $(WRAPPER)
+	@echo "# AK Shell Wrapper - Two-layer process architecture" >> $(WRAPPER)
+	@echo "# Automatically handles environment variable injection for 'load' command" >> $(WRAPPER)
+	@echo "" >> $(WRAPPER)
+	@echo "AK_CORE=\"\$$(dirname \"\$$0\")/ak-core\"" >> $(WRAPPER)
+	@echo "" >> $(WRAPPER)
+	@echo "# Check if ak-core exists, fallback to PATH" >> $(WRAPPER)
+	@echo "if [[ ! -x \"\$$AK_CORE\" ]]; then" >> $(WRAPPER)
+	@echo "    AK_CORE=\"ak-core\"" >> $(WRAPPER)
+	@echo "fi" >> $(WRAPPER)
+	@echo "" >> $(WRAPPER)
+	@echo "# Special handling for 'load' command" >> $(WRAPPER)
+	@echo "if [[ \$$1 == \"load\" && \$$# -ge 2 ]]; then" >> $(WRAPPER)
+	@echo "    # Check if we're in an interactive shell" >> $(WRAPPER)
+	@echo "    if [[ \$$- == *i* ]] && [[ -n \"\$$PS1\" ]]; then" >> $(WRAPPER)
+	@echo "        # Interactive shell: capture output and eval it" >> $(WRAPPER)
+	@echo "        ak_output=\$$(\"\\$$AK_CORE\" \"\$$@\" 2>&1)" >> $(WRAPPER)
+	@echo "        ak_exit=\$$?" >> $(WRAPPER)
+	@echo "        if [[ \$$ak_exit -eq 0 ]]; then" >> $(WRAPPER)
+	@echo "            # Extract export statements and eval them" >> $(WRAPPER)
+	@echo "            while IFS= read -r line; do" >> $(WRAPPER)
+	@echo "                if [[ \$$line == export* ]]; then" >> $(WRAPPER)
+	@echo "                    eval \"\$$line\"" >> $(WRAPPER)
+	@echo "                fi" >> $(WRAPPER)
+	@echo "            done <<< \"\$$ak_output\"" >> $(WRAPPER)
+	@echo "            echo \"✅ Loaded '\$$2' into current shell\" >&2" >> $(WRAPPER)
+	@echo "        else" >> $(WRAPPER)
+	@echo "            echo \"\$$ak_output\" >&2" >> $(WRAPPER)
+	@echo "            exit \$$ak_exit" >> $(WRAPPER)
+	@echo "        fi" >> $(WRAPPER)
+	@echo "    else" >> $(WRAPPER)
+	@echo "        # Non-interactive: just pass through" >> $(WRAPPER)
+	@echo "        exec \"\$$AK_CORE\" \"\$$@\"" >> $(WRAPPER)
+	@echo "    fi" >> $(WRAPPER)
+	@echo "else" >> $(WRAPPER)
+	@echo "    # All other commands: pass through to ak-core" >> $(WRAPPER)
+	@echo "    exec \"\$$AK_CORE\" \"\$$@\"" >> $(WRAPPER)
+	@echo "fi" >> $(WRAPPER)
+	@chmod +x $(WRAPPER)
 
 test: $(TEST_BIN)
 	$(MAKE) $(BIN) # Ensure the main app is built
