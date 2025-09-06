@@ -28,6 +28,10 @@ echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertac
 echo "🔄 Updating package list..."
 sudo apt update
 
+# Install Qt6 dependencies first
+echo "📦 Installing Qt6 dependencies..."
+sudo apt install -y qt6-base-dev libqt6widgets6 qt6-tools-dev qt6-tools-dev-tools
+
 # Install ak
 echo "⬇️  Installing AK..."
 sudo apt install -y ak

@@ -15,6 +15,9 @@
 #include <algorithm>
 #include <unordered_set>
 #include <filesystem>
+#ifdef __unix__
+#include <unistd.h>
+#endif
 
 namespace ak {
 namespace commands {
@@ -505,22 +508,46 @@ int cmd_load(const core::Config& cfg, const std::vector<std::string>& args) {
         core::auditLog(cfg, "load_key", {name});
     }
     
-    // Smart injection solution: Check if user is in an interactive shell environment
-    bool isInteractive = (getenv("PS1") != nullptr);  // Check if PS1 is set (interactive shell)
+    // Enhanced interactive shell detection
+    bool isInteractive = false;
+    std::string currentShell = "unknown";
+    
+    // Check multiple shell indicators
+    if (getenv("PS1") != nullptr) {
+        isInteractive = true;
+        currentShell = "bash";
+    } else if (getenv("ZSH_VERSION") != nullptr) {
+        isInteractive = true;
+        currentShell = "zsh";
+    } else if (getenv("FISH_VERSION") != nullptr) {
+        isInteractive = true;
+        currentShell = "fish";
+    } else if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {
+        // Terminal is attached, likely interactive even if shell vars not set
+        isInteractive = true;
+        const char* shell = getenv("SHELL");
+        if (shell) {
+            std::string shellPath(shell);
+            if (shellPath.find("bash") != std::string::npos) currentShell = "bash";
+            else if (shellPath.find("zsh") != std::string::npos) currentShell = "zsh";
+            else if (shellPath.find("fish") != std::string::npos) currentShell = "fish";
+        }
+    }
+    
     std::string shellInitPath = cfg.configDir + "/shell-init.sh";
     bool hasShellIntegration = std::filesystem::exists(shellInitPath);
     
     if (isInteractive && hasShellIntegration) {
         // User has shell integration available and is in interactive shell
-        std::cerr << "💡 To load into your current shell, use: " << ui::colorize("ak_load " + name + (persist ? " --persist" : ""), ui::Colors::BRIGHT_CYAN) << "\n";
-        std::cerr << "   Or run: " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_YELLOW) << "\n";
+        std::cerr << "💡 " << ui::colorize("DIRECT LOADING:", ui::Colors::BRIGHT_GREEN) << " Use " << ui::colorize("ak_load " + name + (persist ? " --persist" : ""), ui::Colors::BRIGHT_CYAN) << "\n";
+        std::cerr << "   " << ui::colorize("ALTERNATIVE:", ui::Colors::BRIGHT_YELLOW) << " " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_YELLOW) << "\n";
     } else if (isInteractive) {
         // User is in interactive shell but doesn't have shell integration
-        std::cerr << "💡 To load into your current shell, run: " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_CYAN) << "\n";
-        std::cerr << "   Or install shell integration: " << ui::colorize("ak install-shell", ui::Colors::BRIGHT_YELLOW) << "\n";
+        std::cerr << "💡 " << ui::colorize("TO LOAD:", ui::Colors::BRIGHT_GREEN) << " " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_CYAN) << "\n";
+        std::cerr << "   " << ui::colorize("FOR EASIER USE:", ui::Colors::BRIGHT_YELLOW) << " Install shell integration with " << ui::colorize("ak install-shell", ui::Colors::BRIGHT_YELLOW) << "\n";
     } else {
         // Non-interactive or scripting context - just output the exports
-        std::cerr << "💡 In a script, use: " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_CYAN) << "\n";
+        std::cerr << "💡 " << ui::colorize("IN SCRIPTS:", ui::Colors::BRIGHT_GREEN) << " " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_CYAN) << "\n";
     }
     
     std::cout << exports;
