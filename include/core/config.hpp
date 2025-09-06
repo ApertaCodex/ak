@@ -41,6 +41,9 @@ std::string maskValue(const std::string& value);
 void error(const Config& cfg, const std::string& msg, int code = 1);
 void ok(const Config& cfg, const std::string& msg);
 void warn(const Config& cfg, const std::string& msg);
+void info(const Config& cfg, const std::string& msg);
+void success(const Config& cfg, const std::string& msg);
+void working(const Config& cfg, const std::string& msg);
 
 // Audit logging
 std::string hashKeyName(const std::string& name);
