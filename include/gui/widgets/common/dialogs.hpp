@@ -137,10 +137,13 @@ public:
     enum Mode { Import, Export };
     
     explicit ProfileImportExportDialog(Mode mode, QWidget *parent = nullptr);
+    explicit ProfileImportExportDialog(Mode mode, const QString &defaultProfileName, QWidget *parent = nullptr);
 
     QString getFilePath() const;
     QString getFormat() const;
     QString getProfileName() const;
+    
+    void setDefaultProfileName(const QString &profileName);
 
 private slots:
     void browseFile();
