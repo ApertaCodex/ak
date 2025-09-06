@@ -6,7 +6,17 @@ set -euo pipefail
 # Usage: ./publish-ppa-multi.sh [--dry-run]
 
 PPA="${PPA:-ppa:apertacodex/ak}"
-KEYID="${DEBSIGN_KEYID:-$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}' || echo "")}"
+# Try multiple methods to detect GPG key ID
+if [[ -n "${DEBSIGN_KEYID:-}" ]]; then
+    KEYID="${DEBSIGN_KEYID}"
+else
+    # Try to get the first secret key fingerprint
+    KEYID="$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}' | head -1)"
+    if [[ -z "${KEYID}" ]]; then
+        # Fallback: try getting short key ID
+        KEYID="$(gpg --list-secret-keys --keyid-format=long 2>/dev/null | grep '^sec' | head -1 | sed 's/.*\/\([A-F0-9]*\).*/\1/' | head -1)"
+    fi
+fi
 DPUT_FLAGS="${DPUT_FLAGS:-}"
 
 # Major Ubuntu distributions to support
