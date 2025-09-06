@@ -117,6 +117,12 @@ int main(int argc, char** argv) {
         {"uninstall", commands::cmd_uninstall},
         {"completion", commands::cmd_completion},
         
+        // Service Management
+        {"service", commands::cmd_service},
+        
+        // Profile Management Extensions
+        {"duplicate", commands::cmd_duplicate},
+        
         // GUI
         {"gui", commands::cmd_gui}
     };
