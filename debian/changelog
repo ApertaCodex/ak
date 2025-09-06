@@ -1,4 +1,4 @@
-ak (3.1.0) jammy; urgency=medium
+ak (3.1.2) jammy; urgency=medium
 
   * Multi-distribution build for Ubuntu jammy
   * Updated copyright to ApertaCodex with open source MIT license
@@ -10,7 +10,7 @@ ak (3.1.0) jammy; urgency=medium
 
  -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 23:04:00 +0000
 
-ak (3.1.0) noble; urgency=medium
+ak (3.1.2) noble; urgency=medium
 
   * Updated copyright to ApertaCodex with open source MIT license
   * Restored beautiful homepage design with TailwindCSS
@@ -21,7 +21,7 @@ ak (3.1.0) noble; urgency=medium
 
  -- ApertaCodex <developers@apertacodex.ai>  Wed, 03 Sep 2025 06:37:00 +0000
 
-ak (3.1.0) noble; urgency=medium
+ak (3.1.2) noble; urgency=medium
 
   * Updated GoogleTest to v1.15.2 to fix CMake deprecation warnings
   * Resolved CMake compatibility warnings for modern builds
@@ -30,7 +30,7 @@ ak (3.1.0) noble; urgency=medium
 
  -- AK Maintainer <maintainer@example.com>  Tue, 03 Sep 2025 00:29:00 +0000
 
-ak (3.1.0) noble; urgency=medium
+ak (3.1.2) noble; urgency=medium
 
   * Major version 2.0.0 release
   * Cross-platform API Key Manager with secure storage
