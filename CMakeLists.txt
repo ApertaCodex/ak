@@ -59,7 +59,7 @@ set(CORE_SOURCES
 # GUI Configuration
 # ============================================================================
 
-option(BUILD_GUI "Build GUI support with Qt 6" OFF)
+option(BUILD_GUI "Build GUI support with Qt 6" ON)
 
 if(BUILD_GUI)
     # Find Qt 6 components
