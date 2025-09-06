@@ -104,14 +104,19 @@ mkdir -p "${TEMP_BACKUP_DIR}"
 BACKED_UP_DIRS=()
 
 if [ -d ".vscode" ]; then
-  cp -r .vscode "${TEMP_BACKUP_DIR}/"
-  rm -rf .vscode
-  BACKED_UP_DIRS+=(".vscode")
+    cp -r .vscode "${TEMP_BACKUP_DIR}/"
+    rm -rf .vscode
+    BACKED_UP_DIRS+=(".vscode")
 fi
 if [ -d "tests/googletest" ]; then
-  cp -r tests/googletest "${TEMP_BACKUP_DIR}/"
-  rm -rf tests/googletest
-  BACKED_UP_DIRS+=("tests/googletest")
+    cp -r tests/googletest "${TEMP_BACKUP_DIR}/"
+    rm -rf tests/googletest
+    BACKED_UP_DIRS+=("tests/googletest")
+fi
+if [ -d "ak-apt-repo" ]; then
+    cp -r ak-apt-repo "${TEMP_BACKUP_DIR}/"
+    rm -rf ak-apt-repo
+    BACKED_UP_DIRS+=("ak-apt-repo")
 fi
 
 # Build source package (-S) with full orig upload (-sa)
