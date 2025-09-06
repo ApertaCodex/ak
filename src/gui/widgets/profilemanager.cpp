@@ -139,6 +139,11 @@ void ProfileManagerWidget::setupControls()
     renameButton->setEnabled(false);
     connect(renameButton, &QPushButton::clicked, this, &ProfileManagerWidget::renameProfile);
 
+    duplicateButton = new QPushButton("Duplicate", this);
+    duplicateButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileDialogNewFolder));
+    duplicateButton->setEnabled(false);
+    connect(duplicateButton, &QPushButton::clicked, this, &ProfileManagerWidget::duplicateProfile);
+
     importButton = new QPushButton("Import", this);
     importButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowDown));
     connect(importButton, &QPushButton::clicked, this, &ProfileManagerWidget::importProfile);
@@ -155,18 +160,20 @@ void ProfileManagerWidget::setupControls()
     // Layout buttons
     QVBoxLayout *buttonsLayout = new QVBoxLayout();
 
-    QHBoxLayout *topButtons = new QHBoxLayout();
-    topButtons->addWidget(createButton);
-    topButtons->addWidget(deleteButton);
-    topButtons->addWidget(renameButton);
+    // Reorganize buttons into logical groups
+    QHBoxLayout *mainButtons = new QHBoxLayout();
+    mainButtons->addWidget(createButton);
+    mainButtons->addWidget(duplicateButton);
+    mainButtons->addWidget(renameButton);
+    mainButtons->addWidget(deleteButton);
 
-    QHBoxLayout *bottomButtons = new QHBoxLayout();
-    bottomButtons->addWidget(importButton);
-    bottomButtons->addWidget(exportButton);
-    bottomButtons->addWidget(refreshButton);
+    QHBoxLayout *actionButtons = new QHBoxLayout();
+    actionButtons->addWidget(importButton);
+    actionButtons->addWidget(exportButton);
+    actionButtons->addWidget(refreshButton);
 
-    buttonsLayout->addLayout(topButtons);
-    buttonsLayout->addLayout(bottomButtons);
+    buttonsLayout->addLayout(mainButtons);
+    buttonsLayout->addLayout(actionButtons);
 
     controlsLayout->addLayout(buttonsLayout);
 }
@@ -282,6 +289,50 @@ void ProfileManagerWidget::deleteProfile()
     }
 }
 
+void ProfileManagerWidget::duplicateProfile()
+{
+    QListWidgetItem *selectedItem = profileList->currentItem();
+    if (!selectedItem) return;
+
+    ProfileListItem *profileItem = static_cast<ProfileListItem*>(selectedItem);
+    QString originalProfileName = profileItem->getProfileName();
+    
+    QString newProfileName = QInputDialog::getText(this, "Duplicate Profile",
+        QString("Enter name for duplicate of '%1':").arg(originalProfileName),
+        QLineEdit::Normal, originalProfileName + "_copy");
+
+    if (!newProfileName.isEmpty() && validateProfileName(newProfileName)) {
+        if (availableProfiles.contains(newProfileName)) {
+            showError("A profile with this name already exists!");
+            return;
+        }
+
+        try {
+            // Read original profile keys
+            auto originalKeys = ak::storage::readProfile(config, originalProfileName.toStdString());
+            
+            // Create new profile with same keys
+            ak::storage::writeProfile(config, newProfileName.toStdString(), originalKeys);
+
+            loadProfiles();
+            
+            // Select the newly created profile
+            for (int i = 0; i < profileList->count(); ++i) {
+                ProfileListItem *item = static_cast<ProfileListItem*>(profileList->item(i));
+                if (item->getProfileName() == newProfileName) {
+                    profileList->setCurrentItem(item);
+                    break;
+                }
+            }
+            
+            showSuccess(QString("Profile '%1' duplicated as '%2'").arg(originalProfileName).arg(newProfileName));
+
+        } catch (const std::exception& e) {
+            showError(QString("Failed to duplicate profile: %1").arg(e.what()));
+        }
+    }
+}
+
 void ProfileManagerWidget::renameProfile()
 {
     QListWidgetItem *selectedItem = profileList->currentItem();
@@ -329,7 +380,9 @@ void ProfileManagerWidget::renameProfile()
 
 void ProfileManagerWidget::importProfile()
 {
-    ProfileImportExportDialog dialog(ProfileImportExportDialog::Import, this);
+    // For import, suggest a new profile name or use current selection if available
+    QString suggestedName = currentProfile.isEmpty() ? "imported_profile" : currentProfile + "_imported";
+    ProfileImportExportDialog dialog(ProfileImportExportDialog::Import, suggestedName, this);
     if (dialog.exec() == QDialog::Accepted) {
         QString filePath = dialog.getFilePath();
         QString format = dialog.getFormat();
@@ -385,29 +438,54 @@ void ProfileManagerWidget::exportProfile()
     ProfileListItem *profileItem = static_cast<ProfileListItem*>(selectedItem);
     QString profileName = profileItem->getProfileName();
 
-    ProfileImportExportDialog dialog(ProfileImportExportDialog::Export, this);
+    // Auto-populate the dialog with the selected profile name
+    ProfileImportExportDialog dialog(ProfileImportExportDialog::Export, profileName, this);
     if (dialog.exec() == QDialog::Accepted) {
         QString filePath = dialog.getFilePath();
         QString format = dialog.getFormat();
+        QString selectedProfileForExport = dialog.getProfileName(); // Use the profile name from dialog (in case user changed it)
 
         try {
-            // Read profile keys
-            auto keys = ak::storage::readProfile(config, profileName.toStdString());
+            // Read profile keys (use the name from dialog in case user changed it)
+            auto keys = ak::storage::readProfile(config, selectedProfileForExport.toStdString());
+            
+            // Load vault to get actual key values
+            auto vault = ak::storage::loadVault(config);
 
             if (format == "env") {
-                // Export as .env file
+                // Export as .env file with values
                 std::ofstream output(filePath.toStdString());
                 for (const auto& key : keys) {
-                    output << key << "=" << std::endl;
+                    auto it = vault.kv.find(key);
+                    if (it != vault.kv.end()) {
+                        // Escape quotes and backslashes in values
+                        std::string value = it->second;
+                        std::string escaped;
+                        for (char c : value) {
+                            if (c == '"' || c == '\\') {
+                                escaped += '\\';
+                            }
+                            escaped += c;
+                        }
+                        output << key << "=\"" << escaped << "\"" << std::endl;
+                    } else {
+                        output << key << "=" << std::endl;
+                    }
                 }
             } else if (format == "json") {
-                // Export as JSON
+                // Export as JSON with values
                 QJsonObject root;
-                QJsonArray keysArray;
+                QJsonObject keysObject;
                 for (const auto& key : keys) {
-                    keysArray.append(QString::fromStdString(key));
+                    auto it = vault.kv.find(key);
+                    if (it != vault.kv.end()) {
+                        keysObject[QString::fromStdString(key)] = QString::fromStdString(it->second);
+                    } else {
+                        keysObject[QString::fromStdString(key)] = "";
+                    }
                 }
-                root["keys"] = keysArray;
+                root["profile"] = QString::fromStdString(profileName.toStdString());
+                root["keys"] = keysObject;
 
                 QJsonDocument doc(root);
                 QFile file(filePath);
@@ -417,7 +495,7 @@ void ProfileManagerWidget::exportProfile()
                 }
             }
 
-            showSuccess(QString("Profile '%1' exported to %2").arg(profileName).arg(filePath));
+            showSuccess(QString("Profile '%1' exported to %2").arg(selectedProfileForExport).arg(filePath));
 
         } catch (const std::exception& e) {
             showError(QString("Failed to export profile: %1").arg(e.what()));
