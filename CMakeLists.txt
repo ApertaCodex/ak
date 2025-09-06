@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Version is managed by the build system
-set(AK_VERSION "2.11.7")
+set(AK_VERSION "3.0.0")
 project(ak VERSION ${AK_VERSION} LANGUAGES CXX)
 
 # C++ Standard
@@ -59,7 +59,7 @@ set(CORE_SOURCES
 # GUI Configuration
 # ============================================================================
 
-option(BUILD_GUI "Build GUI support with Qt 6" OFF)
+option(BUILD_GUI "Build GUI support with Qt 6" ON)
 
 if(BUILD_GUI)
     # Find Qt 6 components
