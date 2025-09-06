@@ -141,7 +141,7 @@ void KeyManagerWidget::setupTable()
     table = new QTableWidget(this);
     table->setColumnCount(ColumnCount);
     
-    QStringList headers = {"Key Name", "Service", "Value", "Actions"};
+    QStringList headers = {"Key Name", "Service", "API URL", "Value", "Actions"};
     table->setHorizontalHeaderLabels(headers);
     
     // Configure table appearance
@@ -155,6 +155,7 @@ void KeyManagerWidget::setupTable()
     QHeaderView *header = table->horizontalHeader();
     header->setSectionResizeMode(ColumnName, QHeaderView::ResizeToContents);
     header->setSectionResizeMode(ColumnService, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(ColumnUrl, QHeaderView::ResizeToContents);
     header->setSectionResizeMode(ColumnValue, QHeaderView::Stretch);
     header->setSectionResizeMode(ColumnActions, QHeaderView::ResizeToContents);
     
@@ -261,7 +262,8 @@ void KeyManagerWidget::updateTable()
         }
         
         QString service = detectService(qname);
-        addKeyToTable(qname, qvalue, service);
+        QString apiUrl = getServiceApiUrl(service);
+        addKeyToTable(qname, qvalue, service, apiUrl);
         row++;
     }
     
@@ -272,7 +274,7 @@ void KeyManagerWidget::updateTable()
     onSelectionChanged();
 }
 
-void KeyManagerWidget::addKeyToTable(const QString &name, const QString &value, const QString &service)
+void KeyManagerWidget::addKeyToTable(const QString &name, const QString &value, const QString &service, const QString &apiUrl)
 {
     int row = table->rowCount();
     table->insertRow(row);
@@ -286,6 +288,12 @@ void KeyManagerWidget::addKeyToTable(const QString &name, const QString &value, 
     QTableWidgetItem *serviceItem = new QTableWidgetItem(service);
     serviceItem->setFlags(serviceItem->flags() & ~Qt::ItemIsEditable);
     table->setItem(row, ColumnService, serviceItem);
+    
+    // API URL column
+    QTableWidgetItem *urlItem = new QTableWidgetItem(apiUrl);
+    urlItem->setFlags(urlItem->flags() & ~Qt::ItemIsEditable);
+    urlItem->setToolTip("Click to open API documentation");
+    table->setItem(row, ColumnUrl, urlItem);
     
     // Value column (masked)
     MaskedTableItem *valueItem = new MaskedTableItem(value);
@@ -332,6 +340,46 @@ QString KeyManagerWidget::detectService(const QString &keyName)
     }
     
     return "Custom";
+}
+
+QString KeyManagerWidget::getServiceApiUrl(const QString &service)
+{
+    static const QMap<QString, QString> serviceUrls = {
+        {"OpenAI", "https://api.openai.com"},
+        {"Anthropic", "https://api.anthropic.com"},
+        {"Google", "https://api.google.com"},
+        {"Gemini", "https://generativelanguage.googleapis.com"},
+        {"Azure", "https://azure.microsoft.com"},
+        {"AWS", "https://aws.amazon.com"},
+        {"GitHub", "https://api.github.com"},
+        {"Slack", "https://api.slack.com"},
+        {"Discord", "https://discord.com/api"},
+        {"Stripe", "https://api.stripe.com"},
+        {"Twilio", "https://api.twilio.com"},
+        {"SendGrid", "https://api.sendgrid.com"},
+        {"Mailgun", "https://api.mailgun.net"},
+        {"Cloudflare", "https://api.cloudflare.com"},
+        {"Vercel", "https://api.vercel.com"},
+        {"Netlify", "https://api.netlify.com"},
+        {"Heroku", "https://api.heroku.com"},
+        {"Groq", "https://api.groq.com"},
+        {"Mistral", "https://api.mistral.ai"},
+        {"Cohere", "https://api.cohere.ai"},
+        {"Brave", "https://api.search.brave.com"},
+        {"DeepSeek", "https://api.deepseek.com"},
+        {"Exa", "https://api.exa.ai"},
+        {"Fireworks", "https://api.fireworks.ai"},
+        {"Hugging Face", "https://huggingface.co/api"},
+        {"OpenRouter", "https://openrouter.ai/api"},
+        {"Perplexity", "https://api.perplexity.ai"},
+        {"SambaNova", "https://api.sambanova.ai"},
+        {"Tavily", "https://api.tavily.com"},
+        {"Together AI", "https://api.together.xyz"},
+        {"xAI", "https://api.x.ai"}
+    };
+    
+    auto it = serviceUrls.find(service);
+    return it != serviceUrls.end() ? it.value() : "";
 }
 
 void KeyManagerWidget::refreshKeys()
