@@ -108,8 +108,24 @@ std::unordered_set<std::string> getKnownServiceKeys() {
     return keys;
 }
 
+std::unordered_set<std::string> getKnownServiceKeysWithCustom(const core::Config& cfg) {
+    auto keys = getKnownServiceKeys();
+    
+    // Add custom service keys
+    try {
+        auto customServices = loadCustomServices(cfg);
+        for (const auto& service : customServices) {
+            keys.insert(service.keyName);
+        }
+    } catch (const std::exception&) {
+        // Ignore errors loading custom services
+    }
+    
+    return keys;
+}
+
 // Detect configured providers from vault and environment.
-// Only returns services that are TESTABLE and have sufficient configuration.
+// Returns services that are TESTABLE and have sufficient configuration (both built-in and custom).
 std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
     std::vector<std::string> services;
     std::unordered_set<std::string> allAvailableKeys;
@@ -124,11 +140,20 @@ std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
             }
         }
         
-        // 2. Check environment variables
+        // 2. Check environment variables for built-in services
         for (const auto& pair : SERVICE_KEYS) {
             const char* envValue = getenv(pair.second.c_str());
             if (envValue && *envValue) {
                 allAvailableKeys.insert(pair.second);
+            }
+        }
+        
+        // 2b. Check environment variables for custom services
+        auto customServices = loadCustomServices(cfg);
+        for (const auto& customService : customServices) {
+            const char* envValue = getenv(customService.keyName.c_str());
+            if (envValue && *envValue) {
+                allAvailableKeys.insert(customService.keyName);
             }
         }
         
@@ -149,9 +174,22 @@ std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
                 allAvailableKeys.insert(pair.second);
             }
         }
+        
+        // Also check custom services in fallback
+        try {
+            auto customServices = loadCustomServices(cfg);
+            for (const auto& customService : customServices) {
+                const char* envValue = getenv(customService.keyName.c_str());
+                if (envValue && *envValue) {
+                    allAvailableKeys.insert(customService.keyName);
+                }
+            }
+        } catch (const std::exception&) {
+            // Ignore custom services if they can't be loaded
+        }
     }
     
-    // Check which services have their required keys available
+    // Check which built-in services have their required keys available
     for (const auto& pair : SERVICE_KEYS) {
         const std::string& service = pair.first;
         const std::string& requiredKey = pair.second;
@@ -187,6 +225,19 @@ std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
                 services.push_back(service);
             }
         }
+    }
+    
+    // Check custom services
+    try {
+        auto customServices = loadCustomServices(cfg);
+        for (const auto& customService : customServices) {
+            if (customService.testable &&
+                allAvailableKeys.find(customService.keyName) != allAvailableKeys.end()) {
+                services.push_back(customService.name);
+            }
+        }
+    } catch (const std::exception&) {
+        // Ignore custom services if they can't be loaded
     }
     
     std::sort(services.begin(), services.end());
@@ -333,6 +384,144 @@ std::vector<TestResult> run_tests_parallel(
     }
     
     return results;
+}
+
+// Custom service management functions
+std::vector<CustomService> loadCustomServices(const core::Config& cfg) {
+    std::vector<CustomService> services;
+    std::string customServicesPath = cfg.configDir + "/custom_services.txt";
+    
+    std::ifstream file(customServicesPath);
+    if (!file.is_open()) {
+        return services; // Return empty vector if file doesn't exist
+    }
+    
+    std::string line;
+    CustomService currentService;
+    bool inService = false;
+    
+    while (std::getline(file, line)) {
+        // Skip empty lines and comments
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+        
+        // Service block delimiter
+        if (line == "[SERVICE]") {
+            if (inService && !currentService.name.empty()) {
+                services.push_back(currentService);
+            }
+            currentService = CustomService();
+            inService = true;
+            continue;
+        }
+        
+        if (!inService) continue;
+        
+        // Parse key=value pairs
+        size_t eq = line.find('=');
+        if (eq == std::string::npos) continue;
+        
+        std::string key = line.substr(0, eq);
+        std::string value = line.substr(eq + 1);
+        
+        if (key == "name") {
+            currentService.name = value;
+        } else if (key == "key_name") {
+            currentService.keyName = value;
+        } else if (key == "description") {
+            currentService.description = value;
+        } else if (key == "test_endpoint") {
+            currentService.testEndpoint = value;
+        } else if (key == "test_method") {
+            currentService.testMethod = value;
+        } else if (key == "test_headers") {
+            currentService.testHeaders = value;
+        } else if (key == "testable") {
+            currentService.testable = (value == "true" || value == "1");
+        }
+    }
+    
+    // Add the last service if valid
+    if (inService && !currentService.name.empty()) {
+        services.push_back(currentService);
+    }
+    
+    return services;
+}
+
+void saveCustomServices(const core::Config& cfg, const std::vector<CustomService>& services) {
+    std::string customServicesPath = cfg.configDir + "/custom_services.txt";
+    
+    // Create config directory if it doesn't exist
+    std::filesystem::create_directories(cfg.configDir);
+    
+    std::ofstream file(customServicesPath);
+    if (!file.is_open()) {
+        throw std::runtime_error("Cannot open custom services file for writing: " + customServicesPath);
+    }
+    
+    file << "# Custom Services Configuration\n";
+    file << "# This file contains user-defined API services\n\n";
+    
+    for (const auto& service : services) {
+        file << "[SERVICE]\n";
+        file << "name=" << service.name << "\n";
+        file << "key_name=" << service.keyName << "\n";
+        file << "description=" << service.description << "\n";
+        file << "test_endpoint=" << service.testEndpoint << "\n";
+        file << "test_method=" << service.testMethod << "\n";
+        file << "test_headers=" << service.testHeaders << "\n";
+        file << "testable=" << (service.testable ? "true" : "false") << "\n";
+        file << "\n";
+    }
+}
+
+void addCustomService(const core::Config& cfg, const CustomService& service) {
+    auto services = loadCustomServices(cfg);
+    
+    // Check if service already exists and replace it
+    auto it = std::find_if(services.begin(), services.end(),
+        [&service](const CustomService& s) { return s.name == service.name; });
+    
+    if (it != services.end()) {
+        *it = service;
+    } else {
+        services.push_back(service);
+    }
+    
+    saveCustomServices(cfg, services);
+}
+
+void removeCustomService(const core::Config& cfg, const std::string& serviceName) {
+    auto services = loadCustomServices(cfg);
+    
+    services.erase(
+        std::remove_if(services.begin(), services.end(),
+            [&serviceName](const CustomService& s) { return s.name == serviceName; }),
+        services.end()
+    );
+    
+    saveCustomServices(cfg, services);
+}
+
+CustomService* findCustomService(std::vector<CustomService>& services, const std::string& name) {
+    auto it = std::find_if(services.begin(), services.end(),
+        [&name](const CustomService& s) { return s.name == name; });
+    
+    return (it != services.end()) ? &(*it) : nullptr;
+}
+
+std::map<std::string, std::string> getAllServiceKeys(const core::Config& cfg) {
+    std::map<std::string, std::string> allKeys = SERVICE_KEYS;
+    
+    // Add custom services
+    auto customServices = loadCustomServices(cfg);
+    for (const auto& service : customServices) {
+        allKeys[service.name] = service.keyName;
+    }
+    
+    return allKeys;
 }
 
 } // namespace services
