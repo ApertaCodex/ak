@@ -47,7 +47,8 @@ COMMANDS_SRC := src/commands/commands.cpp
 MAIN_SRC  := src/main.cpp
 
 APP_SRCS  := $(CORE_SRC) $(CRYPTO_SRC) $(STORAGE_SRC) $(UI_SRC) $(SYSTEM_SRC) $(CLI_SRC) $(SERVICES_SRC) $(COMMANDS_SRC) $(MAIN_SRC)
-BIN       := $(APP)
+BIN       := ak-core
+WRAPPER   := ak
 
 # Test files
 TEST_UNIT_SRCS := tests/core/test_config.cpp \
@@ -79,7 +80,48 @@ DISTDIR   := dist
         bump-patch bump-minor bump-major build-release test-release commit-and-push publish-ppa \
         release release-patch release-minor release-major publish-all clean
 
-all: $(BIN)
+all: $(BIN) $(WRAPPER)
+
+$(WRAPPER): $(BIN)
+	@echo "#!/bin/bash" > $(WRAPPER)
+	@echo "# AK Shell Wrapper - Two-layer process architecture" >> $(WRAPPER)
+	@echo "# Automatically handles environment variable injection for 'load' command" >> $(WRAPPER)
+	@echo "" >> $(WRAPPER)
+	@echo "AK_CORE=\"\$$(dirname \"\$$0\")/ak-core\"" >> $(WRAPPER)
+	@echo "" >> $(WRAPPER)
+	@echo "# Check if ak-core exists, fallback to PATH" >> $(WRAPPER)
+	@echo "if [[ ! -x \"\$$AK_CORE\" ]]; then" >> $(WRAPPER)
+	@echo "    AK_CORE=\"ak-core\"" >> $(WRAPPER)
+	@echo "fi" >> $(WRAPPER)
+	@echo "" >> $(WRAPPER)
+	@echo "# Special handling for 'load' command" >> $(WRAPPER)
+	@echo "if [[ \$$1 == \"load\" && \$$# -ge 2 ]]; then" >> $(WRAPPER)
+	@echo "    # Check if we're in an interactive shell" >> $(WRAPPER)
+	@echo "    if [[ \$$- == *i* ]] && [[ -n \"\$$PS1\" ]]; then" >> $(WRAPPER)
+	@echo "        # Interactive shell: capture output and eval it" >> $(WRAPPER)
+	@echo "        ak_output=\$$(\"\\$$AK_CORE\" \"\$$@\" 2>&1)" >> $(WRAPPER)
+	@echo "        ak_exit=\$$?" >> $(WRAPPER)
+	@echo "        if [[ \$$ak_exit -eq 0 ]]; then" >> $(WRAPPER)
+	@echo "            # Extract export statements and eval them" >> $(WRAPPER)
+	@echo "            while IFS= read -r line; do" >> $(WRAPPER)
+	@echo "                if [[ \$$line == export* ]]; then" >> $(WRAPPER)
+	@echo "                    eval \"\$$line\"" >> $(WRAPPER)
+	@echo "                fi" >> $(WRAPPER)
+	@echo "            done <<< \"\$$ak_output\"" >> $(WRAPPER)
+	@echo "            echo \"✅ Loaded '\$$2' into current shell\" >&2" >> $(WRAPPER)
+	@echo "        else" >> $(WRAPPER)
+	@echo "            echo \"\$$ak_output\" >&2" >> $(WRAPPER)
+	@echo "            exit \$$ak_exit" >> $(WRAPPER)
+	@echo "        fi" >> $(WRAPPER)
+	@echo "    else" >> $(WRAPPER)
+	@echo "        # Non-interactive: just pass through" >> $(WRAPPER)
+	@echo "        exec \"\$$AK_CORE\" \"\$$@\"" >> $(WRAPPER)
+	@echo "    fi" >> $(WRAPPER)
+	@echo "else" >> $(WRAPPER)
+	@echo "    # All other commands: pass through to ak-core" >> $(WRAPPER)
+	@echo "    exec \"\$$AK_CORE\" \"\$$@\"" >> $(WRAPPER)
+	@echo "fi" >> $(WRAPPER)
+	@chmod +x $(WRAPPER)
 
 test: $(TEST_BIN)
 	$(MAKE) $(BIN) # Ensure the main app is built
@@ -105,26 +147,30 @@ $(TEST_BIN): $(TEST_OBJS) $(MODULE_OBJS)
 strip: $(BIN)
 	@which strip >/dev/null 2>&1 && strip $(BIN) || true
 
-install: $(BIN)
+install: $(BIN) $(WRAPPER)
 	$(INSTALL) -d $(DESTDIR)$(BINDIR)
-	$(INSTALL) -m 0755 $(BIN) $(DESTDIR)$(BINDIR)/$(APP)
+	$(INSTALL) -m 0755 $(BIN) $(DESTDIR)$(BINDIR)/$(BIN)
+	$(INSTALL) -m 0755 $(WRAPPER) $(DESTDIR)$(BINDIR)/$(APP)
 	$(DESTDIR)$(BINDIR)/$(APP) install-shell
-	@echo "✅ Installed $(APP) to $(DESTDIR)$(BINDIR)/$(APP)"
+	@echo "✅ Installed $(BIN) and $(WRAPPER) to $(DESTDIR)$(BINDIR)/"
 
 # Install to user's local bin directory (no sudo required)
-install-user: $(BIN)
+install-user: $(BIN) $(WRAPPER)
 	@mkdir -p $(HOME)/.local/bin
-	$(INSTALL) -m 0755 $(BIN) $(HOME)/.local/bin/$(APP)
+	$(INSTALL) -m 0755 $(BIN) $(HOME)/.local/bin/$(BIN)
+	$(INSTALL) -m 0755 $(WRAPPER) $(HOME)/.local/bin/$(APP)
 	$(HOME)/.local/bin/$(APP) install-shell
-	@echo "✅ Installed $(APP) to $(HOME)/.local/bin/$(APP)"
+	@echo "✅ Installed $(BIN) and $(WRAPPER) to $(HOME)/.local/bin/"
 	@echo "💡 Make sure $(HOME)/.local/bin is in your PATH"
 
 uninstall:
 	@rm -f $(DESTDIR)$(BINDIR)/$(APP) || true
+	@rm -f $(DESTDIR)$(BINDIR)/$(BIN) || true
 	@echo "🗑️  Uninstalled $(APP) from $(DESTDIR)$(BINDIR)/$(APP)"
 
 uninstall-user:
 	@rm -f $(HOME)/.local/bin/$(APP) || true
+	@rm -f $(HOME)/.local/bin/$(BIN) || true
 	@echo "🗑️  Uninstalled $(APP) from $(HOME)/.local/bin/$(APP)"
 
 # Test coverage targets
