@@ -39,8 +39,8 @@ sudo apt update && sudo apt install ak
 #### Direct Package Download
 ```bash
 # Download latest .deb package (check for newest version)
-wget https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_3.1.10_amd64.deb
-sudo dpkg -i ak_3.1.10_amd64.deb
+wget https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_3.1.11_amd64.deb
+sudo dpkg -i ak_3.1.11_amd64.deb
 
 # Fix dependencies if needed
 sudo apt-get install -f
@@ -290,7 +290,7 @@ TEST(ModuleTest, BasicFunctionality) {
 
 ## 📊 Current Status
 
-- **Version**: 3.1.10
+- **Version**: 3.1.11
 - **Test Coverage**: ~60% line coverage, ~67% function coverage
 - **Tests**: 65 tests across 21 test suites
 - **Build System**: CMake 3.16+ with cross-platform support
