@@ -62,6 +62,8 @@ private slots:
     void deleteKey();
     void searchKeys(const QString &text);
     void toggleKeyVisibility();
+    void testSelectedKey();
+    void testAllKeys();
     void showContextMenu(const QPoint &pos);
     void onTableItemChanged(QTableWidgetItem *item);
     void onSelectionChanged();
@@ -77,8 +79,9 @@ private:
     void filterTable(const QString &filter);
     
     // Utility methods
-    void addKeyToTable(const QString &name, const QString &value, const QString &service);
+    void addKeyToTable(const QString &name, const QString &value, const QString &service, const QString &apiUrl);
     QString detectService(const QString &keyName);
+    QString getServiceApiUrl(const QString &service);
     bool validateKeyName(const QString &name);
     void showError(const QString &message);
     void showSuccess(const QString &message);
@@ -98,6 +101,8 @@ private:
     QPushButton *deleteButton;
     QPushButton *toggleVisibilityButton;
     QPushButton *refreshButton;
+    QPushButton *testSelectedButton;
+    QPushButton *testAllButton;
     QLabel *statusLabel;
     
     // Table
@@ -116,9 +121,10 @@ private:
     enum TableColumn {
         ColumnName = 0,
         ColumnService = 1,
-        ColumnValue = 2,
-        ColumnActions = 3,
-        ColumnCount = 4
+        ColumnUrl = 2,
+        ColumnValue = 3,
+        ColumnActions = 4,
+        ColumnCount = 5
     };
     
     // State
