@@ -1,15 +1,15 @@
 Package: ak
-Version: 3.1.4
+Version: 3.1.5
 Architecture: amd64
 Maintainer: AK Maintainer <maintainer@example.com>
 Installed-Size: 495
 Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libqt6core6t64 (>= 6.8.2), libqt6gui6 (>= 6.1.2), libqt6widgets6 (>= 6.3.0), libstdc++6 (>= 13.1), qt6-base-dev
 Recommends: gnupg
-Filename: pool/main/ak_3.1.4_amd64.deb
-Size: 171106
-MD5sum: af2fae2643cee1abbc117af00ec50394
-SHA1: 97dced28c53c126e02a823df960682461e043987
-SHA256: 8cdeec948b5b78d82a18482c3481f1371b0b618d275d0caaa13e286ca8f1b8e8
+Filename: pool/main/ak_3.1.5_amd64.deb
+Size: 171096
+MD5sum: 764ca953cc59136c55df28dec0fb32cb
+SHA1: 45196e51840fe248a493e65409dba211c0941fbb
+SHA256: aa10eab2b5db753d3d2c1a3245754294fdcaa775eab105eb02a0282a31043122
 Section: utils
 Priority: optional
 Homepage: https://github.com/apertacodex/ak
