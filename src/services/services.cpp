@@ -1,5 +1,6 @@
 #include "services/services.hpp"
 #include "core/config.hpp"
+#include "storage/vault.hpp"
 #include "system/system.hpp"
 #include <iostream>
 #include <chrono>
@@ -110,26 +111,76 @@ std::unordered_set<std::string> getKnownServiceKeys() {
 // Detect configured providers from vault and environment.
 // Only returns services that are TESTABLE and have sufficient configuration.
 std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
-    (void)cfg; // Parameter intentionally unused for now
     std::vector<std::string> services;
+    std::unordered_set<std::string> allAvailableKeys;
     
-    // This would normally load the vault, but for now return empty
-    // In a full implementation, this would check which services have keys configured
+    // Collect all available keys from multiple sources
+    try {
+        // 1. Load vault keys
+        auto vault = ak::storage::loadVault(cfg);
+        for (const auto& [key, value] : vault.kv) {
+            if (!value.empty()) {
+                allAvailableKeys.insert(key);
+            }
+        }
+        
+        // 2. Check environment variables
+        for (const auto& pair : SERVICE_KEYS) {
+            const char* envValue = getenv(pair.second.c_str());
+            if (envValue && *envValue) {
+                allAvailableKeys.insert(pair.second);
+            }
+        }
+        
+        // 3. Check all profiles for additional keys
+        auto profiles = ak::storage::listProfiles(cfg);
+        for (const auto& profileName : profiles) {
+            auto profileKeys = ak::storage::readProfile(cfg, profileName);
+            for (const auto& key : profileKeys) {
+                allAvailableKeys.insert(key);
+            }
+        }
+        
+    } catch (const std::exception& e) {
+        // If we can't load vault or profiles, fall back to environment only
+        for (const auto& pair : SERVICE_KEYS) {
+            const char* envValue = getenv(pair.second.c_str());
+            if (envValue && *envValue) {
+                allAvailableKeys.insert(pair.second);
+            }
+        }
+    }
     
-    // Placeholder logic - would check vault and environment variables
+    // Check which services have their required keys available
     for (const auto& pair : SERVICE_KEYS) {
         const std::string& service = pair.first;
+        const std::string& requiredKey = pair.second;
+        
         if (TESTABLE_SERVICES.find(service) != TESTABLE_SERVICES.end()) {
             bool isConfigured = false;
             
             // Special handling for gemini service to check Google aliases
             if (service == "gemini") {
-                std::string googleKey = getGoogleApiKey();
-                isConfigured = !googleKey.empty();
+                // Check for any Google API key variation
+                const std::vector<std::string> googleKeys = {
+                    "GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY",
+                    "GOOGLE_AI_API_KEY", "GOOGLE_CLOUD_API_KEY"
+                };
+                for (const auto& googleKey : googleKeys) {
+                    if (allAvailableKeys.find(googleKey) != allAvailableKeys.end()) {
+                        isConfigured = true;
+                        break;
+                    }
+                }
+                
+                // Also check environment directly
+                if (!isConfigured) {
+                    std::string googleKey = getGoogleApiKey();
+                    isConfigured = !googleKey.empty();
+                }
             } else {
-                // Check if service is configured (simplified check)
-                const char* envValue = getenv(pair.second.c_str());
-                isConfigured = (envValue && *envValue);
+                // Check if the required key is available
+                isConfigured = allAvailableKeys.find(requiredKey) != allAvailableKeys.end();
             }
             
             if (isConfigured) {
@@ -152,52 +203,113 @@ std::pair<bool, std::string> curl_ok(const std::string& args) {
 }
 
 TestResult test_one(const core::Config& cfg, const std::string& service) {
-    (void)cfg; // Parameter intentionally unused for now
     TestResult result;
     result.service = service;
     result.ok = false;
     
     auto start = std::chrono::steady_clock::now();
     
-    // Simplified test logic - in a real implementation, this would contain
-    // specific API testing logic for each service
-    try {
-        if (service == "openai") {
-            // Example: test OpenAI API
-            std::string args = "-H 'Authorization: Bearer test' https://api.openai.com/v1/models";
-            auto curl_result = curl_ok(args);
-            result.ok = curl_result.first;
-            if (!result.ok) {
-                result.error_message = curl_result.second;
-                // Debug: print captured curl output to stderr when running locally
-                if (getenv("AK_DEBUG_TESTS")) {
-                    std::cerr << "[debug] service=" << service << " curl_output=" << result.error_message << std::endl;
+    // Helper function to get API key from any source (vault, profiles, environment)
+    auto getServiceKey = [&cfg](const std::string& keyName) -> std::string {
+        // First check vault
+        try {
+            auto vault = ak::storage::loadVault(cfg);
+            auto it = vault.kv.find(keyName);
+            if (it != vault.kv.end() && !it->second.empty()) {
+                return it->second;
+            }
+        } catch (const std::exception&) {
+            // Vault load failed, continue to other sources
+        }
+        
+        // Then check all profiles
+        try {
+            auto profiles = ak::storage::listProfiles(cfg);
+            for (const auto& profileName : profiles) {
+                auto keys = ak::storage::readProfile(cfg, profileName);
+                if (std::find(keys.begin(), keys.end(), keyName) != keys.end()) {
+                    // Key exists in this profile, load from vault
+                    auto vault = ak::storage::loadVault(cfg);
+                    auto it = vault.kv.find(keyName);
+                    if (it != vault.kv.end() && !it->second.empty()) {
+                        return it->second;
+                    }
                 }
             }
-        } else if (service == "anthropic") {
-            // Example: test Anthropic API
-            std::string args = "-H 'x-api-key: test' https://api.anthropic.com/v1/messages";
-            auto curl_result = curl_ok(args);
-            result.ok = curl_result.first;
-            if (!result.ok) {
-                result.error_message = curl_result.second;
-                if (getenv("AK_DEBUG_TESTS")) {
-                    std::cerr << "[debug] service=" << service << " curl_output=" << result.error_message << std::endl;
+        } catch (const std::exception&) {
+            // Profile check failed, continue to environment
+        }
+        
+        // Finally check environment
+        const char* envValue = getenv(keyName.c_str());
+        if (envValue && *envValue) {
+            return std::string(envValue);
+        }
+        
+        return "";
+    };
+    
+    try {
+        if (service == "openai") {
+            std::string apiKey = getServiceKey("OPENAI_API_KEY");
+            if (!apiKey.empty()) {
+                std::string args = "-H 'Authorization: Bearer " + apiKey + "' https://api.openai.com/v1/models";
+                auto curl_result = curl_ok(args);
+                result.ok = curl_result.first;
+                if (!result.ok) {
+                    result.error_message = curl_result.second;
+                    if (getenv("AK_DEBUG_TESTS")) {
+                        std::cerr << "[debug] service=" << service << " curl_output=" << result.error_message << std::endl;
+                    }
                 }
+            } else {
+                result.error_message = "No OPENAI_API_KEY configured";
+            }
+        } else if (service == "anthropic") {
+            std::string apiKey = getServiceKey("ANTHROPIC_API_KEY");
+            if (!apiKey.empty()) {
+                std::string args = "-H 'x-api-key: " + apiKey + "' https://api.anthropic.com/v1/messages";
+                auto curl_result = curl_ok(args);
+                result.ok = curl_result.first;
+                if (!result.ok) {
+                    result.error_message = curl_result.second;
+                    if (getenv("AK_DEBUG_TESTS")) {
+                        std::cerr << "[debug] service=" << service << " curl_output=" << result.error_message << std::endl;
+                    }
+                }
+            } else {
+                result.error_message = "No ANTHROPIC_API_KEY configured";
             }
         } else if (service == "gemini") {
             // Special handling for Gemini API - check for Google aliases
-            std::string googleKey = getGoogleApiKey();
+            std::string googleKey;
+            const std::vector<std::string> googleKeys = {
+                "GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY",
+                "GOOGLE_AI_API_KEY", "GOOGLE_CLOUD_API_KEY"
+            };
+            for (const auto& key : googleKeys) {
+                googleKey = getServiceKey(key);
+                if (!googleKey.empty()) break;
+            }
+            
             result.ok = !googleKey.empty();
             if (!result.ok) {
                 result.error_message = "No Google API key found (checked GEMINI_API_KEY, GOOGLE_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, GOOGLE_AI_API_KEY, GOOGLE_CLOUD_API_KEY)";
             }
         } else {
-            // Generic test - just check if service key exists
+            // Generic test - check if service key exists in any source
             auto it = SERVICE_KEYS.find(service);
             if (it != SERVICE_KEYS.end()) {
-                const char* key = getenv(it->second.c_str());
-                result.ok = (key && *key);
+                std::string apiKey = getServiceKey(it->second);
+                result.ok = !apiKey.empty();
+                if (!result.ok) {
+                    result.error_message = "No API key configured for service";
+                } else {
+                    // For other services, just verify the key exists (basic connectivity test)
+                    result.ok = true; // Assume success if key is available
+                }
+            } else {
+                result.error_message = "Unknown service";
             }
         }
     } catch (...) {
