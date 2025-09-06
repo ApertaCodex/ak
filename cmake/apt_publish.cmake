@@ -62,7 +62,7 @@ endif()
 # Generate Packages file with correct paths
 message(STATUS "📋 Regenerating package metadata...")
 execute_process(
-    COMMAND dpkg-scanpackages ../../../../pool/main /dev/null
+    COMMAND dpkg-scanpackages --multiversion ../../../../pool/main /dev/null
     WORKING_DIRECTORY ${PACKAGES_DIR}
     OUTPUT_VARIABLE PACKAGES_OUTPUT
     RESULT_VARIABLE SCAN_RESULT
