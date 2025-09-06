@@ -1,5 +1,6 @@
 #include "services/services.hpp"
 #include "core/config.hpp"
+#include "storage/vault.hpp"
 #include "system/system.hpp"
 #include <iostream>
 #include <chrono>
@@ -110,26 +111,76 @@ std::unordered_set<std::string> getKnownServiceKeys() {
 // Detect configured providers from vault and environment.
 // Only returns services that are TESTABLE and have sufficient configuration.
 std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
-    (void)cfg; // Parameter intentionally unused for now
     std::vector<std::string> services;
+    std::unordered_set<std::string> allAvailableKeys;
     
-    // This would normally load the vault, but for now return empty
-    // In a full implementation, this would check which services have keys configured
+    // Collect all available keys from multiple sources
+    try {
+        // 1. Load vault keys
+        auto vault = ak::storage::loadVault(cfg);
+        for (const auto& [key, value] : vault.kv) {
+            if (!value.empty()) {
+                allAvailableKeys.insert(key);
+            }
+        }
+        
+        // 2. Check environment variables
+        for (const auto& pair : SERVICE_KEYS) {
+            const char* envValue = getenv(pair.second.c_str());
+            if (envValue && *envValue) {
+                allAvailableKeys.insert(pair.second);
+            }
+        }
+        
+        // 3. Check all profiles for additional keys
+        auto profiles = ak::storage::listProfiles(cfg);
+        for (const auto& profileName : profiles) {
+            auto profileKeys = ak::storage::readProfile(cfg, profileName);
+            for (const auto& key : profileKeys) {
+                allAvailableKeys.insert(key);
+            }
+        }
+        
+    } catch (const std::exception& e) {
+        // If we can't load vault or profiles, fall back to environment only
+        for (const auto& pair : SERVICE_KEYS) {
+            const char* envValue = getenv(pair.second.c_str());
+            if (envValue && *envValue) {
+                allAvailableKeys.insert(pair.second);
+            }
+        }
+    }
     
-    // Placeholder logic - would check vault and environment variables
+    // Check which services have their required keys available
     for (const auto& pair : SERVICE_KEYS) {
         const std::string& service = pair.first;
+        const std::string& requiredKey = pair.second;
+        
         if (TESTABLE_SERVICES.find(service) != TESTABLE_SERVICES.end()) {
             bool isConfigured = false;
             
             // Special handling for gemini service to check Google aliases
             if (service == "gemini") {
-                std::string googleKey = getGoogleApiKey();
-                isConfigured = !googleKey.empty();
+                // Check for any Google API key variation
+                const std::vector<std::string> googleKeys = {
+                    "GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY",
+                    "GOOGLE_AI_API_KEY", "GOOGLE_CLOUD_API_KEY"
+                };
+                for (const auto& googleKey : googleKeys) {
+                    if (allAvailableKeys.find(googleKey) != allAvailableKeys.end()) {
+                        isConfigured = true;
+                        break;
+                    }
+                }
+                
+                // Also check environment directly
+                if (!isConfigured) {
+                    std::string googleKey = getGoogleApiKey();
+                    isConfigured = !googleKey.empty();
+                }
             } else {
-                // Check if service is configured (simplified check)
-                const char* envValue = getenv(pair.second.c_str());
-                isConfigured = (envValue && *envValue);
+                // Check if the required key is available
+                isConfigured = allAvailableKeys.find(requiredKey) != allAvailableKeys.end();
             }
             
             if (isConfigured) {
