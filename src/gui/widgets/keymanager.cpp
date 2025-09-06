@@ -14,6 +14,7 @@
 #include <QTimer>
 #include <QRegularExpression>
 #include <QMap>
+#include <QPushButton>
 #include <algorithm>
 
 namespace ak {
@@ -124,12 +125,24 @@ void KeyManagerWidget::setupToolbar()
     refreshButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_BrowserReload));
     connect(refreshButton, &QPushButton::clicked, this, &KeyManagerWidget::refreshKeys);
     
+    // Test buttons
+    testSelectedButton = new QPushButton("Test", this);
+    testSelectedButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPlay));
+    testSelectedButton->setEnabled(false);
+    connect(testSelectedButton, &QPushButton::clicked, this, &KeyManagerWidget::testSelectedKey);
+    
+    testAllButton = new QPushButton("Test All", this);
+    testAllButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
+    connect(testAllButton, &QPushButton::clicked, this, &KeyManagerWidget::testAllKeys);
+    
     // Layout
     toolbarLayout->addWidget(searchEdit);
     toolbarLayout->addStretch();
     toolbarLayout->addWidget(addButton);
     toolbarLayout->addWidget(editButton);
     toolbarLayout->addWidget(deleteButton);
+    toolbarLayout->addWidget(testSelectedButton);
+    toolbarLayout->addWidget(testAllButton);
     toolbarLayout->addWidget(toggleVisibilityButton);
     toolbarLayout->addWidget(refreshButton);
     
@@ -141,7 +154,7 @@ void KeyManagerWidget::setupTable()
     table = new QTableWidget(this);
     table->setColumnCount(ColumnCount);
     
-    QStringList headers = {"Key Name", "Service", "Value", "Actions"};
+    QStringList headers = {"Key Name", "Service", "API URL", "Value", "Test Status", "Actions"};
     table->setHorizontalHeaderLabels(headers);
     
     // Configure table appearance
@@ -151,12 +164,26 @@ void KeyManagerWidget::setupTable()
     table->setSortingEnabled(true);
     table->setContextMenuPolicy(Qt::CustomContextMenu);
     
-    // Configure column widths
+    // Disable sorting for actions column specifically
+    QHeaderView *headerForSorting = table->horizontalHeader();
+    connect(headerForSorting, &QHeaderView::sortIndicatorChanged, [this](int logicalIndex, Qt::SortOrder) {
+        if (logicalIndex == ColumnActions) {
+            // Prevent sorting on Actions column
+            table->horizontalHeader()->setSortIndicator(-1, Qt::AscendingOrder);
+        }
+    });
+    
+    // Configure column widths - responsive design
     QHeaderView *header = table->horizontalHeader();
     header->setSectionResizeMode(ColumnName, QHeaderView::ResizeToContents);
     header->setSectionResizeMode(ColumnService, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(ColumnUrl, QHeaderView::Interactive);
     header->setSectionResizeMode(ColumnValue, QHeaderView::Stretch);
-    header->setSectionResizeMode(ColumnActions, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(ColumnTestStatus, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(ColumnActions, QHeaderView::Fixed);
+    
+    // Set fixed width for actions column
+    header->resizeSection(ColumnActions, 60);
     
     // Connect signals
     connect(table, &QTableWidget::itemSelectionChanged, this, &KeyManagerWidget::onSelectionChanged);
@@ -261,7 +288,8 @@ void KeyManagerWidget::updateTable()
         }
         
         QString service = detectService(qname);
-        addKeyToTable(qname, qvalue, service);
+        QString apiUrl = getServiceApiUrl(service);
+        addKeyToTable(qname, qvalue, service, apiUrl);
         row++;
     }
     
@@ -272,7 +300,7 @@ void KeyManagerWidget::updateTable()
     onSelectionChanged();
 }
 
-void KeyManagerWidget::addKeyToTable(const QString &name, const QString &value, const QString &service)
+void KeyManagerWidget::addKeyToTable(const QString &name, const QString &value, const QString &service, const QString &apiUrl)
 {
     int row = table->rowCount();
     table->insertRow(row);
@@ -287,29 +315,49 @@ void KeyManagerWidget::addKeyToTable(const QString &name, const QString &value, 
     serviceItem->setFlags(serviceItem->flags() & ~Qt::ItemIsEditable);
     table->setItem(row, ColumnService, serviceItem);
     
+    // API URL column
+    QTableWidgetItem *urlItem = new QTableWidgetItem(apiUrl.isEmpty() ? "N/A" : apiUrl);
+    urlItem->setFlags(urlItem->flags() & ~Qt::ItemIsEditable);
+    if (!apiUrl.isEmpty()) {
+        urlItem->setToolTip("API Endpoint: " + apiUrl);
+    }
+    table->setItem(row, ColumnUrl, urlItem);
+    
     // Value column (masked)
     MaskedTableItem *valueItem = new MaskedTableItem(value);
     valueItem->setMasked(globalVisibilityState);
     valueItem->setFlags(valueItem->flags() & ~Qt::ItemIsEditable);
     table->setItem(row, ColumnValue, valueItem);
     
-    // Actions column (placeholder)
-    QTableWidgetItem *actionsItem = new QTableWidgetItem("••• ");
-    actionsItem->setFlags(actionsItem->flags() & ~Qt::ItemIsEditable);
-    actionsItem->setTextAlignment(Qt::AlignCenter);
-    actionsItem->setToolTip("Right-click for actions");
-    table->setItem(row, ColumnActions, actionsItem);
+    // Test Status column
+    QTableWidgetItem *testStatusItem = new QTableWidgetItem("Not tested");
+    testStatusItem->setFlags(testStatusItem->flags() & ~Qt::ItemIsEditable);
+    testStatusItem->setTextAlignment(Qt::AlignCenter);
+    table->setItem(row, ColumnTestStatus, testStatusItem);
+    
+    // Actions column - make it clickable for context menu
+    QPushButton *actionsButton = new QPushButton("⚙️");
+    actionsButton->setToolTip("Click for actions");
+    actionsButton->setMaximumSize(30, 25);
+    connect(actionsButton, &QPushButton::clicked, [this, row, actionsButton]() {
+        table->selectRow(row);
+        // Get the global position of the button to show menu nearby
+        QPoint globalPos = actionsButton->mapToGlobal(QPoint(actionsButton->width()/2, actionsButton->height()));
+        contextMenu->exec(globalPos);
+    });
+    table->setCellWidget(row, ColumnActions, actionsButton);
 }
 
 QString KeyManagerWidget::detectService(const QString &keyName)
 {
     QString lowerName = keyName.toLower();
     
-    // Map key patterns to services
+    // Map key patterns to services - more comprehensive mapping
     static const QMap<QString, QString> servicePatterns = {
         {"openai", "OpenAI"},
         {"anthropic", "Anthropic"},
         {"google", "Google"},
+        {"gemini", "Gemini"},
         {"azure", "Azure"},
         {"aws", "AWS"},
         {"github", "GitHub"},
@@ -322,9 +370,25 @@ QString KeyManagerWidget::detectService(const QString &keyName)
         {"cloudflare", "Cloudflare"},
         {"vercel", "Vercel"},
         {"netlify", "Netlify"},
-        {"heroku", "Heroku"}
+        {"heroku", "Heroku"},
+        {"groq", "Groq"},
+        {"mistral", "Mistral"},
+        {"cohere", "Cohere"},
+        {"brave", "Brave"},
+        {"deepseek", "DeepSeek"},
+        {"exa", "Exa"},
+        {"fireworks", "Fireworks"},
+        {"huggingface", "Hugging Face"},
+        {"hugging_face", "Hugging Face"},
+        {"openrouter", "OpenRouter"},
+        {"perplexity", "Perplexity"},
+        {"sambanova", "SambaNova"},
+        {"tavily", "Tavily"},
+        {"together", "Together AI"},
+        {"xai", "xAI"}
     };
     
+    // Check each pattern for better matching
     for (auto it = servicePatterns.begin(); it != servicePatterns.end(); ++it) {
         if (lowerName.contains(it.key())) {
             return it.value();
@@ -332,6 +396,46 @@ QString KeyManagerWidget::detectService(const QString &keyName)
     }
     
     return "Custom";
+}
+
+QString KeyManagerWidget::getServiceApiUrl(const QString &service)
+{
+    static const QMap<QString, QString> serviceUrls = {
+        {"OpenAI", "https://api.openai.com"},
+        {"Anthropic", "https://api.anthropic.com"},
+        {"Google", "https://api.google.com"},
+        {"Gemini", "https://generativelanguage.googleapis.com"},
+        {"Azure", "https://azure.microsoft.com"},
+        {"AWS", "https://aws.amazon.com"},
+        {"GitHub", "https://api.github.com"},
+        {"Slack", "https://api.slack.com"},
+        {"Discord", "https://discord.com/api"},
+        {"Stripe", "https://api.stripe.com"},
+        {"Twilio", "https://api.twilio.com"},
+        {"SendGrid", "https://api.sendgrid.com"},
+        {"Mailgun", "https://api.mailgun.net"},
+        {"Cloudflare", "https://api.cloudflare.com"},
+        {"Vercel", "https://api.vercel.com"},
+        {"Netlify", "https://api.netlify.com"},
+        {"Heroku", "https://api.heroku.com"},
+        {"Groq", "https://api.groq.com"},
+        {"Mistral", "https://api.mistral.ai"},
+        {"Cohere", "https://api.cohere.ai"},
+        {"Brave", "https://api.search.brave.com"},
+        {"DeepSeek", "https://api.deepseek.com"},
+        {"Exa", "https://api.exa.ai"},
+        {"Fireworks", "https://api.fireworks.ai"},
+        {"Hugging Face", "https://huggingface.co/api"},
+        {"OpenRouter", "https://openrouter.ai/api"},
+        {"Perplexity", "https://api.perplexity.ai"},
+        {"SambaNova", "https://api.sambanova.ai"},
+        {"Tavily", "https://api.tavily.com"},
+        {"Together AI", "https://api.together.xyz"},
+        {"xAI", "https://api.x.ai"}
+    };
+    
+    auto it = serviceUrls.find(service);
+    return it != serviceUrls.end() ? it.value() : "";
 }
 
 void KeyManagerWidget::refreshKeys()
@@ -475,6 +579,7 @@ void KeyManagerWidget::onSelectionChanged()
     bool hasSelection = table->currentRow() >= 0;
     editButton->setEnabled(hasSelection);
     deleteButton->setEnabled(hasSelection);
+    testSelectedButton->setEnabled(hasSelection);
 }
 
 bool KeyManagerWidget::validateKeyName(const QString &name)
@@ -512,6 +617,184 @@ void KeyManagerWidget::showSuccess(const QString &message)
     });
     
     emit statusMessage(message);
+}
+
+void KeyManagerWidget::testSelectedKey()
+{
+    int row = table->currentRow();
+    if (row < 0) return;
+    
+    QString keyName = table->item(row, ColumnName)->text();
+    QString serviceName = table->item(row, ColumnService)->text();
+    
+    // Map service display name to service code
+    QString serviceCode = getServiceCode(serviceName);
+    if (serviceCode.isEmpty()) {
+        updateTestStatus(keyName, false, "Service not recognized");
+        showError("Cannot test: Service not recognized");
+        return;
+    }
+    
+    // Show testing status
+    updateTestStatus(keyName, false, "Testing...");
+    
+    // Disable button during test
+    testSelectedButton->setEnabled(false);
+    statusLabel->setText("Testing " + serviceName + "...");
+    statusLabel->setStyleSheet("color: #0066cc; font-size: 12px;");
+    
+    // Run test in separate thread to avoid blocking UI
+    QTimer::singleShot(100, [this, serviceCode, serviceName, keyName]() {
+        try {
+            auto result = ak::services::test_one(config, serviceCode.toStdString());
+            
+            if (result.ok) {
+                updateTestStatus(keyName, true, QString("✓ %1ms").arg(result.duration.count()));
+                showSuccess(QString("%1 test passed! (%2ms)").arg(serviceName).arg(result.duration.count()));
+            } else {
+                QString error = result.error_message.empty() ? "Test failed" : QString::fromStdString(result.error_message);
+                updateTestStatus(keyName, false, "✗ " + error);
+                showError(QString("%1 test failed: %2").arg(serviceName).arg(error));
+            }
+        } catch (const std::exception& e) {
+            updateTestStatus(keyName, false, QString("✗ %1").arg(e.what()));
+            showError(QString("%1 test failed: %2").arg(serviceName).arg(e.what()));
+        }
+        
+        testSelectedButton->setEnabled(table->currentRow() >= 0);
+    });
+}
+
+void KeyManagerWidget::updateTestStatus(const QString &keyName, bool success, const QString &message)
+{
+    for (int row = 0; row < table->rowCount(); ++row) {
+        if (table->item(row, ColumnName)->text() == keyName) {
+            QTableWidgetItem *statusItem = table->item(row, ColumnTestStatus);
+            if (statusItem) {
+                statusItem->setText(message);
+                if (success) {
+                    statusItem->setForeground(QBrush(QColor(0, 170, 0))); // Green
+                } else if (message.startsWith("✗")) {
+                    statusItem->setForeground(QBrush(QColor(204, 68, 68))); // Red
+                } else {
+                    statusItem->setForeground(QBrush(QColor(102, 102, 102))); // Gray for testing
+                }
+            }
+            break;
+        }
+    }
+}
+
+void KeyManagerWidget::testAllKeys()
+{
+    // Get all configured services
+    auto configuredServices = ak::services::detectConfiguredServices(config);
+    if (configuredServices.empty()) {
+        showError("No API keys configured for testing");
+        return;
+    }
+    
+    // Reset all test statuses to "Testing..."
+    for (int row = 0; row < table->rowCount(); ++row) {
+        QString keyName = table->item(row, ColumnName)->text();
+        QString serviceName = table->item(row, ColumnService)->text();
+        QString serviceCode = getServiceCode(serviceName);
+        
+        if (!serviceCode.isEmpty() && std::find(configuredServices.begin(), configuredServices.end(), serviceCode.toStdString()) != configuredServices.end()) {
+            updateTestStatus(keyName, false, "Testing...");
+        }
+    }
+    
+    // Disable buttons during test
+    testAllButton->setEnabled(false);
+    testSelectedButton->setEnabled(false);
+    
+    statusLabel->setText(QString("Testing %1 services...").arg(configuredServices.size()));
+    statusLabel->setStyleSheet("color: #0066cc; font-size: 12px;");
+    
+    // Run tests
+    QTimer::singleShot(100, [this, configuredServices]() {
+        try {
+            auto results = ak::services::run_tests_parallel(config, configuredServices, false);
+            
+            // Update status for each service
+            for (const auto& result : results) {
+                // Find the key name for this service
+                for (int row = 0; row < table->rowCount(); ++row) {
+                    QString keyName = table->item(row, ColumnName)->text();
+                    QString serviceName = table->item(row, ColumnService)->text();
+                    QString serviceCode = getServiceCode(serviceName);
+                    
+                    if (serviceCode.toStdString() == result.service) {
+                        if (result.ok) {
+                            updateTestStatus(keyName, true, QString("✓ %1ms").arg(result.duration.count()));
+                        } else {
+                            QString error = result.error_message.empty() ? "Failed" : QString::fromStdString(result.error_message);
+                            updateTestStatus(keyName, false, "✗ " + error);
+                        }
+                    }
+                }
+            }
+            
+            int passed = 0;
+            int failed = 0;
+            for (const auto& result : results) {
+                if (result.ok) passed++;
+                else failed++;
+            }
+            
+            if (failed == 0) {
+                showSuccess(QString("All %1 API tests passed!").arg(passed));
+            } else {
+                showError(QString("Tests completed: %1 passed, %2 failed").arg(passed).arg(failed));
+            }
+        } catch (const std::exception& e) {
+            showError(QString("Test failed: %1").arg(e.what()));
+        }
+        
+        testAllButton->setEnabled(true);
+        testSelectedButton->setEnabled(table->currentRow() >= 0);
+    });
+}
+
+QString KeyManagerWidget::getServiceCode(const QString &displayName)
+{
+    static const QMap<QString, QString> serviceCodes = {
+        {"OpenAI", "openai"},
+        {"Anthropic", "anthropic"},
+        {"Google", "gemini"},
+        {"Gemini", "gemini"},
+        {"Azure", "azure_openai"},
+        {"AWS", "aws"},
+        {"GitHub", "github"},
+        {"Slack", "slack"},
+        {"Discord", "discord"},
+        {"Stripe", "stripe"},
+        {"Twilio", "twilio"},
+        {"SendGrid", "sendgrid"},
+        {"Mailgun", "mailgun"},
+        {"Cloudflare", "cloudflare"},
+        {"Vercel", "vercel"},
+        {"Netlify", "netlify"},
+        {"Heroku", "heroku"},
+        {"Groq", "groq"},
+        {"Mistral", "mistral"},
+        {"Cohere", "cohere"},
+        {"Brave", "brave"},
+        {"DeepSeek", "deepseek"},
+        {"Exa", "exa"},
+        {"Fireworks", "fireworks"},
+        {"Hugging Face", "huggingface"},
+        {"OpenRouter", "openrouter"},
+        {"Perplexity", "perplexity"},
+        {"SambaNova", "sambanova"},
+        {"Tavily", "tavily"},
+        {"Together AI", "together"},
+        {"xAI", "xai"}
+    };
+    
+    auto it = serviceCodes.find(displayName);
+    return it != serviceCodes.end() ? it.value() : "";
 }
 
 } // namespace widgets
