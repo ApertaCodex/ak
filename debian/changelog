@@ -1,6 +1,6 @@
-ak (3.1.5) jammy; urgency=medium
+ak (3.1.5-1ubuntu1~noble1) noble; urgency=medium
 
-  * Multi-distribution build for Ubuntu jammy
+  * Multi-distribution build for Ubuntu noble
   * Updated copyright to ApertaCodex with open source MIT license
   * Restored beautiful homepage design with TailwindCSS
   * Added full automation for APT repository publishing
@@ -8,7 +8,7 @@ ak (3.1.5) jammy; urgency=medium
   * Fixed repository metadata and package paths
   * Attribution required for derivative works
 
- -- ApertaCodex <developers@apertacodex.ai>  Thu, 04 Sep 2025 23:04:00 +0000
+ -- ApertaCodex <developers@apertacodex.ai>  Sat, 06 Sep 2025 18:36:46 +0300
 
 ak (3.1.5) noble; urgency=medium
 
