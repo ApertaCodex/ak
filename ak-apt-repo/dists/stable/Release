@@ -1,7 +1,7 @@
 Archive: stable
 Codename: stable
 Components: main
-Date: Sat, 06 Sep 2025 15:48:45 +0000
+Date: Sat, 06 Sep 2025 16:00:35 +0000
 Description: AK API Key Manager Repository
 Label: AK Repository
 Origin: AK
@@ -9,11 +9,11 @@ Suite: stable
 Version: 1.0
 Architectures: amd64
 MD5Sum:
- 9e044e37bf7076b991593f90d449ce1c 1200 main/binary-amd64/Packages
- 3afad663356f7ce768cf02121dfeb125 762 main/binary-amd64/Packages.gz
+ 0f4497f74e82b6a4920aba7aeb6bfa60 1200 main/binary-amd64/Packages
+ 8094eafec3112d4cccae966b2830e6a0 763 main/binary-amd64/Packages.gz
 SHA1:
- a3dc3be3ba541ad669e7c4cc4d09189aaaae4e5f 1200 main/binary-amd64/Packages
- 71821cfb7374efc3d1b837b8a9abd383619bde6b 762 main/binary-amd64/Packages.gz
+ 751176ee98067b1c3fd8a4ab1e22517ec710a725 1200 main/binary-amd64/Packages
+ 0ac4c1879e354bc6868129f1d7a030fe74b363b2 763 main/binary-amd64/Packages.gz
 SHA256:
- d9ab80eaebf1a911065efb226e763bdba6adf4d29f8f7f834bf0ed3c778ad197 1200 main/binary-amd64/Packages
- f720d543948fd78ae133711d7f63c23fe0bd3785539468dbefb9a736659a807c 762 main/binary-amd64/Packages.gz
+ c9e8cee60cd88fed72f84830bc2698911b7dc7041e3deef7c0bf9b3490cdb7be 1200 main/binary-amd64/Packages
+ b196d88ed7fd3356b757a2f1c5e7cf926277e3e123e8f42eba5b70f84d4887a6 763 main/binary-amd64/Packages.gz
