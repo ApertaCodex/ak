@@ -324,9 +324,11 @@ release-major:
 
 publish-all:
 	@echo "📦 Publishing to all repositories..."
-	@echo "📦 1/2 Publishing to APT repository (GitHub Pages)..."
+	@echo "📦 1/3 Publishing to APT repository (GitHub Pages)..."
 	@$(MAKE) publish-apt
-	@echo "📦 2/2 Publishing to Launchpad PPA..."
+	@echo "📦 2/3 Publishing to Homebrew tap..."
+	@$(MAKE) publish-homebrew
+	@echo "📦 3/3 Publishing to Launchpad PPA..."
 	@$(MAKE) publish-ppa || (echo "⚠️  PPA publish failed - continuing with other targets"; true)
 	@echo "✅ Published to all repositories"
 
