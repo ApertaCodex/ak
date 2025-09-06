@@ -15,6 +15,9 @@
 #include <algorithm>
 #include <unordered_set>
 #include <filesystem>
+#ifdef __unix__
+#include <unistd.h>
+#endif
 
 namespace ak {
 namespace commands {
@@ -505,25 +508,75 @@ int cmd_load(const core::Config& cfg, const std::vector<std::string>& args) {
         core::auditLog(cfg, "load_key", {name});
     }
     
-    // Smart injection solution: Check if user is in an interactive shell environment
-    bool isInteractive = (getenv("PS1") != nullptr);  // Check if PS1 is set (interactive shell)
+    // Enhanced interactive shell detection
+    bool isInteractive = false;
+    std::string currentShell = "unknown";
+    
+    // Check multiple shell indicators
+    if (getenv("PS1") != nullptr) {
+        isInteractive = true;
+        currentShell = "bash";
+    } else if (getenv("ZSH_VERSION") != nullptr) {
+        isInteractive = true;
+        currentShell = "zsh";
+    } else if (getenv("FISH_VERSION") != nullptr) {
+        isInteractive = true;
+        currentShell = "fish";
+    } else if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {
+        // Terminal is attached, likely interactive even if shell vars not set
+        isInteractive = true;
+        const char* shell = getenv("SHELL");
+        if (shell) {
+            std::string shellPath(shell);
+            if (shellPath.find("bash") != std::string::npos) currentShell = "bash";
+            else if (shellPath.find("zsh") != std::string::npos) currentShell = "zsh";
+            else if (shellPath.find("fish") != std::string::npos) currentShell = "fish";
+        }
+    }
+    
     std::string shellInitPath = cfg.configDir + "/shell-init.sh";
     bool hasShellIntegration = std::filesystem::exists(shellInitPath);
     
-    if (isInteractive && hasShellIntegration) {
-        // User has shell integration available and is in interactive shell
-        std::cerr << "💡 To load into your current shell, use: " << ui::colorize("ak_load " + name + (persist ? " --persist" : ""), ui::Colors::BRIGHT_CYAN) << "\n";
-        std::cerr << "   Or run: " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_YELLOW) << "\n";
-    } else if (isInteractive) {
-        // User is in interactive shell but doesn't have shell integration
-        std::cerr << "💡 To load into your current shell, run: " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_CYAN) << "\n";
-        std::cerr << "   Or install shell integration: " << ui::colorize("ak install-shell", ui::Colors::BRIGHT_YELLOW) << "\n";
-    } else {
-        // Non-interactive or scripting context - just output the exports
-        std::cerr << "💡 In a script, use: " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_CYAN) << "\n";
+    // Auto-install shell integration if not present and we're in an interactive context
+    if (isInteractive && !hasShellIntegration) {
+        std::cerr << "🔧 " << ui::colorize("Setting up automatic environment loading...", ui::Colors::BRIGHT_YELLOW) << "\n";
+        try {
+            system::writeShellInitFile(cfg);
+            system::ensureSourcedInRc(cfg);
+            hasShellIntegration = true;
+            std::cerr << "✅ " << ui::colorize("Shell integration configured!", ui::Colors::BRIGHT_GREEN) << "\n";
+        } catch (const std::exception& e) {
+            std::cerr << "⚠️  " << ui::colorize("Failed to configure shell integration: ", ui::Colors::BRIGHT_RED) << e.what() << "\n";
+        }
     }
     
+    // Always output the exports first so they're available immediately
     std::cout << exports;
+    
+    // For interactive sessions, also set up the shell integration to work immediately
+    if (hasShellIntegration && isInteractive) {
+        // Output the source command so shell integration becomes active immediately
+        std::cout << "# Activate shell integration for direct ak commands\n";
+        std::cout << "source \"" << shellInitPath << "\"\n";
+        
+        // Provide clear feedback about what's happening
+        std::cerr << "✅ " << ui::colorize("Environment loaded!", ui::Colors::BRIGHT_GREEN) << " Variables are now available.\n";
+        std::cerr << "💡 " << ui::colorize("Direct commands enabled:", ui::Colors::BRIGHT_CYAN) << " You can now use " << ui::colorize("ak load " + name, ui::Colors::BRIGHT_WHITE) << " directly\n";
+        
+        // If this was the first setup, let them know about shell restart
+        if (!std::filesystem::exists(cfg.configDir + "/.shell_setup_complete")) {
+            std::cerr << "📝 " << ui::colorize("Note:", ui::Colors::BRIGHT_YELLOW) << " For new terminals, restart your shell or run " << ui::colorize("source ~/.bashrc", ui::Colors::BRIGHT_WHITE) << " (or ~/.zshrc)\n";
+            // Create a marker file to avoid showing this message repeatedly
+            std::ofstream marker(cfg.configDir + "/.shell_setup_complete");
+            marker << "1\n";
+        }
+    } else if (isInteractive) {
+        // Fallback for when shell integration isn't available
+        std::cerr << "💡 " << ui::colorize("TO LOAD:", ui::Colors::BRIGHT_GREEN) << " " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_CYAN) << "\n";
+    } else {
+        // Non-interactive context - just show script usage
+        std::cerr << "💡 " << ui::colorize("IN SCRIPTS:", ui::Colors::BRIGHT_GREEN) << " " << ui::colorize("eval \"$(ak load " + name + (persist ? " --persist" : "") + ")\"", ui::Colors::BRIGHT_CYAN) << "\n";
+    }
     return 0;
 }
 
