@@ -1,2 +1,4 @@
-# Main binary is installed by CMake to /usr/bin/ak
+# Two-layer architecture binaries
+ak-core /usr/bin/
+ak /usr/bin/
 # Shell completions are generated and installed by debian/rules

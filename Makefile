@@ -79,7 +79,48 @@ DISTDIR   := dist
         bump-patch bump-minor bump-major build-release test-release commit-and-push publish-ppa \
         release release-patch release-minor release-major publish-all clean
 
-all: $(BIN)
+all: $(BIN) $(WRAPPER)
+
+$(WRAPPER): $(BIN)
+	@echo "#!/bin/bash" > $(WRAPPER)
+	@echo "# AK Shell Wrapper - Two-layer process architecture" >> $(WRAPPER)
+	@echo "# Automatically handles environment variable injection for 'load' command" >> $(WRAPPER)
+	@echo "" >> $(WRAPPER)
+	@echo "AK_CORE=\"\$$(dirname \"\$$0\")/ak-core\"" >> $(WRAPPER)
+	@echo "" >> $(WRAPPER)
+	@echo "# Check if ak-core exists, fallback to PATH" >> $(WRAPPER)
+	@echo "if [[ ! -x \"\$$AK_CORE\" ]]; then" >> $(WRAPPER)
+	@echo "    AK_CORE=\"ak-core\"" >> $(WRAPPER)
+	@echo "fi" >> $(WRAPPER)
+	@echo "" >> $(WRAPPER)
+	@echo "# Special handling for 'load' command" >> $(WRAPPER)
+	@echo "if [[ \$$1 == \"load\" && \$$# -ge 2 ]]; then" >> $(WRAPPER)
+	@echo "    # Check if we're in an interactive shell" >> $(WRAPPER)
+	@echo "    if [[ \$$- == *i* ]] && [[ -n \"\$$PS1\" ]]; then" >> $(WRAPPER)
+	@echo "        # Interactive shell: capture output and eval it" >> $(WRAPPER)
+	@echo "        ak_output=\$$(\"\\$$AK_CORE\" \"\$$@\" 2>&1)" >> $(WRAPPER)
+	@echo "        ak_exit=\$$?" >> $(WRAPPER)
+	@echo "        if [[ \$$ak_exit -eq 0 ]]; then" >> $(WRAPPER)
+	@echo "            # Extract export statements and eval them" >> $(WRAPPER)
+	@echo "            while IFS= read -r line; do" >> $(WRAPPER)
+	@echo "                if [[ \$$line == export* ]]; then" >> $(WRAPPER)
+	@echo "                    eval \"\$$line\"" >> $(WRAPPER)
+	@echo "                fi" >> $(WRAPPER)
+	@echo "            done <<< \"\$$ak_output\"" >> $(WRAPPER)
+	@echo "            echo \"✅ Loaded '\$$2' into current shell\" >&2" >> $(WRAPPER)
+	@echo "        else" >> $(WRAPPER)
+	@echo "            echo \"\$$ak_output\" >&2" >> $(WRAPPER)
+	@echo "            exit \$$ak_exit" >> $(WRAPPER)
+	@echo "        fi" >> $(WRAPPER)
+	@echo "    else" >> $(WRAPPER)
+	@echo "        # Non-interactive: just pass through" >> $(WRAPPER)
+	@echo "        exec \"\$$AK_CORE\" \"\$$@\"" >> $(WRAPPER)
+	@echo "    fi" >> $(WRAPPER)
+	@echo "else" >> $(WRAPPER)
+	@echo "    # All other commands: pass through to ak-core" >> $(WRAPPER)
+	@echo "    exec \"\$$AK_CORE\" \"\$$@\"" >> $(WRAPPER)
+	@echo "fi" >> $(WRAPPER)
+	@chmod +x $(WRAPPER)
 
 test: $(TEST_BIN)
 	$(MAKE) $(BIN) # Ensure the main app is built
@@ -105,26 +146,30 @@ $(TEST_BIN): $(TEST_OBJS) $(MODULE_OBJS)
 strip: $(BIN)
 	@which strip >/dev/null 2>&1 && strip $(BIN) || true
 
-install: $(BIN)
+install: $(BIN) $(WRAPPER)
 	$(INSTALL) -d $(DESTDIR)$(BINDIR)
-	$(INSTALL) -m 0755 $(BIN) $(DESTDIR)$(BINDIR)/$(APP)
+	$(INSTALL) -m 0755 $(BIN) $(DESTDIR)$(BINDIR)/$(BIN)
+	$(INSTALL) -m 0755 $(WRAPPER) $(DESTDIR)$(BINDIR)/$(APP)
 	$(DESTDIR)$(BINDIR)/$(APP) install-shell
-	@echo "✅ Installed $(APP) to $(DESTDIR)$(BINDIR)/$(APP)"
+	@echo "✅ Installed $(BIN) and $(WRAPPER) to $(DESTDIR)$(BINDIR)/"
 
 # Install to user's local bin directory (no sudo required)
-install-user: $(BIN)
+install-user: $(BIN) $(WRAPPER)
 	@mkdir -p $(HOME)/.local/bin
-	$(INSTALL) -m 0755 $(BIN) $(HOME)/.local/bin/$(APP)
+	$(INSTALL) -m 0755 $(BIN) $(HOME)/.local/bin/$(BIN)
+	$(INSTALL) -m 0755 $(WRAPPER) $(HOME)/.local/bin/$(APP)
 	$(HOME)/.local/bin/$(APP) install-shell
-	@echo "✅ Installed $(APP) to $(HOME)/.local/bin/$(APP)"
+	@echo "✅ Installed $(BIN) and $(WRAPPER) to $(HOME)/.local/bin/"
 	@echo "💡 Make sure $(HOME)/.local/bin is in your PATH"
 
 uninstall:
 	@rm -f $(DESTDIR)$(BINDIR)/$(APP) || true
+	@rm -f $(DESTDIR)$(BINDIR)/$(BIN) || true
 	@echo "🗑️  Uninstalled $(APP) from $(DESTDIR)$(BINDIR)/$(APP)"
 
 uninstall-user:
 	@rm -f $(HOME)/.local/bin/$(APP) || true
+	@rm -f $(HOME)/.local/bin/$(BIN) || true
 	@echo "🗑️  Uninstalled $(APP) from $(HOME)/.local/bin/$(APP)"
 
 # Test coverage targets
@@ -181,7 +226,9 @@ package-deb: strip
 	@rm -rf $(PKGROOT) $(DISTDIR)
 	@mkdir -p $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN
 	@mkdir -p $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin
-	@cp -f $(BIN) $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin/$(APP)
+	@cp -f $(BIN) $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin/$(BIN)
+	@cp -f $(WRAPPER) $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin/$(APP)
+	@chmod 0755 $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin/$(BIN)
 	@chmod 0755 $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/usr/bin/$(APP)
 	@echo "Package: $(APP)"                                              >  $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
 	@echo "Version: $(VERSION)"                                          >> $(PKGROOT)/deb/$(APP)_$(VERSION)_$(DEB_ARCH)/DEBIAN/control
@@ -205,7 +252,9 @@ package-rpm: strip
 	  rm -rf $(PKGROOT)/rpm $(DISTDIR); \
 	  mkdir -p $(PKGROOT)/rpm/{BUILD,RPMS,SOURCES,SPECS,SRPMS,BUILDROOT}; \
 	  mkdir -p $(PKGROOT)/rpm/BUILDROOT/$(APP)-$(VERSION)-1.$(RPM_ARCH)/usr/bin; \
-	  cp -f $(BIN) $(PKGROOT)/rpm/BUILDROOT/$(APP)-$(VERSION)-1.$(RPM_ARCH)/usr/bin/$(APP); \
+	  cp -f $(BIN) $(PKGROOT)/rpm/BUILDROOT/$(APP)-$(VERSION)-1.$(RPM_ARCH)/usr/bin/$(BIN); \
+	  cp -f $(WRAPPER) $(PKGROOT)/rpm/BUILDROOT/$(APP)-$(VERSION)-1.$(RPM_ARCH)/usr/bin/$(APP); \
+	  chmod 0755 $(PKGROOT)/rpm/BUILDROOT/$(APP)-$(VERSION)-1.$(RPM_ARCH)/usr/bin/$(BIN); \
 	  chmod 0755 $(PKGROOT)/rpm/BUILDROOT/$(APP)-$(VERSION)-1.$(RPM_ARCH)/usr/bin/$(APP); \
 	  echo "Name:           $(APP)"                                   >  $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "Version:        $(VERSION)"                                >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
@@ -219,13 +268,16 @@ package-rpm: strip
 	  echo "$(APP) — secure API key manager (C++ CLI)."               >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "%install"                                                 >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "mkdir -p %{buildroot}/usr/bin"                            >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
+	  echo "install -m 0755 $(BIN) %{buildroot}/usr/bin/$(BIN)"       >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "install -m 0755 $(APP) %{buildroot}/usr/bin/$(APP)"       >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "%files"                                                   >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
+	  echo "%attr(0755,root,root) /usr/bin/$(BIN)"                    >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "%attr(0755,root,root) /usr/bin/$(APP)"                    >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "%prep"                                                    >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "%build"                                                   >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "%clean"                                                   >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  cp -f $(BIN) $(PKGROOT)/rpm/; \
+	  cp -f $(WRAPPER) $(PKGROOT)/rpm/$(APP); \
 	  rpmbuild --define "_topdir $(abspath $(PKGROOT))/rpm" \
 	           --define "_builddir %{_topdir}/BUILD" \
 	           --define "_rpmdir %{_topdir}/RPMS" \

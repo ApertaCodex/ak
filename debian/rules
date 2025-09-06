@@ -12,20 +12,22 @@ export CMAKE_FLAGS = \
 	-DBUILD_TESTS=OFF
 
 %:
-	dh $@ --buildsystem=cmake
+	dh $@ --buildsystem=makefile
 
 override_dh_auto_configure:
-	dh_auto_configure -- $(CMAKE_FLAGS)
+	# No configuration needed for Makefile
 
 override_dh_auto_build:
-	dh_auto_build
+	$(MAKE) all
 
 override_dh_auto_test:
 	# Skip tests during package build to avoid dependency issues
 	@echo "Skipping tests during package build"
 
 override_dh_auto_install:
-	dh_auto_install
+	# Install binaries manually
+	mkdir -p debian/ak/usr/bin
+	$(MAKE) install DESTDIR=debian/ak PREFIX=/usr
 	# Install shell completions
 	mkdir -p debian/ak/etc/bash_completion.d
 	mkdir -p debian/ak/usr/share/zsh/site-functions
@@ -36,5 +38,5 @@ override_dh_auto_install:
 	debian/ak/usr/bin/ak completion fish > debian/ak/usr/share/fish/completions/ak.fish || true
 
 override_dh_auto_clean:
-	dh_auto_clean
-	rm -rf build/
+	$(MAKE) clean || true
+	rm -rf obj/
