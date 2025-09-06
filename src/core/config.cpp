@@ -1,4 +1,5 @@
 #include "core/config.hpp"
+#include "ui/ui.hpp"
 #include <algorithm>
 #include <iostream>
 #include <sstream>
@@ -16,7 +17,7 @@ namespace core {
 
 // Version information
 #ifndef AK_VERSION_STRING
-#define AK_VERSION_STRING "3.1.11"
+#define AK_VERSION_STRING "3.2.0"
 #endif
 const std::string AK_VERSION = AK_VERSION_STRING;
 
@@ -66,16 +67,28 @@ std::string maskValue(const std::string& value) {
 
 // Error handling and output
 void error(const Config& /* cfg */, const std::string& msg, int code) {
-    std::cerr << "Error: " << msg << std::endl;
+    std::cerr << ui::colorize("❌ " + msg, ui::Colors::BRIGHT_RED) << std::endl;
     exit(code);
 }
 
 void ok(const Config& /* cfg */, const std::string& msg) {
-    std::cout << "✓ " << msg << std::endl;
+    std::cout << ui::colorize("✅ " + msg, ui::Colors::BRIGHT_GREEN) << std::endl;
 }
 
 void warn(const Config& /* cfg */, const std::string& msg) {
-    std::cout << "⚠ " << msg << std::endl;
+    std::cout << ui::colorize("⚠️  " + msg, ui::Colors::BRIGHT_YELLOW) << std::endl;
+}
+
+void info(const Config& /* cfg */, const std::string& msg) {
+    std::cout << ui::colorize("ℹ️  " + msg, ui::Colors::BRIGHT_CYAN) << std::endl;
+}
+
+void success(const Config& /* cfg */, const std::string& msg) {
+    std::cout << ui::colorize("🎉 " + msg, ui::Colors::BRIGHT_GREEN) << std::endl;
+}
+
+void working(const Config& /* cfg */, const std::string& msg) {
+    std::cout << ui::colorize("⚡ " + msg, ui::Colors::BRIGHT_BLUE) << std::endl;
 }
 
 // Audit logging
