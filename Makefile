@@ -266,9 +266,12 @@ publish-apt:
 # Launchpad PPA (multi-distribution)
 # -------------------------
 publish-ppa:
-	@echo "🚀 Publishing to Launchpad PPA for all major Ubuntu distributions..."
-	@chmod +x ./publish-ppa-multi.sh || true
-	@PPA="$(PPA)" ./publish-ppa-multi.sh
+	@echo "🚀 Publishing to Launchpad PPA..."
+	@chmod +x ./ppa-upload.sh || true
+	@sudo make clean || true
+	@sudo rm -rf obj-x86_64-linux-gnu/ build/ ak ak_tests obj/ pkg/ dist/ || true
+	@sudo chown -R $(USER):$(USER) debian/ .git/ || true
+	@PPA="$(PPA)" ./ppa-upload.sh
 
 publish-ppa-single:
 	@echo "🚀 Publishing to Launchpad PPA $(PPA) (series=$(SERIES))..."
