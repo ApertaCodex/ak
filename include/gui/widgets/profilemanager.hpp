@@ -57,6 +57,7 @@ private slots:
     void createProfile();
     void deleteProfile();
     void renameProfile();
+    void duplicateProfile();
     void importProfile();
     void exportProfile();
     void onProfileSelectionChanged();
@@ -91,6 +92,7 @@ private:
     QPushButton *createButton;
     QPushButton *deleteButton;
     QPushButton *renameButton;
+    QPushButton *duplicateButton;
     QPushButton *importButton;
     QPushButton *exportButton;
     QPushButton *refreshButton;
