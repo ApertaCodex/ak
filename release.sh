@@ -65,10 +65,42 @@ echo -e "${YELLOW}Step 5: Git Commit & Push${NC}"
 cmake --build . --target commit-and-push
 
 echo ""
+echo -e "${YELLOW}Step 6: PPA Upload${NC}"
+# Attempt to automatically detect GPG key ID if not set
+if [ -z "${DEBSIGN_KEYID}" ]; then
+    DETECTED_KEYID="$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}')"
+    if [ -n "${DETECTED_KEYID}" ]; then
+        export DEBSIGN_KEYID="${DETECTED_KEYID}"
+        echo -e "${GREEN}✅ Automatically detected GPG key ID: ${DEBSIGN_KEYID}${NC}"
+    else
+        echo -e "${RED}❌ Error: DEBSIGN_KEYID is not set and could not be automatically detected.${NC}"
+        echo -e "${RED}Please set it manually: export DEBSIGN_KEYID=YOUR_GPG_KEY_ID${NC}"
+        read -p "Continue with PPA upload anyway? (y/N): " -r
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "PPA upload skipped."
+            exit 0 # Exit successfully if PPA upload is skipped
+        fi
+    fi
+fi
+
+if [ -n "${DEBSIGN_KEYID}" ]; then
+    echo -e "${BLUE}⬆️  Uploading to PPA: ppa:apertacodex/ak (series: noble) with key ${DEBSIGN_KEYID}${NC}"
+    # Capture output for debugging
+    if ! ../ppa-upload.sh -s noble -k "${DEBSIGN_KEYID}" 2>&1 | tee ppa_upload_output.log; then
+        echo -e "${RED}❌ PPA upload failed. Check ppa_upload_output.log for details.${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ PPA upload initiated. Monitor build status at Launchpad.${NC}"
+else
+    echo -e "${RED}❌ PPA upload skipped due to missing GPG key ID.${NC}"
+fi
+
+echo ""
 echo -e "${GREEN}🎉 Release completed successfully!${NC}"
 echo ""
 echo -e "${BLUE}📦 Users can now install with:${NC}"
 echo "  curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash"
 echo "  sudo apt install ak"
 echo ""
-echo -e "${BLUE}📍 Repository: https://apertacodex.github.io/ak/ak-apt-repo${NC}"
+echo -e "${BLUE}📍 GitHub Pages Repository: https://apertacodex.github.io/ak/ak-apt-repo${NC}"
+echo -e "${BLUE}📍 Launchpad PPA: https://launchpad.net/~apertacodex/+archive/ubuntu/ak${NC}"
