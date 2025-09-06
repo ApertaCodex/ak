@@ -13,9 +13,9 @@ namespace gui {
 
 MainWindow::MainWindow(const core::Config& cfg, QWidget *parent)
     : QMainWindow(parent), config(cfg), tabWidget(nullptr),
-      keyManagerWidget(nullptr), serviceTesterWidget(nullptr),
-      profileManagerWidget(nullptr), settingsTab(nullptr),
-      exitAction(nullptr), aboutAction(nullptr), helpAction(nullptr)
+      keyManagerWidget(nullptr), profileManagerWidget(nullptr),
+      settingsTab(nullptr), exitAction(nullptr), aboutAction(nullptr),
+      helpAction(nullptr)
 {
     setupUi();
     setupMenuBar();
@@ -102,12 +102,6 @@ void MainWindow::setupTabs()
             this, &MainWindow::onStatusMessage);
     tabWidget->addTab(keyManagerWidget, "Key Manager");
 
-    // Service Tester Tab
-    serviceTesterWidget = new widgets::ServiceTesterWidget(config, this);
-    connect(serviceTesterWidget, &widgets::ServiceTesterWidget::statusMessage,
-            this, &MainWindow::onStatusMessage);
-    tabWidget->addTab(serviceTesterWidget, "Service Tester");
-
     // Profile Manager Tab
     profileManagerWidget = new widgets::ProfileManagerWidget(config, this);
     connect(profileManagerWidget, &widgets::ProfileManagerWidget::statusMessage,
@@ -141,8 +135,7 @@ void MainWindow::showHelp()
     QMessageBox::information(this, "Help",
         "AK GUI Help\n\n"
         "Use the tabs to navigate between different features:\n\n"
-        "• Key Manager: Manage your API keys and secrets\n"
-        "• Service Tester: Test API endpoints with your keys\n"
+        "• Key Manager: Manage your API keys and test endpoints\n"
         "• Profile Manager: Create and manage key profiles\n"
         "• Settings: Configure application preferences\n\n"
         "For detailed documentation, visit the project repository.");
