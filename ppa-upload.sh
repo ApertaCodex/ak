@@ -98,14 +98,41 @@ echo "Building signed source package for ${PKG_NAME} ${VERSION}..."
 # Clean previous source changes
 rm -f ../${PKG_NAME}_*_source.changes || true
 
+# Temporarily move ignored directories to avoid dpkg-source errors
+TEMP_DIRS=()
+if [ -d ".vscode" ]; then
+  mv .vscode .vscode.tmp
+  TEMP_DIRS+=(".vscode")
+fi
+if [ -d "tests/googletest" ]; then
+  mv tests/googletest tests/googletest.tmp
+  TEMP_DIRS+=("tests/googletest")
+fi
+
 # Build source package (-S) with full orig upload (-sa)
+BUILD_SUCCESS=false
 if debuild --version >/dev/null 2>&1; then
-  if ! debuild -S -sa -k"${KEYID}"; then
-    echo "debuild failed."
-    exit 1
+  if debuild -S -sa -k"${KEYID}"; then
+    BUILD_SUCCESS=true
   fi
 else
-  dpkg-buildpackage -S -sa -k"${KEYID}"
+  if dpkg-buildpackage -S -sa -k"${KEYID}"; then
+    BUILD_SUCCESS=true
+  fi
+fi
+
+# Restore temporarily moved directories
+for dir in "${TEMP_DIRS[@]}"; do
+  if [ "$dir" = ".vscode" ]; then
+    mv .vscode.tmp .vscode
+  elif [ "$dir" = "tests/googletest" ]; then
+    mv tests/googletest.tmp tests/googletest
+  fi
+done
+
+if [ "$BUILD_SUCCESS" = false ]; then
+  echo "debuild failed."
+  exit 1
 fi
 
 # Find the .changes file
