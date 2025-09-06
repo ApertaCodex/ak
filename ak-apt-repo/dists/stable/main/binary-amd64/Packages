@@ -1,4 +1,758 @@
 Package: ak
+Version: 2.0.0-1
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 188
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.0.0-1_amd64.deb
+Size: 68568
+MD5sum: 747c904aaf23d863b36520b332d4c278
+SHA1: a5f73328e5023d2a924af90a1d23b430c7e6d196
+SHA256: 97296c21473bf41c9a1aa57f6be383036a07c292ad9db3845c676b3c27b9d830
+Section: utils
+Priority: optional
+Homepage: https://github.com/username/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.1.0-1
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 201
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.1.0-1_amd64.deb
+Size: 75170
+MD5sum: f689c96e0e52b88561fe52e9e862d3bc
+SHA1: 7a130f06b8e2890230754ec6ebcd02f44bf2e157
+SHA256: 4bcc6dd9b92f7aa56b3da79b973e9715b0ff8270ba7a9931f2fbdf2eeadb65da
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.10.0
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 201
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.10.0_amd64.deb
+Size: 75548
+MD5sum: 4d8fbd221824ae1157740b86027bf2d0
+SHA1: 11b2e8eea8a53542a0b086199b7b1dc678b5b132
+SHA256: 4901fe4ef9ede910d9ae6144c21acbeb97fb523457206fba37b7a127fb4c25d3
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.10.1
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 201
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.10.1_amd64.deb
+Size: 75550
+MD5sum: 7e7cf295aed56187e8fc0383235c8147
+SHA1: 3fe5be8fadc2213c6bb1e4c5130f468ee22c79d4
+SHA256: f21a19ef8cde32f7195b71f35e26386afc4c1000f810386c5e870736da4aaec2
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.10.2
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 201
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.10.2_amd64.deb
+Size: 75556
+MD5sum: f9e8bcb078e44d621443a1782a0abe4c
+SHA1: a3c44e98e29baf5677fb7481c394d1aad735d415
+SHA256: b2c7fe07826c2018c76e2a2ef2c477ec2a0ea22f9e362fe8bcbc3d897de35c19
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.10.3
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 201
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.10.3_amd64.deb
+Size: 75542
+MD5sum: c559357a944e36dbd937ff4108df70e7
+SHA1: b3a2607f47ced20ad24a9d929cfecd0caf27afba
+SHA256: efac510ce768be7fb89dc250f325afddbf78c453de1f320964b7882297b27bcf
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.10.4
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 201
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.10.4_amd64.deb
+Size: 75558
+MD5sum: 197ef207c899693f03d667ef8e41798f
+SHA1: 7fd9c441945721926bf8c62a58f5e4be1de85e68
+SHA256: ef04b236a48c30d230faa0c5dd1ff5f466630a10a9c772f08bdfd8e43855c349
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.10.5
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 201
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.10.5_amd64.deb
+Size: 75556
+MD5sum: 09f5871135d4f9869220614083832574
+SHA1: 1ca7e6bfd7d2ae6614ca881dd15e56e2238ac76c
+SHA256: 96be2a7e6e0af9818a30581e6e81173a6c18b81e8fee7a7dc049942cc2772364
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.10.6
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 201
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.10.6_amd64.deb
+Size: 75564
+MD5sum: 197a7ff5d0e4333b22f2bbc436130dd4
+SHA1: 8f2ea560ed1ef56aff67211191dc2750198e13fc
+SHA256: 26ea9575fdf095562b9f1002fd0a82762fee030306d55a4a690b4db476e0a16f
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.10.7
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 201
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.10.7_amd64.deb
+Size: 75540
+MD5sum: cc20863398d105f1b8a35bad2b47500f
+SHA1: 093c427a0678a21b435ff00afe2dbda2a6ceac8f
+SHA256: 7d7ba836f664c6417b4db5197febdb9c8a08be5087dbfcb931fa64e8ec0044ce
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.11.0
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 217
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.11.0_amd64.deb
+Size: 81854
+MD5sum: 5620dc18dfa9b8ae65657e1a86027857
+SHA1: f8df8918d151c5705a4cf200fd7cfbfe9a658e7b
+SHA256: 29efa54fd89c66238f91cc5975285b5d178d2badb353f2655206e4a1fd5b77db
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.11.1
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 217
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.11.1_amd64.deb
+Size: 81844
+MD5sum: bb6fdda737272ddf0bfbafad0eed3fe1
+SHA1: 4d7aa20a982dedf4d9ec63d4ab0d60c936fa871a
+SHA256: e9a8907d7509fd0ea65e8c981ad47ef84c8f2b9945efb48fe2a427f5d3d392fa
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.11.2
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 217
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.11.2_amd64.deb
+Size: 82788
+MD5sum: c63cb82efde2c40ba27e66148bfd09aa
+SHA1: 856cefd9d69beef5e72c0c25ed238aa3168d8511
+SHA256: 3193bf77cda47ba0ffe0c56c9a64a31d40245fd846988cd4fd54d73c30083aa8
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.11.3
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 217
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.11.3_amd64.deb
+Size: 82882
+MD5sum: 437420f436e0a03e041e7aa0c87487e7
+SHA1: a06b0cb0277b6dbd0c2b7e19bc5256c050e7fe38
+SHA256: 49ac11bb60f7950a17f3b50ead83b1dbcc5f4e2d4936a97d7aef8ee2e233cdfb
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.11.5
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 217
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.11.5_amd64.deb
+Size: 82882
+MD5sum: 2c022aa05ceb8802a29e279f31f65c99
+SHA1: ec70b7f6084277aa98848afa3a66110aeebee241
+SHA256: a3e25f43881033fb60ca1669768d4e4b20c9d077c1736cbb639235a88b0d640c
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.11.6
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 217
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.11.6_amd64.deb
+Size: 82882
+MD5sum: 9eaace893d1523dfb9b394b6ad86226d
+SHA1: cd3fd4a3bdcbdb84c6e9c2ff93081c68c7f7ba75
+SHA256: f1c49c12736c0f49e8ce7e44336fe3107f87c7f611784912aaf41b75e27ba5e2
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.11.7
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 217
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.11.7_amd64.deb
+Size: 82884
+MD5sum: 72e33aa8b1e08a3201212929c924a7e0
+SHA1: 29fbd119440353925486743953bfccbb22fab4a3
+SHA256: bf939a76c9a26db827feb2ad35715423ffa6ebe262306e3d64ef73f9f041b0a6
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.2.0-1
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 201
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.2.0-1_amd64.deb
+Size: 75562
+MD5sum: a7c9f38dc0b772e324c7a6e990e59fef
+SHA1: 79be6893b9e1aee4956de4a111e7d5c321b75fdb
+SHA256: 9a2812c0007db1ff2702cc8dfd7ddcf1fe577610a7f0d4486f7ca22d57e93fee
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 2.9.0-1
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 201
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libstdc++6 (>= 13.1)
+Recommends: gnupg
+Filename: pool/main/ak_2.9.0-1_amd64.deb
+Size: 75556
+MD5sum: 2aff18807e9a5a8e32f86b8871792c14
+SHA1: b7e22df3924971531c8b4cfd48663d3769e2b0f9
+SHA256: b4aa8273b3070cb61b9830a07ef1093dc8ea28f0f212afd170b71714df9571bf
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 3.1.0
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 495
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libqt6core6t64 (>= 6.8.2), libqt6gui6 (>= 6.1.2), libqt6widgets6 (>= 6.3.0), libstdc++6 (>= 13.1), qt6-base-dev
+Recommends: gnupg
+Filename: pool/main/ak_3.1.0_amd64.deb
+Size: 171108
+MD5sum: 401f988ef48cd33ab3a093f1e0f4e3df
+SHA1: a273d9ce2939aabfb19c8a5037093b2132c828ab
+SHA256: 5b90369d83147534e442372272bde90c7ebb7aadea6f875db9dcc2ad1df1d23f
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 3.1.2
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 495
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libqt6core6t64 (>= 6.8.2), libqt6gui6 (>= 6.1.2), libqt6widgets6 (>= 6.3.0), libstdc++6 (>= 13.1), qt6-base-dev
+Recommends: gnupg
+Filename: pool/main/ak_3.1.2_amd64.deb
+Size: 171106
+MD5sum: 5c2e264faa0c160c114c93390eb2e8f3
+SHA1: e3eb8966403d1ee0989020b7d9c135e283e7105f
+SHA256: e36c431da0de6742e5d32f45c2872c1066e791eba3f40de96f69fb9e190e5de4
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 3.1.4
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 495
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libqt6core6t64 (>= 6.8.2), libqt6gui6 (>= 6.1.2), libqt6widgets6 (>= 6.3.0), libstdc++6 (>= 13.1), qt6-base-dev
+Recommends: gnupg
+Filename: pool/main/ak_3.1.4_amd64.deb
+Size: 171106
+MD5sum: af2fae2643cee1abbc117af00ec50394
+SHA1: 97dced28c53c126e02a823df960682461e043987
+SHA256: 8cdeec948b5b78d82a18482c3481f1371b0b618d275d0caaa13e286ca8f1b8e8
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 3.1.5
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 495
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libqt6core6t64 (>= 6.8.2), libqt6gui6 (>= 6.1.2), libqt6widgets6 (>= 6.3.0), libstdc++6 (>= 13.1), qt6-base-dev
+Recommends: gnupg
+Filename: pool/main/ak_3.1.5_amd64.deb
+Size: 171096
+MD5sum: 764ca953cc59136c55df28dec0fb32cb
+SHA1: 45196e51840fe248a493e65409dba211c0941fbb
+SHA256: aa10eab2b5db753d3d2c1a3245754294fdcaa775eab105eb02a0282a31043122
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 3.1.6
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 495
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libqt6core6t64 (>= 6.8.2), libqt6gui6 (>= 6.1.2), libqt6widgets6 (>= 6.3.0), libstdc++6 (>= 13.1), qt6-base-dev
+Recommends: gnupg
+Filename: pool/main/ak_3.1.6_amd64.deb
+Size: 171090
+MD5sum: ebd4f4461bdd4df4a93b3fe343abf03b
+SHA1: d70b60dde99720074606fb93135c9140b6caeae0
+SHA256: 9e0c6ab880032a177f64791cfc9b77fbb8fbdb966f68d37c336fb419181fa67d
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 3.1.7
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 495
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libqt6core6t64 (>= 6.8.2), libqt6gui6 (>= 6.1.2), libqt6widgets6 (>= 6.3.0), libstdc++6 (>= 13.1), qt6-base-dev
+Recommends: gnupg
+Filename: pool/main/ak_3.1.7_amd64.deb
+Size: 171086
+MD5sum: b1d6c9a0151cf64440b6bf77e916c38b
+SHA1: 26ffb75f50a6a968f728acee5ffdca032cb44560
+SHA256: e20a7c89fa6a90e674d410f5f745b096c28378bf09fefc3971cb2e6095166b0c
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
+Version: 3.1.8
+Architecture: amd64
+Maintainer: AK Maintainer <maintainer@example.com>
+Installed-Size: 495
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libqt6core6t64 (>= 6.8.2), libqt6gui6 (>= 6.1.2), libqt6widgets6 (>= 6.3.0), libstdc++6 (>= 13.1), qt6-base-dev
+Recommends: gnupg
+Filename: pool/main/ak_3.1.8_amd64.deb
+Size: 171104
+MD5sum: 15fd0ba4dc875f563ee887c359cdc3dc
+SHA1: d2520fd753251a30bb0190748a9741572e0a6cb3
+SHA256: 38d40f9c742f3912da3a3d06ff3ce4d0e1144a2541a376fdb2e708a3593ea34d
+Section: utils
+Priority: optional
+Homepage: https://github.com/apertacodex/ak
+Description: Secure API Key Manager
+ AK is a cross-platform command-line tool for managing API keys securely
+ across different services. It provides encrypted storage, service integration,
+ and comprehensive testing capabilities.
+ .
+ Key features:
+  * Cross-platform support (Linux, macOS, Windows)
+  * Secure encrypted storage with optional GPG encryption
+  * Built-in support for popular APIs (OpenAI, GitHub, AWS, etc.)
+  * Profile management for different environments
+  * Shell completions for Bash, Zsh, and Fish
+  * Comprehensive test suite with coverage reporting
+  * Easy installation and configuration
+
+Package: ak
 Version: 3.1.9
 Architecture: amd64
 Maintainer: AK Maintainer <maintainer@example.com>
