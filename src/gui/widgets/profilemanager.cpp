@@ -393,21 +393,44 @@ void ProfileManagerWidget::exportProfile()
         try {
             // Read profile keys
             auto keys = ak::storage::readProfile(config, profileName.toStdString());
+            
+            // Load vault to get actual key values
+            auto vault = ak::storage::loadVault(config);
 
             if (format == "env") {
-                // Export as .env file
+                // Export as .env file with values
                 std::ofstream output(filePath.toStdString());
                 for (const auto& key : keys) {
-                    output << key << "=" << std::endl;
+                    auto it = vault.kv.find(key);
+                    if (it != vault.kv.end()) {
+                        // Escape quotes and backslashes in values
+                        std::string value = it->second;
+                        std::string escaped;
+                        for (char c : value) {
+                            if (c == '"' || c == '\\') {
+                                escaped += '\\';
+                            }
+                            escaped += c;
+                        }
+                        output << key << "=\"" << escaped << "\"" << std::endl;
+                    } else {
+                        output << key << "=" << std::endl;
+                    }
                 }
             } else if (format == "json") {
-                // Export as JSON
+                // Export as JSON with values
                 QJsonObject root;
-                QJsonArray keysArray;
+                QJsonObject keysObject;
                 for (const auto& key : keys) {
-                    keysArray.append(QString::fromStdString(key));
+                    auto it = vault.kv.find(key);
+                    if (it != vault.kv.end()) {
+                        keysObject[QString::fromStdString(key)] = QString::fromStdString(it->second);
+                    } else {
+                        keysObject[QString::fromStdString(key)] = "";
+                    }
                 }
-                root["keys"] = keysArray;
+                root["profile"] = QString::fromStdString(profileName.toStdString());
+                root["keys"] = keysObject;
 
                 QJsonDocument doc(root);
                 QFile file(filePath);
