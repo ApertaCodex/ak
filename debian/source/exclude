@@ -1,12 +1,8 @@
-ak-apt-repo/pool/main/*.deb
-ak-apt-repo/dists/*/InRelease
-ak-apt-repo/dists/*/Release.gpg
-ak-macos-repo/packages/*.tar.xz
-ak-macos-repo/packages/*.7z
-ak-macos-repo/packages/*.dmg
-ak-macos-repo/packages/*.pkg
+ak-apt-repo/
+ak-macos-repo/packages/
 *.deb
 *.tar.xz
 *.7z
 *.dmg
 *.pkg
+*.gz
