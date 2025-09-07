@@ -309,7 +309,6 @@ publish-major:
 # -------------------------
 
 VERSION   ?= 4.1.4
-VERSION   ?= 4.1.4
 
 release:
 	@echo "🚀 Starting comprehensive release ($(V_BUMP) version bump)..."
