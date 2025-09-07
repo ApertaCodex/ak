@@ -1071,3 +1071,17 @@ Description: Secure API Key Manager
   * Comprehensive test suite with coverage reporting
   * Easy installation and configuration
 
+Package: ak
+Version: 4.1.1
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.1.1_amd64.deb
+Size: 153392
+MD5sum: 5b8e820a73e93cb25d03fd011fb57472
+SHA1: 0f7ffdc1d2015feda0c0472a82df0caf14b972f8
+SHA256: c2d5fc696f34bc72ced48fe93ffb59565c8e9a728cf83a24ab424a6bad21571a
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+

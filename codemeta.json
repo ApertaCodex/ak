@@ -4,7 +4,7 @@
   "identifier": "ak-api-key-manager",
   "name": "AK - API Key Manager",
   "description": "Cross-platform C++17 command-line tool for secure API key management with encrypted storage, service integration, and shell completions",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "author": [
     {
       "@type": "Person",
