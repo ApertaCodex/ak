@@ -10,6 +10,7 @@ SERIES_DEFAULT="$(dpkg-parsechangelog -S Distribution 2>/dev/null || true)"
 SERIES="${SERIES:-${SERIES_DEFAULT:-noble}}"
 KEYID="${DEBSIGN_KEYID:-${KEYID:-}}"
 DPUT_FLAGS="${DPUT_FLAGS:-}"
+BUILD_DIR="${BUILD_DIR:-..}"
 
 usage() {
   cat <<EOF
@@ -126,11 +127,8 @@ fi
 STASH_CREATED=false
 if ! git diff --quiet || ! git diff --cached --quiet; then
     echo "Stashing uncommitted changes for clean source build..."
-    # Temporarily add ak-apt-repo to .gitignore for stash
-    echo "ak-apt-repo/" >> .gitignore
-    git stash push -u -m "Temporary stash for PPA build"
-    # Remove the temporary .gitignore entry
-    head -n -1 .gitignore > .gitignore.tmp && mv .gitignore.tmp .gitignore
+    # Stash all changes except ak-apt-repo and ak-macos-repo
+    git stash push -u -m "Temporary stash for PPA build" -- . ':!ak-apt-repo' ':!ak-macos-repo'
     STASH_CREATED=true
 fi
 
