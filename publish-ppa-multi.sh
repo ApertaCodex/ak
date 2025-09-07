@@ -93,8 +93,12 @@ EOF
     
     echo "  📋 Building source package for ${DIST} (${DIST_VERSION})..."
     
+    # Create dedicated build directory for this distribution
+    BUILD_DIR="build/ppa/${DIST}"
+    mkdir -p "${BUILD_DIR}"
+    
     # Clean previous builds
-    rm -f ../ak_${DIST_VERSION}* || true
+    rm -f ${BUILD_DIR}/ak_${DIST_VERSION}* || true
     
     # Temporarily backup and remove ignored directories to avoid dpkg-source errors
     TEMP_BACKUP_DIR="/tmp/ak_ppa_backup_$$_${DIST}"
@@ -129,9 +133,12 @@ EOF
     if [ $BUILD_SUCCESS -eq 0 ]; then
         echo "  ✅ Source package built successfully"
         
+        # Move build artifacts to build directory
+        mv ../ak_${DIST_VERSION}* "${BUILD_DIR}/" 2>/dev/null || true
+        
         # Upload to PPA
         echo "  ⬆️  Uploading to PPA..."
-        UPLOAD_OUTPUT=$(dput ${DPUT_FLAGS} "${PPA}" "../ak_${DIST_VERSION}_source.changes" 2>&1)
+        UPLOAD_OUTPUT=$(dput ${DPUT_FLAGS} "${PPA}" "${BUILD_DIR}/ak_${DIST_VERSION}_source.changes" 2>&1)
         if [ $? -eq 0 ]; then
             echo "  ✅ Upload successful for ${DIST}"
             SUCCESSFUL_UPLOADS+=("${DIST}")
