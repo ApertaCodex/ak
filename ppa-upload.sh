@@ -140,11 +140,13 @@ fi
 # Build source package (-S) with full orig upload (-sa)
 BUILD_SUCCESS=false
 if debuild --version >/dev/null 2>&1; then
-  if debuild -S -sa -k"${KEYID}"; then
+  if debuild -S -sa -k"${KEYID}" --buildresult="${BUILD_DIR}"; then
     BUILD_SUCCESS=true
   fi
 else
   if dpkg-buildpackage -S -sa -k"${KEYID}"; then
+    # Move build artifacts to build directory for dpkg-buildpackage
+    mv ../${PKG_NAME}_* "${BUILD_DIR}/" 2>/dev/null || true
     BUILD_SUCCESS=true
   fi
 fi
@@ -171,7 +173,7 @@ if [ "$BUILD_SUCCESS" = false ]; then
 fi
 
 # Find the .changes file
-CHANGES_FILE="$(ls -t ../${PKG_NAME}_*_source.changes 2>/dev/null | head -n1 || true)"
+CHANGES_FILE="$(ls -t ${BUILD_DIR}/${PKG_NAME}_*_source.changes 2>/dev/null | head -n1 || true)"
 if [[ -z "${CHANGES_FILE}" ]]; then
   echo "Could not locate source .changes file."
   exit 1
