@@ -1,0 +1,155 @@
+name: Build macOS DMG
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 4.1.4)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-dmg:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up build environment
+        run: |
+          # Install required build tools
+          brew install cmake make
+          
+          # Verify macOS tools are available
+          which hdiutil || echo "hdiutil not found"
+          which codesign || echo "codesign not found"
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION=${VERSION#v}  # Remove 'v' prefix if present
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Update version in source files
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # Update version in Makefile
+          sed -i '' "s/^VERSION.*=.*/VERSION   ?= $VERSION/" Makefile
+          
+          # Update version in config.cpp
+          sed -i '' "s/const std::string AK_VERSION = \".*\";/const std::string AK_VERSION = \"$VERSION\";/" src/core/config.cpp
+          sed -i '' "s/#define AK_VERSION_STRING \".*\"/#define AK_VERSION_STRING \"$VERSION\"/" src/core/config.cpp
+          
+          echo "✅ Updated version to $VERSION in source files"
+
+      - name: Build project
+        run: |
+          echo "🏗️ Building AK project..."
+          
+          # Create build directory
+          mkdir -p build
+          
+          # Build the main binary
+          make clean || true
+          make all
+          
+          # Verify binary was built
+          if [ -f ./ak ]; then
+            echo "✅ Binary built successfully"
+            ./ak --version || echo "Binary version check failed"
+          else
+            echo "❌ Binary build failed"
+            exit 1
+          fi
+
+      - name: Create DMG
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "📦 Creating DMG for version $VERSION..."
+          
+          # Set version environment variable for scripts
+          export AK_VERSION="$VERSION"
+          
+          # Create DMG using existing scripts
+          cd macos/scripts
+          ./create-dmg.sh --version "$VERSION" --output "../../build/macos-packages"
+          
+          # Verify DMG was created
+          DMG_FILE="../../build/macos-packages/AK-${VERSION}.dmg"
+          if [ -f "$DMG_FILE" ]; then
+            echo "✅ DMG created successfully: $(basename "$DMG_FILE")"
+            echo "📊 DMG size: $(du -h "$DMG_FILE" | cut -f1)"
+            
+            # Verify DMG integrity
+            hdiutil verify "$DMG_FILE" || echo "⚠️ DMG verification failed"
+          else
+            echo "❌ DMG creation failed"
+            exit 1
+          fi
+
+      - name: Upload DMG to release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./build/macos-packages/AK-${{ steps.version.outputs.version }}.dmg
+          asset_name: AK-${{ steps.version.outputs.version }}.dmg
+          asset_content_type: application/x-apple-diskimage
+
+      - name: Upload DMG artifact (for manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: AK-${{ steps.version.outputs.version }}-dmg
+          path: ./build/macos-packages/AK-${{ steps.version.outputs.version }}.dmg
+          retention-days: 30
+
+      - name: Create summary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DMG_FILE="./build/macos-packages/AK-${VERSION}.dmg"
+          DMG_SIZE=$(du -h "$DMG_FILE" | cut -f1)
+          
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # macOS DMG Build Complete
+          
+          ## Version: $VERSION
+          
+          ### Build Artifacts
+          - **DMG File**: AK-${VERSION}.dmg
+          - **Size**: ${DMG_SIZE}
+          - **Location**: build/macos-packages/
+          
+          ### Installation
+          1. Download the DMG file
+          2. Double-click to mount the disk image
+          3. Drag AK.app to your Applications folder
+          4. Eject the disk image
+          
+          ### Command Line Installation
+          \`\`\`bash
+          # After mounting the DMG
+          cp -r "/Volumes/AK ${VERSION}/AK.app" /Applications/
+          \`\`\`
+          
+          ### Verification
+          \`\`\`bash
+          /Applications/AK.app/Contents/MacOS/ak --version
+          \`\`\`
+          EOF
+          
+          echo "✅ macOS DMG build completed successfully!"
