@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# Post-installation script for AK
+# This script runs after the AK package is installed
+
+set -e
+
+# Script metadata
+SCRIPT_NAME="AK Post-Install"
+LOG_FILE="/tmp/ak-postinstall.log"
+
+# Logging function
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [${SCRIPT_NAME}] $1" | tee -a "$LOG_FILE"
+}
+
+log "Starting post-installation setup"
+
+# Set proper permissions for installed files
+log "Setting file permissions"
+chmod 755 /usr/local/bin/ak
+if [[ -f /usr/local/bin/ak-gui ]]; then
+    chmod 755 /usr/local/bin/ak-gui
+fi
+
+# Set permissions for manual page
+if [[ -f /usr/local/share/man/man1/ak.1 ]]; then
+    chmod 644 /usr/local/share/man/man1/ak.1
+fi
+
+# Update man database
+log "Updating manual database"
+if command -v mandb >/dev/null 2>&1; then
+    mandb -q /usr/local/share/man 2>/dev/null || true
+fi
+
+# Create symlinks in standard locations if they don't exist
+log "Creating symlinks for system PATH"
+
+# Check if /usr/local/bin is in PATH
+if [[ ":$PATH:" != *":/usr/local/bin:"* ]]; then
+    log "WARNING: /usr/local/bin is not in PATH. Users may need to add it manually."
+fi
+
+# Verify installation
+log "Verifying installation"
+if [[ -f /usr/local/bin/ak ]]; then
+    AK_VERSION=$(/usr/local/bin/ak --version 2>/dev/null | head -1 || echo "Unknown")
+    log "AK CLI installed successfully: $AK_VERSION"
+else
+    log "ERROR: AK CLI installation verification failed"
+fi
+
+if [[ -f /usr/local/bin/ak-gui ]]; then
+    log "AK GUI installed successfully"
+fi
+
+# Create initial configuration directory for users
+log "Setting up user configuration template"
+TEMPLATE_DIR="/usr/local/share/ak/templates"
+if [[ ! -d "$TEMPLATE_DIR" ]]; then
+    mkdir -p "$TEMPLATE_DIR"
+    
+    # Create a sample configuration template
+    cat > "$TEMPLATE_DIR/config-sample.conf" << 'EOF'
+# AK Configuration Template
+# Copy this to ~/.config/ak/config.conf and customize as needed
+
+# Default settings
+default_profile=default
+auto_backup=true
+gpg_enabled=true
+
+# Security settings
+session_timeout=3600
+require_confirmation=true
+EOF
+    
+    chmod 644 "$TEMPLATE_DIR/config-sample.conf"
+fi
+
+# Display success message
+log "Installation completed successfully!"
+log "To get started:"
+log "  - Run 'ak --help' for CLI usage"
+if [[ -f /usr/local/bin/ak-gui ]]; then
+    log "  - Run 'ak-gui' for graphical interface"
+fi
+log "  - Configuration directory: ~/.config/ak"
+log "  - Manual page: man ak"
+
+# Clean up old log files (keep only last 5)
+LOG_DIR="/tmp"
+cd "$LOG_DIR"
+ls -t ak-*.log 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null || true
+
+exit 0

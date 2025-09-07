@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <title>AK - Advanced Key Management Tool</title>
+    <organization>ak.dev</organization>
+    <domains enable_anywhere="true"/>
+    <options customize="never" require-scripts="true" rootVolumeOnly="true" />
+    
+    <!-- Define installation check -->
+    <installation-check script="pm_install_check();"/>
+    
+    <!-- Define volume check -->  
+    <volume-check>
+        <allowed-os-versions>
+            <os-version min="10.15" />
+        </allowed-os-versions>
+    </volume-check>
+    
+    <!-- Background customization -->
+    <background file="background.png" mime-type="image/png" alignment="topleft" scaling="proportional"/>
+    
+    <!-- License information -->
+    <license file="LICENSE.txt" mime-type="text/plain" />
+    
+    <!-- Welcome message -->
+    <welcome file="Welcome.html" mime-type="text/html" />
+    
+    <!-- Package choice definitions -->
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.ak.cli"/>
+            <line choice="com.ak.gui"/>
+        </line>
+    </choices-outline>
+    
+    <!-- CLI component choice -->
+    <choice id="com.ak.cli" visible="false">
+        <pkg-ref id="com.ak.cli"/>
+    </choice>
+    <pkg-ref id="com.ak.cli" version="{{VERSION}}" onConclusion="none">ak-cli.pkg</pkg-ref>
+    
+    <!-- GUI component choice -->
+    <choice id="com.ak.gui" visible="false" start_enabled="true" start_selected="true">
+        <pkg-ref id="com.ak.gui"/>
+    </choice>
+    <pkg-ref id="com.ak.gui" version="{{VERSION}}" onConclusion="none">ak-gui.pkg</pkg-ref>
+    
+    <!-- Default choice -->
+    <choice id="default"/>
+    
+    <!-- Pre-installation script -->
+    <script>
+    <![CDATA[
+        function pm_install_check() {
+            if(!(system.compareVersions(system.version.ProductVersion, '10.15.0') >= 0)) {
+                my.result.title = 'Unable to install';
+                my.result.message = 'AK requires macOS 10.15 (Catalina) or later.';
+                my.result.type = 'Fatal';
+                return false;
+            }
+            return true;
+        }
+    ]]>
+    </script>
+    
+</installer-gui-script>

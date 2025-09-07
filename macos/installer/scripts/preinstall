@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Pre-installation script for AK
+# This script runs before the AK package is installed
+
+set -e
+
+# Script metadata
+SCRIPT_NAME="AK Pre-Install"
+LOG_FILE="/tmp/ak-preinstall.log"
+
+# Logging function
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [${SCRIPT_NAME}] $1" | tee -a "$LOG_FILE"
+}
+
+log "Starting pre-installation checks"
+
+# Check macOS version
+MACOS_VERSION=$(sw_vers -productVersion)
+REQUIRED_VERSION="10.15"
+
+if [[ $(echo "$MACOS_VERSION $REQUIRED_VERSION" | awk '{if ($1 >= $2) print "ok"}') != "ok" ]]; then
+    log "ERROR: macOS $REQUIRED_VERSION or later is required. Found: $MACOS_VERSION"
+    exit 1
+fi
+
+log "macOS version check passed: $MACOS_VERSION"
+
+# Check if previous installation exists
+if [[ -f "/usr/local/bin/ak" ]]; then
+    log "Previous installation detected at /usr/local/bin/ak"
+    
+    # Backup existing configuration if it exists
+    if [[ -d "$HOME/.config/ak" ]]; then
+        BACKUP_DIR="$HOME/.config/ak.backup.$(date +%Y%m%d-%H%M%S)"
+        log "Backing up existing configuration to: $BACKUP_DIR"
+        cp -r "$HOME/.config/ak" "$BACKUP_DIR"
+    fi
+fi
+
+# Check available disk space (require at least 50MB)
+AVAILABLE_SPACE=$(df /usr/local | awk 'NR==2 {print $4}')
+REQUIRED_SPACE=51200  # 50MB in KB
+
+if [[ $AVAILABLE_SPACE -lt $REQUIRED_SPACE ]]; then
+    log "ERROR: Insufficient disk space. Required: 50MB, Available: $((AVAILABLE_SPACE/1024))MB"
+    exit 1
+fi
+
+log "Disk space check passed: $((AVAILABLE_SPACE/1024))MB available"
+
+# Create necessary directories
+log "Creating necessary directories"
+mkdir -p /usr/local/bin
+mkdir -p /usr/local/share/ak
+mkdir -p /usr/local/share/man/man1
+
+# Set proper permissions
+chmod 755 /usr/local/bin
+chmod 755 /usr/local/share/ak
+chmod 755 /usr/local/share/man/man1
+
+log "Pre-installation completed successfully"
+exit 0
