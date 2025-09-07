@@ -5,8 +5,8 @@
 class Ak < Formula
   desc "Advanced Key manager and cryptographic utility for secure storage and operations"
   homepage "https://github.com/apertacodex/ak"
-  url "https://github.com/apertacodex/ak/archive/v3.3.0.tar.gz"
-  version "3.3.0"
+  url "https://github.com/apertacodex/ak/archive/v4.1.0.tar.gz"
+  version "4.1.0"
   sha256 "25727efbc2c0bbec8643c14ae7094116bb3ed5e6a404580dfa236213e9f88b49"
   license "MIT"
 
