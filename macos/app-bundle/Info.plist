@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>AK</string>
+    <key>CFBundleExecutable</key>
+    <string>ak-gui</string>
+    <key>CFBundleIconFile</key>
+    <string>ak.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>{{BUNDLE_ID}}</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>AK</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>{{VERSION}}</string>
+    <key>CFBundleVersion</key>
+    <string>{{BUILD_NUMBER}}</string>
+    <key>CFBundleGetInfoString</key>
+    <string>AK {{VERSION}} - Advanced Key Management Tool</string>
+    
+    <!-- Minimum macOS version -->
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string>
+    
+    <!-- Application category -->
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.developer-tools</string>
+    
+    <!-- High resolution support -->
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    
+    <!-- Security and privacy -->
+    <key>NSAppleEventsUsageDescription</key>
+    <string>AK needs to access system events for secure key management operations.</string>
+    <key>NSSystemAdministrationUsageDescription</key>
+    <string>AK may require administrator privileges for system-wide key operations.</string>
+    
+    <!-- Supported architectures -->
+    <key>LSArchitecturePriority</key>
+    <array>
+        <string>arm64</string>
+        <string>x86_64</string>
+    </array>
+    
+    <!-- Document types (if AK supports opening files) -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>akprofile</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>AK Profile</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+        </dict>
+    </array>
+    
+    <!-- URL schemes (if AK supports URL handlers) -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>AK Protocol</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>ak</string>
+            </array>
+        </dict>
+    </array>
+    
+    <!-- Copyright -->
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2024 AK Development Team. All rights reserved.</string>
+    
+    <!-- Qt-specific entries -->
+    <key>LSUIElement</key>
+    <false/>
+    
+    <!-- Prevents the app from appearing in the Dock if it's a background service -->
+    <key>LSBackgroundOnly</key>
+    <false/>
+    
+</dict>
+</plist>
