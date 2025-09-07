@@ -56,8 +56,12 @@ fi
 # If source format is quilt, prepare orig tarball (native does not need it)
 FORMAT="$(tr -d ' 	\r' < debian/source/format 2>/dev/null || echo '')"
 if [[ "${FORMAT}" == "3.0(quilt)" ]]; then
+  # Create build directory for PPA artifacts
+  BUILD_DIR="build/ppa"
+  mkdir -p "${BUILD_DIR}"
+  
   UPSTREAM="${VER%%-*}"
-  ORIG="../${SRC}_${UPSTREAM}.orig.tar.xz"
+  ORIG="${BUILD_DIR}/${SRC}_${UPSTREAM}.orig.tar.xz"
   if [[ ! -f "${ORIG}" ]]; then
     echo "Creating orig tarball: ${ORIG}"
     git archive --format=tar --prefix="${SRC}-${UPSTREAM}/" HEAD | xz -9e > "${ORIG}"
