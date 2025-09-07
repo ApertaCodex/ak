@@ -1,0 +1,3 @@
+ak-apt-repo/pool/main/*.deb
+ak-apt-repo/dists/*/InRelease
+ak-apt-repo/dists/*/Release.gpg
