@@ -1,0 +1,29 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Archive: plucky
+Codename: plucky
+Components: main
+Date: Thu, 04 Sep 2025 22:41:25 +0000
+Description: AK API Key Manager Repository (Ubuntu 25.04 Plucky)
+Label: AK Repository
+Origin: AK
+Suite: plucky
+Version: 1.0
+Architectures: amd64
+MD5Sum:
+ bc2ce605fb86baafc6fb2135d49bbf9c 1110 main/binary-amd64/Packages
+ 1cacd7b91fc5b67711c73f7832263900 712 main/binary-amd64/Packages.gz
+SHA1:
+ 6b79032a62e93a21f9f29e7c7bd34992c06004f4 1110 main/binary-amd64/Packages
+ 1b4b8ecfba65d1d67a335b5f799691f6af8c181d 712 main/binary-amd64/Packages.gz
+SHA256:
+ 279829626f6860f5d21791b1d9d0281f0975cefc25f4782ff1112e7da393de9f 1110 main/binary-amd64/Packages
+ a195568ca640d9d7e851506050cd9a5335cd8fc323755afc3ac01ffa197eceed 712 main/binary-amd64/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iHUEARYKAB0WIQRQSAcxZWNqenxREtyknUIHLH9UmAUCaLoVvwAKCRCknUIHLH9U
+mMs4AQC662ue4LCsz7Y5852oIqKEbQbse+KKnUCjkzbwWNhdywD/VEzJ5oC7GxOC
+hiTgSBTKdG1zHJXYKMZQtfUW66jKHwk=
+=tmt+
+-----END PGP SIGNATURE-----

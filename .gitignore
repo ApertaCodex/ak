@@ -40,3 +40,9 @@ Makefile
 *.sln
 
 # System files
+.DS_Store
+Thumbs.db
+
+# Dependencies - googletest is built locally but shouldn't be versioned
+tests/googletest/
+_deps/
