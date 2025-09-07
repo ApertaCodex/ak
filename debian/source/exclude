@@ -1,8 +1,15 @@
-ak-apt-repo/
-ak-macos-repo/packages/
+ak-apt-repo/dists/*/main/binary-amd64/Packages.gz
+ak-apt-repo/dists/stable/main/binary-amd64/Packages.gz
+ak-apt-repo/dists/plucky/main/binary-amd64/Packages.gz
+ak-apt-repo/pool/main/*.deb
+ak-macos-repo/packages/*
 *.deb
 *.tar.xz
 *.7z
 *.dmg
 *.pkg
 *.gz
+*.gpg
+*.asc
+InRelease
+Release.gpg
