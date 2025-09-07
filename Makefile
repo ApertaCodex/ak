@@ -265,6 +265,16 @@ publish-apt:
 # -------------------------
 # Launchpad PPA (multi-distribution)
 # -------------------------
+publish-macos:
+	@echo "🍎 Building macOS packages (DMG, PKG, App Bundle)..."
+	@if command -v hdiutil >/dev/null 2>&1; then \
+		echo "📦 macOS detected - building all packages..."; \
+		cd macos/scripts && ./package-all.sh; \
+		echo "✅ macOS packages built in build/macos-packages/"; \
+	else \
+		echo "⚠️  macOS not detected - skipping DMG build (use: cd macos/scripts && ./package-all.sh)"; \
+	fi
+
 publish-ppa:
 	@echo "🚀 Publishing to Launchpad PPA..."
 	@chmod +x ./ppa-upload.sh || true
@@ -324,9 +334,11 @@ release-major:
 
 publish-all:
 	@echo "📦 Publishing to all repositories..."
-	@echo "📦 1/2 Publishing to APT repository (GitHub Pages)..."
+	@echo "📦 1/3 Publishing to APT repository (GitHub Pages)..."
 	@$(MAKE) publish-apt
-	@echo "📦 2/2 Publishing to Launchpad PPA..."
+	@echo "📦 2/3 Building macOS DMG packages..."
+	@$(MAKE) publish-macos || (echo "⚠️  macOS DMG build failed - continuing with other targets"; true)
+	@echo "📦 3/3 Publishing to Launchpad PPA..."
 	@$(MAKE) publish-ppa || (echo "⚠️  PPA publish failed - continuing with other targets"; true)
 	@echo "✅ Published to all repositories"
 
