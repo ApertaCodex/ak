@@ -139,16 +139,10 @@ fi
 
 # Build source package (-S) with full orig upload (-sa)
 BUILD_SUCCESS=false
-if debuild --version >/dev/null 2>&1; then
-  if debuild -S -sa -k"${KEYID}" --buildresult="${BUILD_DIR}"; then
-    BUILD_SUCCESS=true
-  fi
-else
-  if dpkg-buildpackage -S -sa -k"${KEYID}"; then
-    # Move build artifacts to build directory for dpkg-buildpackage
-    mv ../${PKG_NAME}_* "${BUILD_DIR}/" 2>/dev/null || true
-    BUILD_SUCCESS=true
-  fi
+if dpkg-buildpackage -S -sa -k"${KEYID}"; then
+  # Move build artifacts to build directory after successful build
+  mv ../${PKG_NAME}_* "${BUILD_DIR}/" 2>/dev/null || true
+  BUILD_SUCCESS=true
 fi
 
 # Restore stashed changes if any
