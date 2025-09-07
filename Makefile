@@ -308,8 +308,6 @@ publish-major:
 #   V_BUMP=major make release    # override default with flag
 # -------------------------
 
-VERSION   ?= 4.1.4
-
 release:
 	@echo "🚀 Starting comprehensive release ($(V_BUMP) version bump)..."
 	@case "$(V_BUMP)" in \
