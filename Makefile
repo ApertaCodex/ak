@@ -266,13 +266,17 @@ publish-apt:
 # Launchpad PPA (multi-distribution)
 # -------------------------
 publish-macos:
-	@echo "🍎 Building macOS packages (DMG, PKG, App Bundle)..."
+	@echo "🍎 Building macOS packages (Linux-compatible)..."
 	@if command -v hdiutil >/dev/null 2>&1; then \
-		echo "📦 macOS detected - building all packages..."; \
+		echo "📦 macOS detected - building native packages..."; \
 		cd macos/scripts && ./package-all.sh; \
-		echo "✅ macOS packages built in build/macos-packages/"; \
+		echo "✅ Native macOS packages built in build/macos-packages/"; \
+	elif command -v 7z >/dev/null 2>&1; then \
+		echo "📦 Linux detected - building cross-platform packages..."; \
+		./macos/scripts/create-dmg-linux.sh; \
+		echo "✅ Cross-platform macOS packages built in ak-macos-repo/packages/"; \
 	else \
-		echo "⚠️  macOS not detected - skipping DMG build (use: cd macos/scripts && ./package-all.sh)"; \
+		echo "⚠️  Neither macOS nor 7z available - skipping macOS package build"; \
 	fi
 
 publish-ppa:
@@ -356,6 +360,8 @@ bump-patch:
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" index.html; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?_amd64\.deb/ak_$$new_version\_amd64.deb/g" ak-apt-repo/index.html; \
 	sed -i "s/Latest version:[^<]*/Latest version: $$new_version/g" ak-apt-repo/index.html; \
+	sed -i "s/Latest version: [0-9]\+\.[0-9]\+\.[0-9]\+/Latest version: $$new_version/g" ak-macos-repo/index.html; \
+	sed -i "s/AK-[0-9]\+\.[0-9]\+\.[0-9]\+/AK-$$new_version/g" ak-macos-repo/index.html; \
 	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]\+\.[0-9]\+/- **Version**: $$new_version/" README.md; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" README.md; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" README.md; \
@@ -469,9 +475,10 @@ commit-and-push:
 	@new_version=$$(grep "^VERSION" Makefile | head -1 | cut -d'=' -f2 | tr -d ' ?'); \
 	if ! git diff --quiet; then \
 		git add .gitignore Makefile CMakeLists.txt src/core/config.cpp debian/changelog \
-		        index.html ak-apt-repo/ ak-repository-key.gpg \
+		        index.html ak-apt-repo/ ak-macos-repo/ ak-repository-key.gpg \
 		        README.md CITATION.cff codemeta.json DEBIAN_PUBLISHING.md \
-		        docs/MANUAL.md docs/ak.1 install-ak.sh .github/FUNDING.yml; \
+		        docs/MANUAL.md docs/ak.1 install-ak.sh .github/FUNDING.yml \
+		        macos/scripts/create-dmg-linux.sh; \
 		git rm --cached ak debian/files pkg/ dist/ 2>/dev/null || true; \
 		git commit -m "🚀 Release v$$new_version"; \
 		git tag "v$$new_version"; \
