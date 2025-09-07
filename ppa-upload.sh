@@ -113,12 +113,11 @@ if [ -d "tests/googletest" ]; then
     rm -rf tests/googletest
     BACKED_UP_DIRS+=("tests/googletest")
 fi
-# Skip backing up and removing ak-apt-repo to preserve .deb files
-# if [ -d "ak-apt-repo" ]; then
-#     cp -r ak-apt-repo "${TEMP_BACKUP_DIR}/"
-#     rm -rf ak-apt-repo
-#     BACKED_UP_DIRS+=("ak-apt-repo")
-# fi
+if [ -d "ak-apt-repo" ]; then
+    cp -r ak-apt-repo "${TEMP_BACKUP_DIR}/"
+    rm -rf ak-apt-repo
+    BACKED_UP_DIRS+=("ak-apt-repo")
+fi
 
 # Stash any uncommitted changes to create clean source package
 # But exclude ak-apt-repo from stash since we handle it separately
@@ -133,11 +132,10 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     STASH_CREATED=true
 fi
 
-# Skip removing ak-apt-repo to preserve .deb files
 # Remove ak-apt-repo again if it was restored by stash
-# if [ -d "ak-apt-repo" ]; then
-#     rm -rf ak-apt-repo
-# fi
+if [ -d "ak-apt-repo" ]; then
+    rm -rf ak-apt-repo
+fi
 
 # Build source package (-S) with full orig upload (-sa)
 BUILD_SUCCESS=false
