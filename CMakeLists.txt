@@ -62,8 +62,8 @@ set(CORE_SOURCES
 option(BUILD_GUI "Build GUI support with Qt 6" ON)
 
 if(BUILD_GUI)
-    # Find Qt 6 components
-    find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+    # Find Qt 6 components - require minimum 6.8.0 for compatibility
+    find_package(Qt6 6.8.0 REQUIRED COMPONENTS Core Widgets)
     
     # Enable Qt 6 MOC (Meta-Object Compiler) globally
     set(CMAKE_AUTOMOC ON)
