@@ -77,7 +77,7 @@ DISTDIR   := dist
         coverage coverage-html coverage-summary clean-coverage clean-obj \
         package-deb package-rpm dist publish publish-patch publish-minor publish-major \
         bump-patch bump-minor bump-major build-release test-release commit-and-push publish-ppa \
-        release release-patch release-minor release-major publish-all clean
+        release release-patch release-minor release-major publish-all publish-homebrew clean
 
 all: $(BIN)
 
@@ -263,6 +263,24 @@ publish-apt:
 	@cmake -DPROJECT_DIR=$(CURDIR) -P cmake/apt_publish.cmake
 
 # -------------------------
+# Homebrew Formula (macOS)
+# -------------------------
+publish-homebrew:
+	@echo "🍺 Updating Homebrew formula..."
+	@new_version=$$(grep "^VERSION" Makefile | head -1 | cut -d'=' -f2 | tr -d ' ?'); \
+	echo "📋 Version: $$new_version"; \
+	if [ -x "./macos/homebrew/scripts/generate-formula.sh" ]; then \
+		./macos/homebrew/scripts/generate-formula.sh \
+			--version "$$new_version" \
+			--owner "apertacodex" \
+			--repo "ak" && \
+		cp macos/homebrew/generated/ak.rb Formula/ak.rb; \
+		echo "✅ Updated Formula/ak.rb for version $$new_version"; \
+	else \
+		echo "⚠️  Homebrew script not found, skipping Homebrew update"; \
+	fi
+
+# -------------------------
 # Launchpad PPA (multi-distribution)
 # -------------------------
 publish-ppa:
@@ -324,9 +342,11 @@ release-major:
 
 publish-all:
 	@echo "📦 Publishing to all repositories..."
-	@echo "📦 1/2 Publishing to APT repository (GitHub Pages)..."
+	@echo "📦 1/3 Publishing to APT repository (GitHub Pages)..."
 	@$(MAKE) publish-apt
-	@echo "📦 2/2 Publishing to Launchpad PPA..."
+	@echo "📦 2/3 Publishing to Homebrew tap..."
+	@$(MAKE) publish-homebrew
+	@echo "📦 3/3 Publishing to Launchpad PPA..."
 	@$(MAKE) publish-ppa || (echo "⚠️  PPA publish failed - continuing with other targets"; true)
 	@echo "✅ Published to all repositories"
 
