@@ -13,7 +13,7 @@ BUILD_DIR="$PROJECT_ROOT/build"
 OUTPUT_DIR="$PROJECT_ROOT/ak-macos-repo/packages"
 
 # Default values
-VERSION="${AK_VERSION:-4.1.5}"
+VERSION="${AK_VERSION:-4.1.6}"
 BUNDLE_ID="${AK_BUNDLE_ID:-dev.ak.ak}"
 PACKAGE_NAME="AK-${VERSION}"
 
