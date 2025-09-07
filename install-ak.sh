@@ -31,30 +31,16 @@ sudo apt update
 # Check Qt6 version compatibility
 echo "🔍 Checking Qt6 version requirements..."
 
-# Function to compare version numbers
-version_compare() {
-    if [[ $1 == $2 ]]; then
-        return 0
+# Simple version check - just ensure Qt6 major version is >= 6
+is_qt6_compatible() {
+    local version=$1
+    local major_version=$(echo "$version" | cut -d. -f1)
+    
+    if [[ $major_version -ge 6 ]]; then
+        return 0  # compatible
+    else
+        return 1  # not compatible
     fi
-    local IFS=.
-    local i ver1=($1) ver2=($2)
-    # fill empty fields in ver1 with zeros
-    for ((i=${#ver1[@]}; i<${#ver2[@]}; i++)); do
-        ver1[i]=0
-    done
-    for ((i=0; i<${#ver1[@]}; i++)); do
-        if [[ -z ${ver2[i]} ]]; then
-            # fill empty fields in ver2 with zeros
-            ver2[i]=0
-        fi
-        if ((10#${ver1[i]} > 10#${ver2[i]})); then
-            return 1
-        fi
-        if ((10#${ver1[i]} < 10#${ver2[i]})); then
-            return 2
-        fi
-    done
-    return 0
 }
 
 # Get Qt6 runtime version from installed packages (most reliable)
@@ -70,11 +56,30 @@ elif command -v qmake6 >/dev/null 2>&1; then
     QT6_VERSION=$(qmake6 -query QT_VERSION 2>/dev/null)
 fi
 
-REQUIRED_QT_VERSION="6.9.0"
+REQUIRED_QT_VERSION="6.8.0"  # Minimum for building from source
+BINARY_REQUIRES_QT_VERSION="6.9.0"  # Published binary requirement
 
-# Install Qt6 dependencies first
-echo "📦 Installing Qt6 dependencies..."
-sudo apt install -y qt6-base-dev libqt6widgets6 qt6-tools-dev qt6-tools-dev-tools
+# Try to install Qt6 6.9.0 specifically first
+echo "📦 Installing Qt6 6.9.0 dependencies..."
+echo "🔄 Trying to install Qt6 6.9.0..."
+
+if sudo apt install -y qt6-base-dev=6.9* libqt6widgets6=6.9* qt6-tools-dev=6.9* qt6-tools-dev-tools=6.9* 2>/dev/null; then
+    echo "✅ Successfully installed Qt6 6.9.x"
+else
+    echo "⚠️  Qt6 6.9.x not available in repositories"
+    echo "📦 Installing available Qt6 version..."
+    sudo apt install -y qt6-base-dev libqt6widgets6 qt6-tools-dev qt6-tools-dev-tools
+    
+    echo ""
+    echo "🔧 To get Qt6 6.9.0, you can try:"
+    echo "   1. Add Qt's official repository:"
+    echo "      wget -qO - https://download.qt.io/official_releases/qt/6.9/6.9.0/submodules/apt-key.gpg | sudo apt-key add -"
+    echo "      echo 'deb https://download.qt.io/official_releases/qt/6.9/6.9.0/submodules/ focal main' | sudo tee /etc/apt/sources.list.d/qt6.list"
+    echo "      sudo apt update && sudo apt install qt6-base-dev=6.9*"
+    echo ""
+    echo "   2. Or build AK from source to use your current Qt6 version"
+    echo ""
+fi
 
 # Re-check Qt6 runtime version after installation
 if dpkg-query -W -f='${Version}' libqt6core6t64 >/dev/null 2>&1; then
@@ -89,35 +94,39 @@ fi
 
 if [[ -n "$QT6_VERSION" ]]; then
     echo "📍 Qt6 runtime version detected: $QT6_VERSION"
-    echo "📍 Required Qt6 version: $REQUIRED_QT_VERSION"
+    echo "📍 Binary requires Qt6 version: $BINARY_REQUIRES_QT_VERSION"
+    echo "📍 Source build minimum: $REQUIRED_QT_VERSION"
     
-    version_compare $QT6_VERSION $REQUIRED_QT_VERSION
-    case $? in
-        0) echo "✅ Qt6 runtime version is compatible" ;;
-        1) echo "✅ Qt6 runtime version is newer than required" ;;
-        2)
-            echo "⚠️  Warning: Qt6 runtime version $QT6_VERSION is older than required $REQUIRED_QT_VERSION"
-            echo "   This will likely cause the 'Qt_6.9 not found' error!"
+    if is_qt6_compatible "$QT6_VERSION"; then
+        # Check if version is compatible with published binary
+        major_minor=$(echo "$QT6_VERSION" | cut -d. -f1,2)
+        if [[ "$major_minor" == "6.9" ]] || [[ "$major_minor" > "6.9" ]]; then
+            echo "✅ Qt6 $QT6_VERSION detected - compatible with published AK binary"
+        else
+            echo "⚠️  Qt6 $QT6_VERSION detected - INCOMPATIBLE with published binary (needs 6.9+)"
             echo ""
-            echo "🔧 Solutions to fix Qt6 compatibility:"
-            echo "   1. Update Qt6 libraries:"
-            echo "      sudo apt update && sudo apt install libqt6core6 libqt6widgets6 libqt6gui6"
-            echo "   2. Try adding newer Qt6 repository:"
-            echo "      sudo add-apt-repository ppa:beineri/opt-qt-5.15.2-focal"
-            echo "   3. Build AK from source with your Qt6 version:"
-            echo "      git clone https://github.com/apertacodex/ak && cd ak && mkdir build && cd build"
-            echo "      cmake .. -DBUILD_GUI=ON && make"
-            echo "   4. Use CLI-only version (if you don't need GUI):"
-            echo "      Build with: cmake .. -DBUILD_GUI=OFF"
+            echo "🔧 Your options:"
+            echo "   1. Build AK from source (works with Qt6 $QT6_VERSION):"
+            echo "      git clone https://github.com/apertacodex/ak && cd ak"
+            echo "      mkdir build && cd build && cmake .. -DBUILD_GUI=ON && make"
             echo ""
-            read -p "❓ Continue installation anyway? (y/N): " -n 1 -r
+            echo "   2. Upgrade to Qt6 6.9+ (if available):"
+            echo "      sudo apt update && sudo apt install qt6-base-dev=6.9*"
+            echo ""
+            echo "   3. Continue anyway (will likely fail at runtime)"
+            echo ""
+            read -p "❓ Continue with binary installation anyway? (y/N): " -n 1 -r
             echo
             if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                 echo "❌ Installation cancelled by user"
+                echo "💡 Consider building from source for Qt6 $QT6_VERSION compatibility"
                 exit 1
             fi
-            ;;
-    esac
+        fi
+    else
+        echo "⚠️  Warning: Qt6 version $QT6_VERSION appears to be Qt5 or older"
+        echo "   AK requires Qt6. Please install Qt6 libraries."
+    fi
 else
     echo "⚠️  Could not detect Qt6 version, proceeding with installation..."
 fi
