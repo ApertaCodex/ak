@@ -23,4 +23,4 @@ After installation:
 - macOS 10.15 (Catalina) or later
 - 64-bit Intel or Apple Silicon Mac
 
-Built on: 2025-09-07 23:41:55
+Built on: 2025-09-08 01:54:42
