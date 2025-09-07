@@ -203,7 +203,7 @@ package-rpm: strip
 	@if which rpmbuild >/dev/null 2>&1; then \
 	  echo "▶ using rpmbuild"; \
 	  rm -rf $(PKGROOT)/rpm $(DISTDIR); \
-	  mkdir -p $(PKGROOT)/rpm/{BUILD,RPMS,SOURCES,SPECS,SRPMS,BUILDROOT}; \
+	  mkdir -p $(PKGROOT)/rpm/BUILD $(PKGROOT)/rpm/RPMS $(PKGROOT)/rpm/SOURCES $(PKGROOT)/rpm/SPECS $(PKGROOT)/rpm/SRPMS $(PKGROOT)/rpm/BUILDROOT; \
 	  mkdir -p $(PKGROOT)/rpm/BUILDROOT/$(APP)-$(VERSION)-1.$(RPM_ARCH)/usr/bin; \
 	  cp -f $(BIN) $(PKGROOT)/rpm/BUILDROOT/$(APP)-$(VERSION)-1.$(RPM_ARCH)/usr/bin/$(APP); \
 	  chmod 0755 $(PKGROOT)/rpm/BUILDROOT/$(APP)-$(VERSION)-1.$(RPM_ARCH)/usr/bin/$(APP); \
