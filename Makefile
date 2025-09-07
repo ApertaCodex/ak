@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 4.0.4
+VERSION   ?= 4.0.5
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -298,8 +298,8 @@ publish-major:
 #   V_BUMP=major make release    # override default with flag
 # -------------------------
 
-VERSION   ?= 4.0.4
-VERSION   ?= 4.0.4
+VERSION   ?= 4.0.5
+VERSION   ?= 4.0.5
 
 release:
 	@echo "🚀 Starting comprehensive release ($(V_BUMP) version bump)..."
@@ -356,7 +356,15 @@ bump-patch:
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/MANUAL.md; \
 	sed -i "s/\"AK [0-9]\+\.[0-9]\+\.[0-9]\+\"/\"AK $$new_version\"/" docs/ak.1; \
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/ak.1; \
-	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata)"
+	sed -i "s/version \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version \"$$new_version\"/" Formula/ak.rb; \
+	sed -i "s|archive/v[0-9]\+\.[0-9]\+\.[0-9]\+\.tar\.gz|archive/v$$new_version.tar.gz|" Formula/ak.rb; \
+	sed -i "s/version \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version \"$$new_version\"/" macos/homebrew/generated/ak.rb; \
+	sed -i "s|archive/v[0-9]\+\.[0-9]\+\.[0-9]\+\.tar\.gz|archive/v$$new_version.tar.gz|" macos/homebrew/generated/ak.rb; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-app-bundle.sh; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-dmg.sh; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-pkg.sh; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/package-all.sh; \
+	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata, macOS)"
 
 bump-minor:
 	@echo "🔄 Bumping minor version..."
@@ -381,7 +389,15 @@ bump-minor:
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/MANUAL.md; \
 	sed -i "s/\"AK [0-9]\+\.[0-9]\+\.[0-9]\+\"/\"AK $$new_version\"/" docs/ak.1; \
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/ak.1; \
-	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata)"
+	sed -i "s/version \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version \"$$new_version\"/" Formula/ak.rb; \
+	sed -i "s|archive/v[0-9]\+\.[0-9]\+\.[0-9]\+\.tar\.gz|archive/v$$new_version.tar.gz|" Formula/ak.rb; \
+	sed -i "s/version \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version \"$$new_version\"/" macos/homebrew/generated/ak.rb; \
+	sed -i "s|archive/v[0-9]\+\.[0-9]\+\.[0-9]\+\.tar\.gz|archive/v$$new_version.tar.gz|" macos/homebrew/generated/ak.rb; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-app-bundle.sh; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-dmg.sh; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-pkg.sh; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/package-all.sh; \
+	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata, macOS)"
 
 bump-major:
 	@echo "🔄 Bumping major version..."
@@ -407,7 +423,15 @@ bump-major:
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/MANUAL.md; \
 	sed -i "s/\"AK [0-9]\+\.[0-9]\+\.[0-9]\+\"/\"AK $$new_version\"/" docs/ak.1; \
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/ak.1; \
-	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata)"
+	sed -i "s/version \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version \"$$new_version\"/" Formula/ak.rb; \
+	sed -i "s|archive/v[0-9]\+\.[0-9]\+\.[0-9]\+\.tar\.gz|archive/v$$new_version.tar.gz|" Formula/ak.rb; \
+	sed -i "s/version \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version \"$$new_version\"/" macos/homebrew/generated/ak.rb; \
+	sed -i "s|archive/v[0-9]\+\.[0-9]\+\.[0-9]\+\.tar\.gz|archive/v$$new_version.tar.gz|" macos/homebrew/generated/ak.rb; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-app-bundle.sh; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-dmg.sh; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-pkg.sh; \
+	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/package-all.sh; \
+	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata, macOS)"
 
 build-release: clean
 	@echo "🏗️  Building complete production release..."

@@ -4,7 +4,7 @@ Hash: SHA512
 Archive: stable
 Codename: stable
 Components: main
-Date: Sun, 07 Sep 2025 17:06:15 +0000
+Date: Sun, 07 Sep 2025 17:14:03 +0000
 Description: AK API Key Manager Repository
 Label: AK Repository
 Origin: AK
@@ -12,18 +12,18 @@ Suite: stable
 Version: 1.0
 Architectures: amd64
 MD5Sum:
- b629a040ec2f86440e126883c094a6e6 40383 main/binary-amd64/Packages
- 3f53a881a813ab0afa1691b01e74402f 4496 main/binary-amd64/Packages.gz
+ 068825ddb05c4b361085efd70ae0c8bd 41604 main/binary-amd64/Packages
+ 9b32896e08494139eaf74076e724335e 4599 main/binary-amd64/Packages.gz
 SHA1:
- 5cf526712c7c06f33faa18524dc7524d3c946005 40383 main/binary-amd64/Packages
- e75efdace8ca044afbdf4806af876a226be7aabf 4496 main/binary-amd64/Packages.gz
+ b7bda9784f745889ac81b029557845ba9d8a56a3 41604 main/binary-amd64/Packages
+ ce84dc1ac819b46e31c4ba2ba5cd528b10f844ca 4599 main/binary-amd64/Packages.gz
 SHA256:
- cdfc13018a4f6d55a37555771381437fed98852eee6d5512c4b0f238952798c7 40383 main/binary-amd64/Packages
- fcfd814734ddaafcbadb59508dbb173139fb77ad5511c0d521496bef1e8ff40e 4496 main/binary-amd64/Packages.gz
+ d168b3b03e54d6291c25710cb2054db3ed6abe82ef6b1b3d90cdf858d655212c 41604 main/binary-amd64/Packages
+ f7666326b1c1260ed92a9ae4d2b8f503fa3f4e8fa168683ff93fb1e39a81739e 4599 main/binary-amd64/Packages.gz
 -----BEGIN PGP SIGNATURE-----
 
-iHUEARYKAB0WIQRQSAcxZWNqenxREtyknUIHLH9UmAUCaL27hwAKCRCknUIHLH9U
-mAKaAQD43AJL88YGpbJozJVWVkEovm7JWZ+nDIDy9AhyqzPdMwEAvs5POedmZf02
-CAezSxxKdNlhtfUv+/ksUWwIbpYxwA0=
-=i06H
+iHUEARYKAB0WIQRQSAcxZWNqenxREtyknUIHLH9UmAUCaL29WwAKCRCknUIHLH9U
+mBHoAP9f9pSCMM9/1NWJt4P+ZN+HXyGpRh1IURs/V4ISRtm6XgD9HuKIetl5d5mL
+VNWNhkGbTZU04OPo/RijOugYicsL7QM=
+=hD2S
 -----END PGP SIGNATURE-----
