@@ -53,8 +53,69 @@ string(REGEX REPLACE
     NEW_CONFIG_CONTENT
     "${CONFIG_CONTENT}"
 )
-
 file(WRITE "${PROJECT_DIR}/src/core/config.cpp" "${NEW_CONFIG_CONTENT}")
 
+# Update all other version references
+set(FILES_TO_UPDATE
+    "CITATION.cff:version: \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
+    "codemeta.json:\"version\": \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
+    "docs/ak.1:AK version ([0-9]+\\.[0-9]+\\.[0-9]+)"
+    "docs/MANUAL.md:AK version ([0-9]+\\.[0-9]+\\.[0-9]+)"
+    "Makefile:VERSION[ \t]*\\?=[ \t]*([0-9]+\\.[0-9]+\\.[0-9]+)"
+    "Formula/ak.rb:version \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
+    "macos/homebrew/generated/ak.rb:version \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
+    "ak-apt-repo/index.html:Latest version: ([0-9]+\\.[0-9]+\\.[0-9]+)"
+)
+
+foreach(FILE_PATTERN ${FILES_TO_UPDATE})
+    string(REPLACE ":" ";" PARTS ${FILE_PATTERN})
+    list(GET PARTS 0 FILE_PATH)
+    list(GET PARTS 1 REGEX_PATTERN)
+    
+    if(EXISTS "${PROJECT_DIR}/${FILE_PATH}")
+        file(READ "${PROJECT_DIR}/${FILE_PATH}" FILE_CONTENT)
+        
+        if("${FILE_PATH}" STREQUAL "CITATION.cff")
+            string(REGEX REPLACE "version: \"[0-9]+\\.[0-9]+\\.[0-9]+\"" "version: \"${NEW_VERSION}\"" NEW_FILE_CONTENT "${FILE_CONTENT}")
+        elseif("${FILE_PATH}" STREQUAL "codemeta.json")
+            string(REGEX REPLACE "\"version\": \"[0-9]+\\.[0-9]+\\.[0-9]+\"" "\"version\": \"${NEW_VERSION}\"" NEW_FILE_CONTENT "${FILE_CONTENT}")
+        elseif("${FILE_PATH}" MATCHES "docs/(ak\\.1|MANUAL\\.md)")
+            string(REGEX REPLACE "AK version [0-9]+\\.[0-9]+\\.[0-9]+" "AK version ${NEW_VERSION}" NEW_FILE_CONTENT "${FILE_CONTENT}")
+        elseif("${FILE_PATH}" STREQUAL "Makefile")
+            string(REGEX REPLACE "VERSION[ \t]*\\?=[ \t]*[0-9]+\\.[0-9]+\\.[0-9]+" "VERSION   ?= ${NEW_VERSION}" NEW_FILE_CONTENT "${FILE_CONTENT}")
+        elseif("${FILE_PATH}" MATCHES ".*\\.rb$")
+            string(REGEX REPLACE "version \"[0-9]+\\.[0-9]+\\.[0-9]+\"" "version \"${NEW_VERSION}\"" NEW_FILE_CONTENT "${FILE_CONTENT}")
+            string(REGEX REPLACE "/archive/v[0-9]+\\.[0-9]+\\.[0-9]+\\.tar\\.gz" "/archive/v${NEW_VERSION}.tar.gz" NEW_FILE_CONTENT "${NEW_FILE_CONTENT}")
+        elseif("${FILE_PATH}" STREQUAL "ak-apt-repo/index.html")
+            string(REGEX REPLACE "Latest version: [0-9]+\\.[0-9]+\\.[0-9]+" "Latest version: ${NEW_VERSION}" NEW_FILE_CONTENT "${FILE_CONTENT}")
+        endif()
+        
+        file(WRITE "${PROJECT_DIR}/${FILE_PATH}" "${NEW_FILE_CONTENT}")
+        message(STATUS "📝 Updated ${FILE_PATH}")
+    endif()
+endforeach()
+
+# Update macOS script default versions
+set(MACOS_SCRIPTS
+    "macos/scripts/create-app-bundle.sh"
+    "macos/scripts/create-dmg.sh"
+    "macos/scripts/create-pkg.sh"
+    "macos/scripts/package-all.sh"
+)
+
+foreach(SCRIPT_FILE ${MACOS_SCRIPTS})
+    if(EXISTS "${PROJECT_DIR}/${SCRIPT_FILE}")
+        file(READ "${PROJECT_DIR}/${SCRIPT_FILE}" SCRIPT_CONTENT)
+        string(REGEX REPLACE
+            "VERSION=\"\\$\\{AK_VERSION:-[0-9]+\\.[0-9]+\\.[0-9]+\\}\""
+            "VERSION=\"\\${AK_VERSION:-${NEW_VERSION}}\""
+            NEW_SCRIPT_CONTENT
+            "${SCRIPT_CONTENT}"
+        )
+        file(WRITE "${PROJECT_DIR}/${SCRIPT_FILE}" "${NEW_SCRIPT_CONTENT}")
+        message(STATUS "📝 Updated ${SCRIPT_FILE}")
+    endif()
+endforeach()
+
 message(STATUS "📈 Version: ${MAJOR}.${MINOR}.${PATCH} → ${NEW_VERSION}")
-message(STATUS "✅ Updated version to ${NEW_VERSION}")
+message(STATUS "✅ Updated version to ${NEW_VERSION} in all files")
