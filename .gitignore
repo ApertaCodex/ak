@@ -44,4 +44,3 @@ Makefile
 Thumbs.db
 
 tests/googletest/
-_deps/
