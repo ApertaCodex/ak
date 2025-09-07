@@ -120,11 +120,21 @@ if [ -d "ak-apt-repo" ]; then
 fi
 
 # Stash any uncommitted changes to create clean source package
+# But exclude ak-apt-repo from stash since we handle it separately
 STASH_CREATED=false
 if ! git diff --quiet || ! git diff --cached --quiet; then
     echo "Stashing uncommitted changes for clean source build..."
+    # Temporarily add ak-apt-repo to .gitignore for stash
+    echo "ak-apt-repo/" >> .gitignore
     git stash push -u -m "Temporary stash for PPA build"
+    # Remove the temporary .gitignore entry
+    head -n -1 .gitignore > .gitignore.tmp && mv .gitignore.tmp .gitignore
     STASH_CREATED=true
+fi
+
+# Remove ak-apt-repo again if it was restored by stash
+if [ -d "ak-apt-repo" ]; then
+    rm -rf ak-apt-repo
 fi
 
 # Build source package (-S) with full orig upload (-sa)
