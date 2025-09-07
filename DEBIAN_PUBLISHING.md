@@ -35,7 +35,7 @@ sudo apt-get install -f  # Fix dependencies if needed
 ## 📦 Package Details
 
 - **Package Name**: `ak`
-- **Version**: `4.1.7` 
+- **Version**: `4.1.8`
 - **Architecture**: `amd64` (can be built for other architectures)
 - **Dependencies**: Minimal system dependencies only
 - **Size**: ~68KB
