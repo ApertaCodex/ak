@@ -21,20 +21,23 @@ set(PACKAGES_DIR "${REPO_DIR}/dists/stable/main/binary-amd64")
 
 message(STATUS "🚀 Publishing AK v${VERSION} to APT repository...")
 
-# Check if Debian package exists
+# Use the locally built package from dist/ directory instead of rebuilding
+set(LOCAL_DEB_FILE "${PROJECT_DIR}/dist/ak_${DEB_VERSION}_amd64.deb")
 set(DEB_FILE "${PROJECT_DIR}/../ak_${DEB_VERSION}_amd64.deb")
-if(NOT EXISTS ${DEB_FILE})
-    message(STATUS "📦 Building Debian package...")
+
+if(EXISTS ${LOCAL_DEB_FILE})
+    message(STATUS "📦 Using locally built package: ${LOCAL_DEB_FILE}")
+    set(SOURCE_DEB ${LOCAL_DEB_FILE})
+elseif(EXISTS ${DEB_FILE})
+    message(STATUS "📦 Using package: ${DEB_FILE}")
+    set(SOURCE_DEB ${DEB_FILE})
+else()
+    message(STATUS "📦 Building Debian package with Make...")
     
-    # Clean previous build
+    # Use make to build the package instead of dpkg-buildpackage
+    # This ensures we use the locally built binary
     execute_process(
-        COMMAND rm -rf obj-x86_64-linux-gnu debian/.debhelper debian/debhelper-build-stamp
-        WORKING_DIRECTORY ${PROJECT_DIR}
-    )
-    
-    # Build Debian package
-    execute_process(
-        COMMAND dpkg-buildpackage -us -uc -b
+        COMMAND make package-deb
         WORKING_DIRECTORY ${PROJECT_DIR}
         RESULT_VARIABLE BUILD_RESULT
         OUTPUT_VARIABLE BUILD_OUTPUT
@@ -45,13 +48,14 @@ if(NOT EXISTS ${DEB_FILE})
         message(FATAL_ERROR "Failed to build Debian package: ${BUILD_ERROR}")
     endif()
     
+    set(SOURCE_DEB ${LOCAL_DEB_FILE})
     message(STATUS "✅ Debian package built successfully")
 endif()
 
 # Copy package to repository pool
 message(STATUS "📦 Updating repository pool...")
 execute_process(
-    COMMAND cp "${DEB_FILE}" "${POOL_DIR}/"
+    COMMAND cp "${SOURCE_DEB}" "${POOL_DIR}/"
     RESULT_VARIABLE COPY_RESULT
 )
 

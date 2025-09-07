@@ -18,7 +18,7 @@ Rules-Requires-Root: no
 
 Package: ak
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, qt6-base-dev, libqt6widgets6
+Depends: ${shlibs:Depends}, ${misc:Depends}, libqt6core6 (>= 6.8.0), libqt6widgets6 (>= 6.8.0)
 Recommends: gnupg
 Description: Secure API Key Manager
  AK is a cross-platform command-line tool for managing API keys securely

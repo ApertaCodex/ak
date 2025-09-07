@@ -119,6 +119,14 @@ if [ -d "ak-apt-repo" ]; then
     BACKED_UP_DIRS+=("ak-apt-repo")
 fi
 
+# Stash any uncommitted changes to create clean source package
+STASH_CREATED=false
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Stashing uncommitted changes for clean source build..."
+    git stash push -u -m "Temporary stash for PPA build"
+    STASH_CREATED=true
+fi
+
 # Build source package (-S) with full orig upload (-sa)
 BUILD_SUCCESS=false
 if debuild --version >/dev/null 2>&1; then
@@ -129,6 +137,12 @@ else
   if dpkg-buildpackage -S -sa -k"${KEYID}"; then
     BUILD_SUCCESS=true
   fi
+fi
+
+# Restore stashed changes if any
+if [ "$STASH_CREATED" = true ]; then
+    echo "Restoring stashed changes..."
+    git stash pop
 fi
 
 # Restore backed up directories
