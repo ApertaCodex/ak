@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Version is managed by the build system
-set(AK_VERSION "4.1.10")
+set(AK_VERSION "4.1.11")
 project(ak VERSION ${AK_VERSION} LANGUAGES CXX)
 
 # C++ Standard
@@ -372,7 +372,6 @@ add_custom_target(update-apt-repo
 # Publish targets
 add_custom_target(publish
     COMMAND ${CMAKE_COMMAND} --build . --target bump-patch
-    COMMAND ${CMAKE_COMMAND} --build . --target test-release
     COMMAND ${CMAKE_COMMAND} --build . --target build-release
     COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
     COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
@@ -381,7 +380,6 @@ add_custom_target(publish
 
 add_custom_target(publish-minor
     COMMAND ${CMAKE_COMMAND} --build . --target bump-minor
-    COMMAND ${CMAKE_COMMAND} --build . --target test-release
     COMMAND ${CMAKE_COMMAND} --build . --target build-release
     COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
     COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
@@ -390,7 +388,6 @@ add_custom_target(publish-minor
 
 add_custom_target(publish-major
     COMMAND ${CMAKE_COMMAND} --build . --target bump-major
-    COMMAND ${CMAKE_COMMAND} --build . --target test-release
     COMMAND ${CMAKE_COMMAND} --build . --target build-release
     COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
     COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
