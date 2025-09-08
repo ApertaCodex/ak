@@ -11,14 +11,24 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}📦 Committing repository directories to GitHub...${NC}"
 
-# Stage the repository directories
-git add ak-apt-repo/ ak-macos-repo/
+# Make sure the repository directories exist (recreate if needed)
+mkdir -p ak-apt-repo/pool/main
+mkdir -p ak-macos-repo/packages
 
-# Check if there are changes to commit
-if git diff --cached --quiet ak-apt-repo/ ak-macos-repo/; then
-    echo -e "${BLUE}No changes to repository directories.${NC}"
-    exit 0
-fi
+# Force add the repository directories
+git add -f ak-apt-repo/ ak-macos-repo/
+
+# Always commit even if no apparent changes
+git commit -m "📦 Update repository packages and metadata" ak-apt-repo/ ak-macos-repo/ || {
+    # Only exit with success if the error was "nothing to commit"
+    if git status | grep -q "nothing to commit"; then
+        echo -e "${BLUE}No changes to repository directories.${NC}"
+        exit 0
+    else
+        echo -e "${BLUE}Error committing repository directories.${NC}"
+        exit 1
+    fi
+}
 
 # Commit the changes
 git commit -m "📦 Update repository packages and metadata" ak-apt-repo/ ak-macos-repo/

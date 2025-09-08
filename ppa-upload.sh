@@ -173,7 +173,7 @@ fi
 
 # Build source package (-S) with full orig upload (-sa)
 BUILD_SUCCESS=false
-if dpkg-buildpackage -S -sa -k"${KEYID}"; then
+if dpkg-buildpackage -S -sa -k"${KEYID}" -- -Zxz --commit; then
   # Move build artifacts to build directory after successful build
   mv ../${PKG_NAME}_* "${BUILD_DIR}/" 2>/dev/null || true
   BUILD_SUCCESS=true
