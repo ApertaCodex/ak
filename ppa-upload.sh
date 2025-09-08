@@ -114,30 +114,48 @@ if [ -d "tests/googletest" ]; then
     rm -rf tests/googletest
     BACKED_UP_DIRS+=("tests/googletest")
 fi
-# Skip backing up and removing ak-apt-repo - preserve the repository
-# The debian/source/exclude file handles binary file exclusion for PPA builds
-# if [ -d "ak-apt-repo" ]; then
-#     cp -r ak-apt-repo "${TEMP_BACKUP_DIR}/"
-#     rm -rf ak-apt-repo
-#     BACKED_UP_DIRS+=("ak-apt-repo")
-# fi
-
-# Stash any uncommitted changes to create clean source package
-# But exclude ak-apt-repo from stash since we handle it separately
-STASH_CREATED=false
-if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo "Stashing uncommitted changes for clean source build..."
-    # Stash all changes except ak-apt-repo and ak-macos-repo
-    git stash push -u -m "Temporary stash for PPA build" -- . ':!ak-apt-repo' ':!ak-macos-repo'
-    STASH_CREATED=true
+if [ -d "ak-apt-repo" ]; then
+    cp -r ak-apt-repo "${TEMP_BACKUP_DIR}/"
+    rm -rf ak-apt-repo
+    BACKED_UP_DIRS+=("ak-apt-repo")
+fi
+if [ -d "ak-macos-repo" ]; then
+    cp -r ak-macos-repo "${TEMP_BACKUP_DIR}/"
+    rm -rf ak-macos-repo
+    BACKED_UP_DIRS+=("ak-macos-repo")
 fi
 
-# Skip removing ak-apt-repo - preserve the repository
-# The debian/source/exclude file handles binary file exclusion for PPA builds
-# Remove ak-apt-repo again if it was restored by stash
-# if [ -d "ak-apt-repo" ]; then
-#     rm -rf ak-apt-repo
-# fi
+# Handle uncommitted changes directly
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Committing changes before PPA build..."
+    git add .
+    git commit -m "Automatic commit before PPA build"
+fi
+
+# Create backup directory for repositories
+REPO_BACKUP_DIR="/tmp/ak_repo_backup_$$"
+mkdir -p "${REPO_BACKUP_DIR}"
+
+# Back up repositories
+if [ -d "ak-apt-repo" ]; then
+    echo "Backing up apt repository..."
+    cp -r ak-apt-repo "${REPO_BACKUP_DIR}/"
+    rm -rf ak-apt-repo
+fi
+
+if [ -d "ak-macos-repo" ]; then
+    echo "Backing up macOS repository..."
+    cp -r ak-macos-repo "${REPO_BACKUP_DIR}/"
+    rm -rf ak-macos-repo
+fi
+
+# Remove repository directories again if they were restored by stash
+if [ -d "ak-apt-repo" ]; then
+    rm -rf ak-apt-repo
+fi
+if [ -d "ak-macos-repo" ]; then
+    rm -rf ak-macos-repo
+fi
 
 # Build source package (-S) with full orig upload (-sa)
 BUILD_SUCCESS=false
@@ -147,11 +165,31 @@ if dpkg-buildpackage -S -sa -k"${KEYID}"; then
   BUILD_SUCCESS=true
 fi
 
-# Restore stashed changes if any
-if [ "$STASH_CREATED" = true ]; then
-    echo "Restoring stashed changes..."
-    git stash pop
-fi
+# Restore repositories at the end
+function restore_repositories() {
+    echo "Restoring repositories..."
+    
+    # Restore original repositories
+    if [ -d "${REPO_BACKUP_DIR}/ak-apt-repo" ]; then
+        if [ -d "ak-apt-repo" ]; then
+            rm -rf ak-apt-repo
+        fi
+        cp -r "${REPO_BACKUP_DIR}/ak-apt-repo" .
+    fi
+    
+    if [ -d "${REPO_BACKUP_DIR}/ak-macos-repo" ]; then
+        if [ -d "ak-macos-repo" ]; then
+            rm -rf ak-macos-repo
+        fi
+        cp -r "${REPO_BACKUP_DIR}/ak-macos-repo" .
+    fi
+    
+    # Clean up backup directory
+    rm -rf "${REPO_BACKUP_DIR}"
+}
+
+# Make sure to restore repositories even if there's an error
+trap restore_repositories EXIT
 
 # Restore backed up directories
 for dir in "${BACKED_UP_DIRS[@]}"; do
