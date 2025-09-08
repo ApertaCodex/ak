@@ -59,6 +59,7 @@ cmake --build . --target update-apt-repo
 echo ""
 echo -e "${YELLOW}Step 3b: Commit Repository Files${NC}"
 cd ..
+chmod +x ./commit-repos.sh
 ./commit-repos.sh
 cd build
 
