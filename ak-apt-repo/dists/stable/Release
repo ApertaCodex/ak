@@ -1,0 +1,19 @@
+Archive: stable
+Codename: stable
+Components: main
+Date: Mon, 08 Sep 2025 22:25:16 +0000
+Description: AK API Key Manager Repository
+Label: AK Repository
+Origin: AK
+Suite: stable
+Version: 1.0
+Architectures: amd64
+MD5Sum:
+ e3798650e6da3bbb45e0f79693de8dea 8752 main/binary-amd64/Packages
+ 108e8d29de02c007650ed0a9d9066030 2247 main/binary-amd64/Packages.gz
+SHA1:
+ 53faa4598850cf6b6917c5a13a1312ac3f8d387d 8752 main/binary-amd64/Packages
+ 04046726ec953f97e0209c796552db700fd64768 2247 main/binary-amd64/Packages.gz
+SHA256:
+ 70a2bff1871014743e9f67a17e3f557b104baa1c8047b0df5f23119f949ebc08 8752 main/binary-amd64/Packages
+ 7f16c5f715078092f37e161ffd6ebd9e32e413fa9e5c4b680ca29e80c97635ec 2247 main/binary-amd64/Packages.gz

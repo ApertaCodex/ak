@@ -57,6 +57,12 @@ echo -e "${YELLOW}Step 3: APT Repository Update${NC}"
 cmake --build . --target update-apt-repo
 
 echo ""
+echo -e "${YELLOW}Step 3b: Commit Repository Files${NC}"
+cd ..
+./commit-repos.sh
+cd build
+
+echo ""
 echo -e "${YELLOW}Step 4: Git Commit & Push${NC}"
 cmake --build . --target commit-and-push
 
