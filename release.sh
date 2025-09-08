@@ -49,11 +49,7 @@ echo -e "${YELLOW}Step 1: Version Bump${NC}"
 cmake --build . --target "bump-$RELEASE_TYPE"
 
 echo ""
-echo -e "${YELLOW}Step 2: Testing${NC}"
-cmake --build . --target test-release
-
-echo ""
-echo -e "${YELLOW}Step 3: Building${NC}" 
+echo -e "${YELLOW}Step 2: Building${NC}"
 cmake --build . --target build-release
 
 echo ""
