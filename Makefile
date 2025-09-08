@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 4.1.12
+VERSION   ?= 4.1.13
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -293,13 +293,13 @@ publish-ppa-single:
 	@PPA="$(PPA)" SERIES="$(SERIES)" ./publish-ppa.sh
 
 publish-patch:
-	@$(MAKE) bump-patch build-release publish-apt commit-and-push
+	@$(MAKE) bump-patch build-release commit-and-push publish-apt
 
 publish-minor:
-	@$(MAKE) bump-minor build-release publish-apt commit-and-push
+	@$(MAKE) bump-minor build-release commit-and-push publish-apt
 
 publish-major:
-	@$(MAKE) bump-major build-release publish-apt commit-and-push
+	@$(MAKE) bump-major build-release commit-and-push publish-apt
 
 # -------------------------
 # Comprehensive Release Commands (Default: minor)
@@ -323,15 +323,15 @@ release:
 
 release-patch:
 	@echo "🚀 Release: patch version bump + publish to all repositories..."
-	@$(MAKE) bump-patch build-release publish-all commit-and-push
+	@$(MAKE) bump-patch build-release commit-and-push publish-all
 
 release-minor:
 	@echo "🚀 Release: minor version bump + publish to all repositories..."
-	@$(MAKE) bump-minor build-release publish-all commit-and-push
+	@$(MAKE) bump-minor build-release commit-and-push publish-all
 
 release-major:
 	@echo "🚀 Release: major version bump + publish to all repositories..."
-	@$(MAKE) bump-major build-release publish-all commit-and-push
+	@$(MAKE) bump-major build-release commit-and-push publish-all
 
 publish-all:
 	@echo "📦 Publishing to all repositories..."
@@ -470,12 +470,15 @@ commit-and-push:
 	@echo "📦 Committing and pushing release..."
 	@new_version=$$(grep "^VERSION" Makefile | head -1 | cut -d'=' -f2 | tr -d ' ?'); \
 	if ! git diff --quiet; then \
-		git add .gitignore Makefile CMakeLists.txt src/core/config.cpp debian/changelog \
-		        index.html ak-apt-repo/ ak-macos-repo/ ak-repository-key.gpg \
+		git add .gitignore Makefile CMakeLists.txt src/core/config.cpp debian/changelog debian/source/exclude \
+		        index.html ak-apt-repo/index.html ak-macos-repo/index.html \
 		        README.md CITATION.cff codemeta.json DEBIAN_PUBLISHING.md \
-		        docs/MANUAL.md docs/ak.1 install-ak.sh .github/FUNDING.yml \
-		        macos/scripts/create-dmg-linux.sh; \
-		git rm --cached ak debian/files pkg/ dist/ 2>/dev/null || true; \
+		        docs/MANUAL.md docs/ak.1 install-ak.sh Formula/ak.rb release.sh \
+		        macos/homebrew/generated/ak.rb macos/scripts/*.sh; \
+		git rm --cached ak debian/files pkg/ dist/ ak_tests 2>/dev/null || true; \
+		git reset HEAD ak-apt-repo/pool/main/*.deb ak-apt-repo/dists/*/InRelease ak-apt-repo/dists/*/Release ak-apt-repo/dists/*/Release.gpg \
+		            ak-apt-repo/dists/*/main/binary-amd64/Packages* ak-macos-repo/packages/*.tar.xz \
+		            ak-macos-repo/packages/*.7z ak-macos-repo/packages/*.md 2>/dev/null || true; \
 		git commit -m "🚀 Release v$$new_version"; \
 		git tag "v$$new_version"; \
 		echo "🏷️  Created tag v$$new_version"; \
@@ -487,6 +490,14 @@ commit-and-push:
 		else \
 			echo "⚠️  No remote 'origin' found. Skipping push to GitHub."; \
 			echo "✅ Version bumped and committed locally as v$$new_version"; \
+		fi; \
+		echo "📦 Adding repository files after commit..."; \
+		git add ak-apt-repo/ ak-macos-repo/ 2>/dev/null || true; \
+		if ! git diff --cached --quiet 2>/dev/null; then \
+			git commit -m "📦 Update repositories for v$$new_version"; \
+			if git remote get-url origin >/dev/null 2>&1; then \
+				git push origin main; \
+			fi; \
 		fi; \
 	else \
 		echo "⚠️  No changes to commit"; \

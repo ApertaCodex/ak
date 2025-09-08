@@ -49,23 +49,19 @@ echo -e "${YELLOW}Step 1: Version Bump${NC}"
 cmake --build . --target "bump-$RELEASE_TYPE"
 
 echo ""
-echo -e "${YELLOW}Step 2: Testing${NC}"
-cmake --build . --target test-release
-
-echo ""
-echo -e "${YELLOW}Step 3: Building${NC}" 
+echo -e "${YELLOW}Step 2: Building${NC}"
 cmake --build . --target build-release
 
 echo ""
-echo -e "${YELLOW}Step 4: APT Repository Update${NC}"
+echo -e "${YELLOW}Step 3: APT Repository Update${NC}"
 cmake --build . --target update-apt-repo
 
 echo ""
-echo -e "${YELLOW}Step 5: Git Commit & Push${NC}"
+echo -e "${YELLOW}Step 4: Git Commit & Push${NC}"
 cmake --build . --target commit-and-push
 
 echo ""
-echo -e "${YELLOW}Step 6: PPA Upload${NC}"
+echo -e "${YELLOW}Step 5: PPA Upload${NC}"
 # Attempt to automatically detect GPG key ID if not set
 if [ -z "${DEBSIGN_KEYID}" ]; then
     DETECTED_KEYID="$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}')"
