@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 4.2.4
+VERSION   ?= 4.2.5
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -342,6 +342,11 @@ publish-all:
 	@echo "📦 3/3 Building macOS DMG packages..."
 	@$(MAKE) publish-macos || (echo "⚠️  macOS DMG build failed - continuing with other targets"; true)
 	@echo "✅ Published to all repositories"
+	@echo "📦 Distribution links:"
+	@echo "   - Launchpad PPA: https://launchpad.net/~apertacodex/+archive/ubuntu/ak"
+	@echo "   - APT Repository: https://apertacodex.github.io/ak/ak-apt-repo"
+	@echo "   - macOS Packages: https://apertacodex.github.io/ak/ak-macos-repo/packages"
+	@echo "   - GitHub Release: https://github.com/ApertaCodex/ak/releases/tag/v$$(grep "^VERSION" Makefile | head -1 | cut -d'=' -f2 | tr -d ' ?')"
 
 bump-patch:
 	@echo "🔄 Bumping patch version..."
