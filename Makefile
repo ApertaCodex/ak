@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 4.2.5
+VERSION   ?= 4.2.6
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -345,7 +345,7 @@ publish-all:
 	@echo "📦 Distribution links:"
 	@echo "   - Launchpad PPA: https://launchpad.net/~apertacodex/+archive/ubuntu/ak"
 	@echo "   - APT Repository: https://apertacodex.github.io/ak/ak-apt-repo"
-	@echo "   - macOS Packages: https://apertacodex.github.io/ak/ak-macos-repo/packages"
+	@echo "   - macOS Repository: https://apertacodex.github.io/ak/ak-macos-repo"
 	@echo "   - GitHub Release: https://github.com/ApertaCodex/ak/releases/tag/v$$(grep "^VERSION" Makefile | head -1 | cut -d'=' -f2 | tr -d ' ?')"
 
 bump-patch:
