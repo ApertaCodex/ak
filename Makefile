@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 4.1.13
+VERSION   ?= 4.1.14
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -76,7 +76,7 @@ DISTDIR   := dist
 .PHONY: all test strip install install-user uninstall uninstall-user \
         coverage coverage-html coverage-summary clean-coverage clean-obj \
         package-deb package-rpm dist publish publish-patch publish-minor publish-major \
-        bump-patch bump-minor bump-major build-release commit-and-push publish-ppa \
+        bump-patch bump-minor bump-major build-release commit-and-push commit-repository-files publish-ppa \
         release release-patch release-minor release-major publish-all clean
 
 all: $(BIN)
@@ -219,7 +219,7 @@ package-rpm: strip
 	  echo "$(APP) — secure API key manager (C++ CLI)."               >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "%install"                                                 >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "mkdir -p %{buildroot}/usr/bin"                            >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
-	  echo "install -m 0755 $(APP) %{buildroot}/usr/bin/$(APP)"       >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
+	  echo "install -m 0755 %{_sourcedir}/$(APP) %{buildroot}/usr/bin/$(APP)" >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "%files"                                                   >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "%attr(0755,root,root) /usr/bin/$(APP)"                    >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
 	  echo "%prep"                                                    >> $(PKGROOT)/rpm/SPECS/$(APP).spec; \
@@ -323,24 +323,24 @@ release:
 
 release-patch:
 	@echo "🚀 Release: patch version bump + publish to all repositories..."
-	@$(MAKE) bump-patch build-release commit-and-push publish-all
+	@$(MAKE) bump-patch build-release commit-and-push publish-all commit-repository-files
 
 release-minor:
 	@echo "🚀 Release: minor version bump + publish to all repositories..."
-	@$(MAKE) bump-minor build-release commit-and-push publish-all
+	@$(MAKE) bump-minor build-release commit-and-push publish-all commit-repository-files
 
 release-major:
 	@echo "🚀 Release: major version bump + publish to all repositories..."
-	@$(MAKE) bump-major build-release commit-and-push publish-all
+	@$(MAKE) bump-major build-release commit-and-push publish-all commit-repository-files
 
 publish-all:
 	@echo "📦 Publishing to all repositories..."
-	@echo "📦 1/3 Publishing to APT repository (GitHub Pages)..."
-	@$(MAKE) publish-apt
-	@echo "📦 2/3 Building macOS DMG packages..."
-	@$(MAKE) publish-macos || (echo "⚠️  macOS DMG build failed - continuing with other targets"; true)
-	@echo "📦 3/3 Publishing to Launchpad PPA..."
+	@echo "📦 1/3 Publishing to Launchpad PPA (needs clean working tree)..."
 	@$(MAKE) publish-ppa || (echo "⚠️  PPA publish failed - continuing with other targets"; true)
+	@echo "📦 2/3 Publishing to APT repository (GitHub Pages)..."
+	@$(MAKE) publish-apt
+	@echo "📦 3/3 Building macOS DMG packages..."
+	@$(MAKE) publish-macos || (echo "⚠️  macOS DMG build failed - continuing with other targets"; true)
 	@echo "✅ Published to all repositories"
 
 bump-patch:
@@ -491,16 +491,27 @@ commit-and-push:
 			echo "⚠️  No remote 'origin' found. Skipping push to GitHub."; \
 			echo "✅ Version bumped and committed locally as v$$new_version"; \
 		fi; \
-		echo "📦 Adding repository files after commit..."; \
+	else \
+		echo "⚠️  No changes to commit"; \
+	fi
+
+commit-repository-files:
+	@echo "📦 Committing repository files..."
+	@new_version=$$(grep "^VERSION" Makefile | head -1 | cut -d'=' -f2 | tr -d ' ?'); \
+	if ! git diff --quiet; then \
 		git add ak-apt-repo/ ak-macos-repo/ 2>/dev/null || true; \
 		if ! git diff --cached --quiet 2>/dev/null; then \
 			git commit -m "📦 Update repositories for v$$new_version"; \
 			if git remote get-url origin >/dev/null 2>&1; then \
+				echo "📤 Pushing repository updates..."; \
 				git push origin main; \
 			fi; \
+			echo "✅ Repository files committed and pushed"; \
+		else \
+			echo "📦 No repository changes to commit"; \
 		fi; \
 	else \
-		echo "⚠️  No changes to commit"; \
+		echo "📦 No repository changes to commit"; \
 	fi
 
 clean: clean-coverage

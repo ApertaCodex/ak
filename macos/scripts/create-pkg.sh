@@ -14,7 +14,7 @@ INSTALLER_DIR="$MACOS_DIR/installer"
 OUTPUT_DIR="$BUILD_DIR/macos-packages"
 
 # Default values (can be overridden by environment variables)
-VERSION="${AK_VERSION:-4.1.13}"
+VERSION="${AK_VERSION:-4.1.14}"
 BUNDLE_ID="${AK_BUNDLE_ID:-dev.ak.ak}"
 SIGNING_IDENTITY="${AK_SIGNING_IDENTITY:-}"
 BUILD_DATE="$(date '+%Y-%m-%d %H:%M:%S')"
