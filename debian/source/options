@@ -1,0 +1,13 @@
+tar-ignore = ak-apt-repo/pool/main/*.deb
+tar-ignore = ak-apt-repo/dists/*/main/binary-amd64/Packages.gz
+tar-ignore = ak-macos-repo/packages/*
+tar-ignore = *.deb
+tar-ignore = *.tar.xz
+tar-ignore = *.7z
+tar-ignore = *.dmg
+tar-ignore = *.pkg
+tar-ignore = *.gz
+tar-ignore = *.gpg
+tar-ignore = *.asc
+tar-ignore = InRelease
+tar-ignore = Release.gpg
