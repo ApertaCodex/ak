@@ -21,8 +21,14 @@ echo "✅ GPG key added"
 
 # Add repository with keyring specification
 echo "📦 Adding AK repository..."
-echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertacodex.github.io/ak/ak-apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list
+echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertacodex.github.io/ak/ak-apt-repo/ stable main" | sudo tee /etc/apt/sources.list.d/ak.list
 echo "✅ Repository added"
+
+# Create a backup of existing sources (if any)
+if [ -f /etc/apt/sources.list.d/apertacodex-ubuntu-ak-plucky.sources ]; then
+  sudo mv /etc/apt/sources.list.d/apertacodex-ubuntu-ak-plucky.sources /etc/apt/sources.list.d/apertacodex-ubuntu-ak-plucky.sources.bak
+  echo "✅ Moved existing PPA source file to backup"
+fi
 
 # Update package list
 echo "🔄 Updating package lists..."
