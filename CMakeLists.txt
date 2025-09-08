@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Version is managed by the build system
-set(AK_VERSION "4.2.10")
+set(AK_VERSION "4.2.11")
 project(ak VERSION ${AK_VERSION} LANGUAGES CXX)
 
 # C++ Standard
