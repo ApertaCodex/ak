@@ -114,30 +114,32 @@ if [ -d "tests/googletest" ]; then
     rm -rf tests/googletest
     BACKED_UP_DIRS+=("tests/googletest")
 fi
-# Skip backing up and removing ak-apt-repo - preserve the repository
-# The debian/source/exclude file handles binary file exclusion for PPA builds
-# if [ -d "ak-apt-repo" ]; then
-#     cp -r ak-apt-repo "${TEMP_BACKUP_DIR}/"
-#     rm -rf ak-apt-repo
-#     BACKED_UP_DIRS+=("ak-apt-repo")
-# fi
+if [ -d "ak-apt-repo" ]; then
+    cp -r ak-apt-repo "${TEMP_BACKUP_DIR}/"
+    rm -rf ak-apt-repo
+    BACKED_UP_DIRS+=("ak-apt-repo")
+fi
+if [ -d "ak-macos-repo" ]; then
+    cp -r ak-macos-repo "${TEMP_BACKUP_DIR}/"
+    rm -rf ak-macos-repo
+    BACKED_UP_DIRS+=("ak-macos-repo")
+fi
 
 # Stash any uncommitted changes to create clean source package
-# But exclude ak-apt-repo from stash since we handle it separately
 STASH_CREATED=false
 if ! git diff --quiet || ! git diff --cached --quiet; then
     echo "Stashing uncommitted changes for clean source build..."
-    # Stash all changes except ak-apt-repo and ak-macos-repo
-    git stash push -u -m "Temporary stash for PPA build" -- . ':!ak-apt-repo' ':!ak-macos-repo'
+    git stash push -u -m "Temporary stash for PPA build"
     STASH_CREATED=true
 fi
 
-# Skip removing ak-apt-repo - preserve the repository
-# The debian/source/exclude file handles binary file exclusion for PPA builds
-# Remove ak-apt-repo again if it was restored by stash
-# if [ -d "ak-apt-repo" ]; then
-#     rm -rf ak-apt-repo
-# fi
+# Remove repository directories again if they were restored by stash
+if [ -d "ak-apt-repo" ]; then
+    rm -rf ak-apt-repo
+fi
+if [ -d "ak-macos-repo" ]; then
+    rm -rf ak-macos-repo
+fi
 
 # Build source package (-S) with full orig upload (-sa)
 BUILD_SUCCESS=false
