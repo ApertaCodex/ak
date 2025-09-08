@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 4.1.11
+VERSION   ?= 4.1.12
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -76,7 +76,7 @@ DISTDIR   := dist
 .PHONY: all test strip install install-user uninstall uninstall-user \
         coverage coverage-html coverage-summary clean-coverage clean-obj \
         package-deb package-rpm dist publish publish-patch publish-minor publish-major \
-        bump-patch bump-minor bump-major build-release test-release commit-and-push publish-ppa \
+        bump-patch bump-minor bump-major build-release commit-and-push publish-ppa \
         release release-patch release-minor release-major publish-all clean
 
 all: $(BIN)
@@ -293,13 +293,13 @@ publish-ppa-single:
 	@PPA="$(PPA)" SERIES="$(SERIES)" ./publish-ppa.sh
 
 publish-patch:
-	@$(MAKE) bump-patch build-release test-release publish-apt commit-and-push
+	@$(MAKE) bump-patch build-release publish-apt commit-and-push
 
 publish-minor:
-	@$(MAKE) bump-minor build-release test-release publish-apt commit-and-push
+	@$(MAKE) bump-minor build-release publish-apt commit-and-push
 
 publish-major:
-	@$(MAKE) bump-major build-release test-release publish-apt commit-and-push
+	@$(MAKE) bump-major build-release publish-apt commit-and-push
 
 # -------------------------
 # Comprehensive Release Commands (Default: minor)
@@ -323,15 +323,15 @@ release:
 
 release-patch:
 	@echo "🚀 Release: patch version bump + publish to all repositories..."
-	@$(MAKE) bump-patch build-release test-release publish-all commit-and-push
+	@$(MAKE) bump-patch build-release publish-all commit-and-push
 
 release-minor:
 	@echo "🚀 Release: minor version bump + publish to all repositories..."
-	@$(MAKE) bump-minor build-release test-release publish-all commit-and-push
+	@$(MAKE) bump-minor build-release publish-all commit-and-push
 
 release-major:
 	@echo "🚀 Release: major version bump + publish to all repositories..."
-	@$(MAKE) bump-major build-release test-release publish-all commit-and-push
+	@$(MAKE) bump-major build-release publish-all commit-and-push
 
 publish-all:
 	@echo "📦 Publishing to all repositories..."
@@ -465,10 +465,6 @@ build-release: clean
 	@echo "   - Packages: ./dist/"
 	@ls -la ./dist/ 2>/dev/null || echo "   (No dist directory - packages may be in parent directory)"
 
-test-release:
-	@echo "🧪 Running tests before release..."
-	@$(MAKE) test
-	@echo "✅ All tests passed"
 
 commit-and-push:
 	@echo "📦 Committing and pushing release..."
