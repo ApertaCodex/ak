@@ -1,0 +1,29 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Archive: stable
+Codename: stable
+Components: main
+Date: Mon, 08 Sep 2025 01:40:52 +0000
+Description: AK API Key Manager Repository
+Label: AK Repository
+Origin: AK
+Suite: stable
+Version: 1.0
+Architectures: amd64
+MD5Sum:
+ b80ea95a8c3f098277f6f4e7e959aa77 7876 main/binary-amd64/Packages
+ 26474c0192bbf2a83e86859b9ff3a9fe 2048 main/binary-amd64/Packages.gz
+SHA1:
+ 99f313540d646dba7daeac2af1f3d00a6e1ab4a7 7876 main/binary-amd64/Packages
+ a464e29e62267ffb7e2715980d15d77316b3a8ab 2048 main/binary-amd64/Packages.gz
+SHA256:
+ 3b885fe632e02c68cb18075e44da2833a2cd613e4080be01873a07c50fc9d0fa 7876 main/binary-amd64/Packages
+ ac9771d901285c6fd6a1ce27b7fc572cf4c68ff8d31f0c3280d56617af295e5d 2048 main/binary-amd64/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iHUEARYKAB0WIQRQSAcxZWNqenxREtyknUIHLH9UmAUCaL40JAAKCRCknUIHLH9U
+mKdvAP9cjhZd+DPJ8X1dUINVidZ8ubCwVVHmZt37n6yDr/YANQEAh3gPiVueA3KK
+461gUEX8Gf60J/2qF0ayT87O2jemXwM=
+=a762
+-----END PGP SIGNATURE-----
