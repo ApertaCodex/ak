@@ -30,7 +30,7 @@ sudo mkdir -p /usr/share/keyrings
 curl -fsSL https://apertacodex.github.io/ak/ak-repository-key.gpg | sudo tee /usr/share/keyrings/ak-archive-keyring.gpg > /dev/null
 
 # Add GitHub Pages repository
-echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertacodex.github.io/ak/ak-apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list
+echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertacodex.github.io/ak/ak-apt-repo/ stable main" | sudo tee /etc/apt/sources.list.d/ak.list
 
 # Update and install
 sudo apt update && sudo apt install ak
@@ -39,8 +39,8 @@ sudo apt update && sudo apt install ak
 #### Direct Package Download
 ```bash
 # Download latest .deb package (check for newest version)
-wget https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_4.2.6_amd64.deb
-sudo dpkg -i ak_4.2.6_amd64.deb
+wget https://apertacodex.github.io/ak/ak-apt-repo/pool/main/ak_4.2.7_amd64.deb
+sudo dpkg -i ak_4.2.7_amd64.deb
 
 # Fix dependencies if needed
 sudo apt-get install -f
@@ -290,7 +290,7 @@ TEST(ModuleTest, BasicFunctionality) {
 
 ## 📊 Current Status
 
-- **Version**: 4.2.6
+- **Version**: 4.2.7
 - **Test Coverage**: ~60% line coverage, ~67% function coverage
 - **Tests**: 65 tests across 21 test suites
 - **Build System**: CMake 3.16+ with cross-platform support

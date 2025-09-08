@@ -14,7 +14,7 @@ DMG_DIR="$MACOS_DIR/dmg"
 OUTPUT_DIR="$BUILD_DIR/macos-packages"
 
 # Default values
-VERSION="${AK_VERSION:-4.2.6}"
+VERSION="${AK_VERSION:-4.2.7}"
 BUNDLE_ID="${AK_BUNDLE_ID:-dev.ak.ak}"
 DMG_NAME="AK-${VERSION}"
 VOLUME_NAME="AK ${VERSION}"
