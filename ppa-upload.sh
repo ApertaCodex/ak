@@ -173,7 +173,24 @@ fi
 
 # Build source package (-S) with full orig upload (-sa)
 BUILD_SUCCESS=false
-if dpkg-buildpackage -S -sa -k"${KEYID}" -- -Zxz --commit; then
+# First try to integrate local changes with dpkg-source --commit
+echo "Running dpkg-source --commit to integrate local changes..."
+# Create a patch description file to avoid interactive prompt
+echo "Automatic patch for local changes during build" > /tmp/ak_patch_description.txt
+
+# Set EDITOR to avoid interactive editor, and provide patch description
+export EDITOR="cat /tmp/ak_patch_description.txt >"
+
+# First attempt using --auto-commit flag
+if ! dpkg-source --auto-commit . 2>/dev/null; then
+    echo "Auto-commit failed, trying explicit --commit..."
+    if ! dpkg-source --commit . "build-changes" 2>/dev/null; then
+        echo "Warning: Could not commit local changes. Build may fail."
+    fi
+fi
+
+# Proceed with the build, with additional options to help handle source changes
+if dpkg-buildpackage -S -sa -k"${KEYID}" --source-option=--auto-commit --source-option=--no-check; then
   # Move build artifacts to build directory after successful build
   mv ../${PKG_NAME}_* "${BUILD_DIR}/" 2>/dev/null || true
   BUILD_SUCCESS=true
