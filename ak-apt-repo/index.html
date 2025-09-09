@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="../logo.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AK APT Repository - API Key Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-300 font-sans antialiased">
+    <div class="min-h-screen bg-slate-900 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-full [background:radial-gradient(125%_125%_at_50%_10%,#0F172A_40%,#6366F1_100%)]"></div>
+        <div class="absolute inset-0 z-0 h-full w-full bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]"></div>
+        
+        <div class="relative z-10">
+            <header class="absolute top-0 left-0 w-full z-50">
+                <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+                    <div class="text-2xl font-bold text-white tracking-wider">
+                        <span class="text-purple-400">A</span>K APT
+                    </div>
+                    <ul class="hidden md:flex items-center space-x-8 text-sm font-medium">
+                        <li><a href="../#features" class="text-slate-300 hover:text-purple-400 transition-colors">Features</a></li>
+                        <li><a href="../#quick-start" class="text-slate-300 hover:text-purple-400 transition-colors">Install</a></li>
+                        <li><a href="../#usage" class="text-slate-300 hover:text-purple-400 transition-colors">Usage</a></li>
+                    </ul>
+                </nav>
+            </header>
+
+            <main class="py-32 sm:py-48">
+                <div class="container mx-auto px-6">
+                    <div class="text-center mb-16">
+                        <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-teal-400 leading-tight tracking-tighter mb-6">
+                            AK APT Repository
+                        </h1>
+                        <p class="max-w-3xl mx-auto text-lg text-slate-300 mb-10">
+                            Official APT repository for AK - API Key Manager for Ubuntu and Debian systems
+                        </p>
+                        <div class="flex flex-wrap justify-center gap-4 mb-10">
+                            <span class="bg-slate-800/80 text-slate-300 px-4 py-1.5 rounded-full text-sm font-medium">amd64 only</span>
+                            <span class="bg-slate-800/80 text-slate-300 px-4 py-1.5 rounded-full text-sm font-medium">Signed repo</span>
+                            <span class="bg-slate-800/80 text-slate-300 px-4 py-1.5 rounded-full text-sm font-medium">Multiple Ubuntu series</span>
+                        </div>
+                        <div class="bg-slate-800/30 rounded-lg p-4 border border-slate-700 max-w-md mx-auto mb-8">
+                            <p class="text-sm font-medium text-slate-300 mb-2">Latest Version</p>
+                            <strong class="text-lg text-purple-400">Latest version: 4.2.19</strong>
+                            <div class="text-sm text-slate-400 mt-2">
+                                <a href="pool/main/ak_4.2.19_amd64.deb" class="text-purple-400 hover:text-purple-300 underline">
+                                    Download .deb directly
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Installation Methods -->
+                    <div class="max-w-4xl mx-auto mb-16">
+                        <div class="grid md:grid-cols-2 gap-8">
+                            <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg p-8">
+                                <h2 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6">
+                                    🚀 Recommended: Launchpad PPA
+                                </h2>
+                                <p class="text-slate-300 mb-4">Same base version published for all major Ubuntu distributions.</p>
+                                <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-600 mb-4">
+                                    <pre class="text-sm text-slate-300 overflow-x-auto"><code>sudo add-apt-repository ppa:apertacodex/ak
+sudo apt update
+sudo apt install ak</code></pre>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <ul class="space-y-1.5 text-slate-400">
+                                            <li>Ubuntu 24.04 (noble)</li>
+                                            <li>Ubuntu 22.04 (jammy)</li>
+                                            <li>Ubuntu 20.04 (focal)</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <ul class="space-y-1.5 text-slate-400">
+                                            <li>Ubuntu 24.10 (oracular)</li>
+                                            <li>Ubuntu 25.04 (plucky)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <a href="https://launchpad.net/~apertacodex/+archive/ubuntu/ak" 
+                                       class="text-sm text-blue-400 hover:text-blue-300" target="_blank">
+                                        View PPA on Launchpad →
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 shadow-lg p-8">
+                                <h2 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-400 mb-6">
+                                    🧰 Fallback: GitHub-hosted APT repo
+                                </h2>
+                                <p class="text-slate-300 mb-4">Use this if PPA is unavailable or you are on Debian.</p>
+                                
+                                <h3 class="text-md font-semibold text-purple-400 mb-2">1) Universal "stable" suite (recommended)</h3>
+                                <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-600 mb-4">
+                                    <pre class="text-sm text-slate-300 overflow-x-auto"><code># Add signing key
+sudo mkdir -p /usr/share/keyrings
+curl -fsSL https://apertacodex.github.io/ak/ak-repository-key.gpg \
+  | sudo tee /usr/share/keyrings/ak-archive-keyring.gpg >/dev/null
+
+# Add APT source (works for Ubuntu & Debian)
+echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertacodex.github.io/ak/ak-apt-repo stable main" \
+  | sudo tee /etc/apt/sources.list.d/ak.list
+
+sudo apt update
+sudo apt install ak</code></pre>
+                                </div>
+                                
+                                <h3 class="text-md font-semibold text-teal-400 mb-2">2) Ubuntu 25.04 (plucky) suite</h3>
+                                <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-600">
+                                    <pre class="text-sm text-slate-300 overflow-x-auto"><code>echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertacodex.github.io/ak/ak-apt-repo plucky main" \
+  | sudo tee /etc/apt/sources.list.d/ak-plucky.list
+sudo apt update && sudo apt install ak</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Supported Distributions -->
+                    <div class="max-w-4xl mx-auto mb-16">
+                        <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-8">
+                            <h2 class="text-2xl font-bold text-white mb-6">✅ Supported Distributions</h2>
+                            <div class="grid md:grid-cols-3 gap-6">
+                                <div>
+                                    <h3 class="font-semibold text-purple-400 mb-2">Ubuntu LTS</h3>
+                                    <ul class="text-slate-300 space-y-1">
+                                        <li>24.04 LTS (noble)</li>
+                                        <li>22.04 LTS (jammy)</li>
+                                        <li>20.04 LTS (focal)</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-teal-400 mb-2">Ubuntu Regular</h3>
+                                    <ul class="text-slate-300 space-y-1">
+                                        <li>25.04 (plucky)</li>
+                                        <li>24.10 (oracular)</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-blue-400 mb-2">Debian</h3>
+                                    <ul class="text-slate-300 space-y-1">
+                                        <li>12 (bookworm) via "stable" suite</li>
+                                        <li>amd64 architecture only</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Verification & Troubleshooting -->
+                    <div class="max-w-4xl mx-auto mb-16">
+                        <div class="grid md:grid-cols-2 gap-8">
+                            <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-8">
+                                <h2 class="text-xl font-bold text-white mb-6">🔎 Verify Installation</h2>
+                                <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-600">
+                                    <pre class="text-sm text-slate-300 overflow-x-auto"><code># Confirm repo is seen
+apt-cache policy ak
+
+# Run AK
+ak --version
+ak --help</code></pre>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-8">
+                                <h2 class="text-xl font-bold text-white mb-6">🛠️ Troubleshooting</h2>
+                                <ul class="text-sm text-slate-300 space-y-3">
+                                    <li class="flex gap-2">
+                                        <span class="text-red-400">⚠️</span>
+                                        <span>If you see "doesn't support architecture 'i386'": ensure your system is amd64 or remove i386 from apt sources for this repo.</span>
+                                    </li>
+                                    <li class="flex gap-2">
+                                        <span class="text-red-400">⚠️</span>
+                                        <span>If apt shows duplicate source warnings, remove duplicate .list/.sources entries for the same repo.</span>
+                                    </li>
+                                    <li class="flex gap-2">
+                                        <span class="text-red-400">⚠️</span>
+                                        <span>If using PPA but the version appears only for some series, wait for Launchpad builders to finish for all series or use the GitHub repo fallback temporarily.</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Repository Anatomy -->
+                    <div class="max-w-4xl mx-auto mb-16">
+                        <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-8">
+                            <h2 class="text-2xl font-bold text-white mb-6">📂 Repository Anatomy</h2>
+                            <div class="grid md:grid-cols-3 gap-6">
+                                <div>
+                                    <h3 class="font-semibold text-purple-400 mb-2">Metadata</h3>
+                                    <ul class="text-sm text-slate-300 space-y-1.5">
+                                        <li><a href="dists/stable/InRelease" class="text-blue-400 hover:underline">dists/stable/InRelease</a></li>
+                                        <li><a href="dists/stable/Release" class="text-blue-400 hover:underline">dists/stable/Release</a></li>
+                                        <li><a href="dists/stable/Release.gpg" class="text-blue-400 hover:underline">dists/stable/Release.gpg</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-teal-400 mb-2">Indexes</h3>
+                                    <ul class="text-sm text-slate-300 space-y-1.5">
+                                        <li><a href="dists/stable/main/binary-amd64/Packages" class="text-blue-400 hover:underline">Packages</a></li>
+                                        <li><a href="dists/stable/main/binary-amd64/Packages.gz" class="text-blue-400 hover:underline">Packages.gz</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-blue-400 mb-2">Packages</h3>
+                                    <ul class="text-sm text-slate-300 space-y-1.5">
+                                        <li><a href="pool/main/" class="text-blue-400 hover:underline">pool/main/</a></li>
+                                        <li>ak_[version]_amd64.deb</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Navigation -->
+                    <div class="max-w-4xl mx-auto text-center">
+                        <div class="flex flex-wrap justify-center gap-4">
+                            <a href="../" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                ← Back to Main Site
+                            </a>
+                            <a href="https://github.com/ApertaCodex/ak" target="_blank" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                View on GitHub
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>
