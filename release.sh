@@ -88,11 +88,18 @@ fi
 
 if [ -n "${DEBSIGN_KEYID}" ]; then
     echo -e "${BLUE}⬆️  Uploading to PPA: ppa:apertacodex/ak (series: noble) with key ${DEBSIGN_KEYID}${NC}"
-    # Capture output for debugging
-    if ! ../ppa-upload.sh -s noble -k "${DEBSIGN_KEYID}" 2>&1 | tee ppa_upload_output.log; then
-        echo -e "${RED}❌ PPA upload failed. Check ppa_upload_output.log for details.${NC}"
+    # Change to parent directory
+    cd ..
+    
+    # Use the new clean build and upload script
+    if ! ./build-and-upload-ppa.sh noble "${DEBSIGN_KEYID}" 2>&1 | tee build/ppa_upload_output.log; then
+        echo -e "${RED}❌ PPA upload failed. Check build/ppa_upload_output.log for details.${NC}"
+        cd build
         exit 1
     fi
+    
+    # Return to build directory
+    cd build
     echo -e "${GREEN}✅ PPA upload initiated. Monitor build status at Launchpad.${NC}"
 else
     echo -e "${RED}❌ PPA upload skipped due to missing GPG key ID.${NC}"
