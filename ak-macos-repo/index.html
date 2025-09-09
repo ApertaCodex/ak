@@ -35,9 +35,15 @@
                         <p class="max-w-3xl mx-auto text-lg text-slate-300 mb-10">
                             Download compressed packages for macOS installation of AK - API Key Manager
                         </p>
-                        <div class="bg-slate-800/30 rounded-lg p-4 border border-slate-700 max-w-md mx-auto mb-8">
-                            <p class="text-sm font-medium text-slate-300 mb-2">Latest Version</p>
-                            <strong class="text-lg text-purple-400">Latest version: 4.2.21</strong>
+                        <div class="bg-slate-800/30 rounded-lg p-4 border border-slate-700 max-w-md mx-auto mb-4">
+                            <p class="text-sm font-medium text-slate-300 mb-2">Latest macOS Version</p>
+                            <strong class="text-lg text-purple-400">Current version: 4.2.19</strong>
+                            <p class="text-xs text-amber-400 mt-2">(Note: Linux APT packages are at version 4.2.21)</p>
+                        </div>
+                        <div class="bg-amber-900/20 rounded-lg p-4 border border-amber-800/40 max-w-md mx-auto mb-8">
+                            <p class="text-sm text-amber-300">
+                                <span class="font-bold">⚠️ Version Note:</span> macOS packages are currently at 4.2.19 while APT packages are at 4.2.21. macOS packages will be updated soon.
+                            </p>
                         </div>
                     </div>
 
@@ -63,11 +69,11 @@
                                             </button>
                                         </div>
                                         <pre class="p-4 text-sm font-mono text-slate-300 whitespace-pre-wrap"><code># Download and extract
-curl -L -o AK-4.2.21.7z https://apertacodex.github.io/ak/ak-macos-repo/packages/AK-4.2.21.7z
-7z x AK-4.2.21.7z
+curl -L -o AK-4.2.19.7z https://apertacodex.github.io/ak/ak-macos-repo/packages/AK-4.2.19.7z
+7z x AK-4.2.19.7z
 
 # Run install script
-cd AK-4.2.21
+cd AK-4.2.19
 ./Install\ AK.sh</code></pre>
                                     </div>
                                 </div>
@@ -88,11 +94,11 @@ cd AK-4.2.21
                                             </button>
                                         </div>
                                         <pre class="p-4 text-sm font-mono text-slate-300 whitespace-pre-wrap"><code># Download and extract
-curl -L -o AK-4.2.21.7z https://apertacodex.github.io/ak/ak-macos-repo/packages/AK-4.2.21.7z
-7z x AK-4.2.21.7z
+curl -L -o AK-4.2.19.7z https://apertacodex.github.io/ak/ak-macos-repo/packages/AK-4.2.19.7z
+7z x AK-4.2.19.7z
 
 # Copy to Applications
-cp -r AK-4.2.21/AK.app /Applications/</code></pre>
+cp -r AK-4.2.19/AK.app /Applications/</code></pre>
                                     </div>
                                 </div>
                             </div>
@@ -100,7 +106,7 @@ cp -r AK-4.2.21/AK.app /Applications/</code></pre>
                             <div class="mt-6 p-4 bg-blue-900/20 rounded-lg border border-blue-700">
                                 <p class="text-sm text-blue-300">
                                     <strong>Alternative:</strong> Download the tar.xz version if you prefer: 
-                                    <a href="packages/AK-4.2.21-macos.tar.xz" class="underline hover:text-blue-200">AK-4.2.21-macos.tar.xz</a>
+                                    <a href="packages/AK-4.2.19-macos.tar.xz" class="underline hover:text-blue-200">AK-4.2.19-macos.tar.xz</a>
                                 </p>
                             </div>
                         </div>
@@ -116,7 +122,7 @@ cp -r AK-4.2.21/AK.app /Applications/</code></pre>
                                 <p class="text-slate-300 mb-4">Highly compressed package with best size optimization</p>
                                 <div class="flex items-center justify-between">
                                     <span class="text-sm text-slate-400">Size: ~130 KB</span>
-                                    <a href="packages/AK-4.2.21.7z"
+                                    <a href="packages/AK-4.2.19.7z"
                                        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors">
                                         Download 7z
                                     </a>
@@ -128,10 +134,28 @@ cp -r AK-4.2.21/AK.app /Applications/</code></pre>
                                 <p class="text-slate-300 mb-4">Unix-compatible compressed archive</p>
                                 <div class="flex items-center justify-between">
                                     <span class="text-sm text-slate-400">Size: ~150 KB</span>
-                                    <a href="packages/AK-4.2.21-macos.tar.xz"
+                                    <a href="packages/AK-4.2.19-macos.tar.xz"
                                        class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors">
                                         Download tar.xz
                                     </a>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+                                <h3 class="text-lg font-semibold text-gray-400 mb-4">Legacy Versions</h3>
+                                <p class="text-slate-300 mb-4">Earlier releases available for compatibility</p>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-slate-400">Version 4.1.6</span>
+                                    <div class="space-x-2">
+                                        <a href="packages/AK-4.1.6.7z"
+                                           class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 text-sm rounded-lg transition-colors">
+                                            7z
+                                        </a>
+                                        <a href="packages/AK-4.1.6-macos.tar.xz"
+                                           class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 text-sm rounded-lg transition-colors">
+                                            tar.xz
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
