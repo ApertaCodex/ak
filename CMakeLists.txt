@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Version is managed by the build system
-set(AK_VERSION "4.2.18")
+set(AK_VERSION "4.2.19")
 project(ak VERSION ${AK_VERSION} LANGUAGES CXX)
 
 # C++ Standard
@@ -62,8 +62,8 @@ set(CORE_SOURCES
 option(BUILD_GUI "Build GUI support with Qt 6" ON)
 
 if(BUILD_GUI)
-    # Find Qt 6 components - require minimum 6.8.0 for compatibility
-    find_package(Qt6 6.8.0 REQUIRED COMPONENTS Core Widgets)
+    # Find Qt 6 components - require minimum 6.4.0 for compatibility
+    find_package(Qt6 6.4.0 REQUIRED COMPONENTS Core Widgets)
     
     # Enable Qt 6 MOC (Meta-Object Compiler) globally
     set(CMAKE_AUTOMOC ON)
