@@ -1,3 +1,11 @@
+ak (4.2.19) noble; urgency=medium
+
+  * Fixed Qt6 compatibility to work with Ubuntu Noble (24.04) repositories
+  * Reduced Qt6 version requirement from 6.8.0 to 6.4.0
+  * Fixed PPA build failure issues
+
+ -- ApertaCodex <developers@apertacodex.ai>  Tue, 09 Sep 2025 04:00:00 +0300
+
 ak (4.2.18) noble; urgency=medium
 
   * Fixed ak load default --persist not persisting variables in current directory
