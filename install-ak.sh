@@ -28,107 +28,58 @@ echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertac
 echo "🔄 Updating package list..."
 sudo apt update
 
-# Check Qt6 version compatibility
-echo "🔍 Checking Qt6 version requirements..."
+# Check and install Slint dependencies
+echo "🔍 Checking Slint dependencies..."
 
-# Simple version check - just ensure Qt6 major version is >= 6
-is_qt6_compatible() {
-    local version=$1
-    local major_version=$(echo "$version" | cut -d. -f1)
+# Slint requires basic development libraries
+echo "📦 Installing required dependencies..."
+
+# Install essential build tools and libraries needed for Slint
+sudo apt install -y build-essential cmake pkg-config \
+    libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+    libgles2-mesa-dev libgbm-dev libdrm-dev
+
+# Check if installation was successful
+if [ $? -ne 0 ]; then
+    echo "⚠️  Failed to install some dependencies"
+    echo "📦 Trying to install minimal dependencies..."
     
-    if [[ $major_version -ge 6 ]]; then
-        return 0  # compatible
-    else
-        return 1  # not compatible
+    sudo apt install -y build-essential libfontconfig1-dev
+    
+    if [ $? -ne 0 ]; then
+        echo "❌ Failed to install required dependencies"
+        echo "Please ensure your system can install the following packages:"
+        echo "  - build-essential"
+        echo "  - libfontconfig1-dev"
+        echo ""
+        echo "You may need to run 'sudo apt update' first."
+        exit 1
     fi
-}
-
-# Get Qt6 runtime version from installed packages (most reliable)
-QT6_VERSION=""
-if dpkg-query -W -f='${Version}' libqt6core6t64 >/dev/null 2>&1; then
-    QT6_VERSION=$(dpkg-query -W -f='${Version}' libqt6core6t64 | cut -d'+' -f1 | cut -d'-' -f1)
-elif dpkg-query -W -f='${Version}' libqt6core6 >/dev/null 2>&1; then
-    QT6_VERSION=$(dpkg-query -W -f='${Version}' libqt6core6 | cut -d'+' -f1 | cut -d'-' -f1)
-elif dpkg-query -W -f='${Version}' qt6-base-dev >/dev/null 2>&1; then
-    QT6_VERSION=$(dpkg-query -W -f='${Version}' qt6-base-dev | cut -d'+' -f1 | cut -d'-' -f1)
-elif command -v qmake6 >/dev/null 2>&1; then
-    # Fallback to qmake6, but this may not reflect runtime libraries
-    QT6_VERSION=$(qmake6 -query QT_VERSION 2>/dev/null)
 fi
 
-REQUIRED_QT_VERSION="6.8.0"  # Minimum for building from source
-BINARY_REQUIRES_QT_VERSION="6.9.0"  # Published binary requirement
+echo "✅ Dependencies installed successfully"
 
-# Try to install Qt6 6.9.0 specifically first
-echo "📦 Installing Qt6 6.9.0 dependencies..."
-echo "🔄 Trying to install Qt6 6.9.0..."
-
-if sudo apt install -y qt6-base-dev=6.9* libqt6widgets6=6.9* qt6-tools-dev=6.9* qt6-tools-dev-tools=6.9* 2>/dev/null; then
-    echo "✅ Successfully installed Qt6 6.9.x"
-else
-    echo "⚠️  Qt6 6.9.x not available in repositories"
-    echo "📦 Installing available Qt6 version..."
-    sudo apt install -y qt6-base-dev libqt6widgets6 qt6-tools-dev qt6-tools-dev-tools
+# Check if Slint compiler is installed
+if ! command -v slint-compiler >/dev/null 2>&1; then
+    echo "🔧 Slint compiler not found, installing..."
     
-    echo ""
-    echo "🔧 To get Qt6 6.9.0, you can try:"
-    echo "   1. Add Qt's official repository:"
-    echo "      wget -qO - https://download.qt.io/official_releases/qt/6.9/6.9.0/submodules/apt-key.gpg | sudo apt-key add -"
-    echo "      echo 'deb https://download.qt.io/official_releases/qt/6.9/6.9.0/submodules/ focal main' | sudo tee /etc/apt/sources.list.d/qt6.list"
-    echo "      sudo apt update && sudo apt install qt6-base-dev=6.9*"
-    echo ""
-    echo "   2. Or build AK from source to use your current Qt6 version"
-    echo ""
-fi
-
-# Re-check Qt6 runtime version after installation
-if dpkg-query -W -f='${Version}' libqt6core6t64 >/dev/null 2>&1; then
-    QT6_VERSION=$(dpkg-query -W -f='${Version}' libqt6core6t64 | cut -d'+' -f1 | cut -d'-' -f1)
-elif dpkg-query -W -f='${Version}' libqt6core6 >/dev/null 2>&1; then
-    QT6_VERSION=$(dpkg-query -W -f='${Version}' libqt6core6 | cut -d'+' -f1 | cut -d'-' -f1)
-elif dpkg-query -W -f='${Version}' qt6-base-dev >/dev/null 2>&1; then
-    QT6_VERSION=$(dpkg-query -W -f='${Version}' qt6-base-dev | cut -d'+' -f1 | cut -d'-' -f1)
-elif command -v qmake6 >/dev/null 2>&1; then
-    QT6_VERSION=$(qmake6 -query QT_VERSION 2>/dev/null)
-fi
-
-if [[ -n "$QT6_VERSION" ]]; then
-    echo "📍 Qt6 runtime version detected: $QT6_VERSION"
-    echo "📍 Binary requires Qt6 version: $BINARY_REQUIRES_QT_VERSION"
-    echo "📍 Source build minimum: $REQUIRED_QT_VERSION"
-    
-    if is_qt6_compatible "$QT6_VERSION"; then
-        # Check if version is compatible with published binary
-        major_minor=$(echo "$QT6_VERSION" | cut -d. -f1,2)
-        if [[ "$major_minor" == "6.9" ]] || [[ "$major_minor" > "6.9" ]]; then
-            echo "✅ Qt6 $QT6_VERSION detected - compatible with published AK binary"
-        else
-            echo "⚠️  Qt6 $QT6_VERSION detected - INCOMPATIBLE with published binary (needs 6.9+)"
-            echo ""
-            echo "🔧 Your options:"
-            echo "   1. Build AK from source (works with Qt6 $QT6_VERSION):"
-            echo "      git clone https://github.com/apertacodex/ak && cd ak"
-            echo "      mkdir build && cd build && cmake .. -DBUILD_GUI=ON && make"
-            echo ""
-            echo "   2. Upgrade to Qt6 6.9+ (if available):"
-            echo "      sudo apt update && sudo apt install qt6-base-dev=6.9*"
-            echo ""
-            echo "   3. Continue anyway (will likely fail at runtime)"
-            echo ""
-            read -p "❓ Continue with binary installation anyway? (y/N): " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                echo "❌ Installation cancelled by user"
-                echo "💡 Consider building from source for Qt6 $QT6_VERSION compatibility"
-                exit 1
-            fi
-        fi
+    # Download and run the Slint installer script
+    if [ -f "./install-slint.sh" ]; then
+        chmod +x ./install-slint.sh
+        ./install-slint.sh
     else
-        echo "⚠️  Warning: Qt6 version $QT6_VERSION appears to be Qt5 or older"
-        echo "   AK requires Qt6. Please install Qt6 libraries."
+        echo "📥 Downloading Slint installer script..."
+        curl -fsSL https://apertacodex.github.io/ak/install-slint.sh -o install-slint.sh
+        chmod +x ./install-slint.sh
+        ./install-slint.sh
     fi
-else
-    echo "⚠️  Could not detect Qt6 version, proceeding with installation..."
+    
+    # Check if installation was successful
+    if ! command -v slint-compiler >/dev/null 2>&1; then
+        echo "⚠️ Unable to find slint-compiler in PATH after installation"
+        echo "📝 Please make sure ~/.local/bin is in your PATH"
+        echo "   export PATH=\"\$HOME/.local/bin:\$PATH\""
+    fi
 fi
 
 # Install ak
@@ -189,14 +140,12 @@ else
     echo "❌ Installation verification failed!"
     echo
     echo "🔧 Troubleshooting steps:"
-    echo "   1. Check Qt6 version compatibility:"
-    echo "      qmake6 -query QT_VERSION"
-    echo "   2. Try installing a newer Qt6 version:"
-    echo "      sudo apt update && sudo apt install qt6-base-dev=6.9* || sudo apt install qt6-base-dev"
-    echo "   3. Check available Qt6 versions:"
-    echo "      apt list --upgradable | grep qt6"
-    echo "   4. If Qt6 6.9+ is not available, consider:"
-    echo "      - Building AK from source with your Qt6 version"
+    echo "   1. Check for missing libraries:"
+    echo "      ldd /usr/bin/ak"
+    echo "   2. Install missing dependencies:"
+    echo "      sudo apt install -y libfontconfig1"
+    echo "   3. If problems persist, consider:"
+    echo "      - Building AK from source"
     echo "      - Using a newer Ubuntu/Debian release"
     echo "      - Running AK in CLI-only mode (if available)"
     echo
