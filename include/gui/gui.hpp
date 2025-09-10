@@ -21,5 +21,8 @@ int runGuiApplication(const core::Config& cfg, const std::vector<std::string>& a
  */
 bool isGuiAvailable();
 
+// Forward declaration for the wxWidgets application class
+class AkGuiApp;
+
 } // namespace gui
 } // namespace ak
