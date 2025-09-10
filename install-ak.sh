@@ -135,6 +135,45 @@ fi
 echo "⬇️  Installing AK..."
 sudo apt install -y ak
 
+# Install desktop integration
+echo "🖥️  Installing desktop integration..."
+
+# Ensure desktop file is installed
+if [ ! -f /usr/share/applications/ak.desktop ]; then
+    echo "📄 Installing desktop file..."
+    sudo mkdir -p /usr/share/applications
+    sudo cp -f "${0%/*}/ak.desktop" /usr/share/applications/ 2>/dev/null || \
+    sudo curl -fsSL https://apertacodex.github.io/ak/ak.desktop -o /usr/share/applications/ak.desktop
+fi
+
+# Ensure icon is installed
+echo "🎨 Installing application icon..."
+sudo mkdir -p /usr/share/icons/hicolor/scalable/apps
+if [ -f "${0%/*}/logo.svg" ]; then
+    sudo cp -f "${0%/*}/logo.svg" /usr/share/icons/hicolor/scalable/apps/ak.svg
+else
+    sudo curl -fsSL https://apertacodex.github.io/ak/logo.svg -o /usr/share/icons/hicolor/scalable/apps/ak.svg
+fi
+
+# Install PNG icons in different sizes if available
+if [ -f "${0%/*}/logo.png" ]; then
+    for size in 16 32 48 64 128 256; do
+        sudo mkdir -p "/usr/share/icons/hicolor/${size}x${size}/apps"
+        # Use convert from ImageMagick if available
+        if command -v convert >/dev/null 2>&1; then
+            convert "${0%/*}/logo.png" -resize ${size}x${size} "/usr/share/icons/hicolor/${size}x${size}/apps/ak.png"
+        else
+            # Otherwise just copy the original to all sizes
+            sudo cp -f "${0%/*}/logo.png" "/usr/share/icons/hicolor/${size}x${size}/apps/ak.png"
+        fi
+    done
+fi
+
+# Update icon cache
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor
+fi
+
 # Verify installation
 echo "✅ Installation complete!"
 echo
@@ -145,6 +184,7 @@ if ak --version 2>/dev/null; then
     echo "🎉 AK API Key Manager is now installed and working!"
     echo "📚 Run 'ak --help' to get started"
     echo "🔧 Run 'ak install-shell' to enable shell completions"
+    echo "🖥️  A desktop shortcut has been created in your applications menu"
 else
     echo "❌ Installation verification failed!"
     echo
