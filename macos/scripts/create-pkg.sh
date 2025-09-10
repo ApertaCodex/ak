@@ -176,6 +176,13 @@ prepare_files() {
         cp "$BUILD_DIR/ak" "$app_bundle/Contents/MacOS/"
         chmod 755 "$app_bundle/Contents/MacOS/ak"
         
+        # Copy Slint assets if they exist
+        if [[ -d "$BUILD_DIR/slint-assets" ]]; then
+            mkdir -p "$app_bundle/Contents/Resources/slint-assets"
+            cp -R "$BUILD_DIR/slint-assets/"* "$app_bundle/Contents/Resources/slint-assets/"
+            log_info "Slint assets included in app bundle"
+        fi
+        
         # Create Info.plist
         sed -e "s/{{VERSION}}/$VERSION/g" \
             -e "s/{{BUNDLE_ID}}/$BUNDLE_ID/g" \
@@ -218,10 +225,18 @@ prepare_files() {
             cp "$PROJECT_ROOT/logo.svg" "$app_bundle/Contents/Resources/ak.svg"
         fi
         
-        # Copy launcher script
-        sed -e "s/{{VERSION}}/$VERSION/g" \
-            -e "s/{{BUNDLE_ID}}/$BUNDLE_ID/g" \
-            "$MACOS_DIR/app-bundle/launcher.sh" > "$app_bundle/Contents/MacOS/launcher"
+        # Create enhanced launcher script with Slint environment
+        cat > "$app_bundle/Contents/MacOS/launcher" << EOF
+#!/bin/bash
+# AK - API Key Manager Launcher Script v${VERSION}
+# Sets up environment for Slint UI and launches application
+
+# Set Slint environment variables
+export SLINT_ASSET_PATH="\$(dirname "\$0")/../Resources/slint-assets"
+
+# Launch the app
+"\$(dirname "\$0")/ak-gui" "\$@"
+EOF
         chmod +x "$app_bundle/Contents/MacOS/launcher"
         
         log_info "GUI application bundle created in Applications folder"

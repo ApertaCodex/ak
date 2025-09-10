@@ -7,9 +7,11 @@ Build-Depends: debhelper-compat (= 13),
                build-essential,
                g++ (>= 7) | clang++ (>= 8),
                git,
-               qt6-base-dev,
-               qt6-tools-dev,
-               qt6-tools-dev-tools
+               pkg-config,
+               libfontconfig1-dev,
+               libxkbcommon-dev,
+               libxkbcommon-x11-dev,
+               libgles2-mesa-dev
 Standards-Version: 4.6.0
 Homepage: https://github.com/apertacodex/ak
 Vcs-Git: https://github.com/apertacodex/ak.git
@@ -18,7 +20,7 @@ Rules-Requires-Root: no
 
 Package: ak
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libqt6core6 (>= 6.8.0), libqt6widgets6 (>= 6.8.0)
+Depends: ${shlibs:Depends}, ${misc:Depends}, libfontconfig1, libxkbcommon0, libgles2
 Recommends: gnupg
 Description: Secure API Key Manager
  AK is a cross-platform command-line tool for managing API keys securely
@@ -33,3 +35,4 @@ Description: Secure API Key Manager
   * Shell completions for Bash, Zsh, and Fish
   * Comprehensive test suite with coverage reporting
   * Easy installation and configuration
+  * Lightweight native GUI using Slint for minimal attack surface
