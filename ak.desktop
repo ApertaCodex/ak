@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=AK API Key Manager
+Comment=Secure API Key and Environment Variable Manager
+Exec=/usr/local/bin/ak
+Icon=/usr/share/icons/hicolor/scalable/apps/ak.svg
+Terminal=false
+Type=Application
+Categories=Utility;Development;
+Keywords=API;Key;Secret;Manager;
+StartupNotify=true
