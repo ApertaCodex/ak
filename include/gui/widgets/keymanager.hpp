@@ -3,19 +3,21 @@
 #ifdef BUILD_GUI
 
 #include "core/config.hpp"
-#include <QWidget>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QTableWidget>
-#include <QTableWidgetItem>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
-#include <QHeaderView>
-#include <QMenu>
-#include <QContextMenuEvent>
-#include <QString>
-#include <QStringList>
+#include <wx/wx.h>
+#include <wx/grid.h>
+#include <wx/listctrl.h>
+#include <wx/textctrl.h>
+#include <wx/button.h>
+#include <wx/sizer.h>
+#include <wx/stattext.h>
+#include <wx/menu.h>
+#include <wx/timer.h>
+#include <wx/event.h>
+#include <wx/string.h>
+#include <wx/clipbrd.h>
+#include <vector>
+#include <string>
+#include <map>
 
 namespace ak {
 namespace gui {
@@ -24,115 +26,120 @@ namespace widgets {
 // Forward declarations
 class SecureInputWidget;
 
-// Custom table item for masked values
-class MaskedTableItem : public QTableWidgetItem
+// Custom grid renderer for masked values
+class MaskedCellRenderer : public wxGridCellStringRenderer
 {
 public:
-    explicit MaskedTableItem(const QString &actualValue);
-    
-    void setMasked(bool masked);
-    bool isMasked() const;
-    QString getActualValue() const;
-    
-private:
-    void updateDisplayValue();
-    
-    QString actualValue;
-    bool masked;
+    MaskedCellRenderer();
+    void Draw(wxGrid& grid, wxGridCellAttr& attr, wxDC& dc,
+              const wxRect& rect, int row, int col, bool isSelected) override;
 };
 
 // Key Manager Widget
-class KeyManagerWidget : public QWidget
+class KeyManagerWidget : public wxPanel
 {
-    Q_OBJECT
-
 public:
-    explicit KeyManagerWidget(const core::Config& config, QWidget *parent = nullptr);
+    explicit KeyManagerWidget(const core::Config& config, wxWindow *parent = nullptr);
+    virtual ~KeyManagerWidget();
     
     // Public interface
-    void refreshKeys();
-    void selectKey(const QString &keyName);
+    void RefreshKeys();
+    void SelectKey(const wxString &keyName);
 
-signals:
-    void statusMessage(const QString &message);
-
-private slots:
-    void addKey();
-    void editKey();
-    void deleteKey();
-    void searchKeys(const QString &text);
-    void toggleKeyVisibility();
-    void testSelectedKey();
-    void testAllKeys();
-    void showContextMenu(const QPoint &pos);
-    void onTableItemChanged(QTableWidgetItem *item);
-    void onSelectionChanged();
+    // Event handlers
+    void OnAddKey(wxCommandEvent& event);
+    void OnEditKey(wxCommandEvent& event);
+    void OnDeleteKey(wxCommandEvent& event);
+    void OnSearch(wxCommandEvent& event);
+    void OnToggleKeyVisibility(wxCommandEvent& event);
+    void OnTestSelectedKey(wxCommandEvent& event);
+    void OnTestAllKeys(wxCommandEvent& event);
+    void OnContextMenu(wxContextMenuEvent& event);
+    void OnGridCellChanged(wxGridEvent& event);
+    void OnGridCellSelected(wxGridEvent& event);
+    void OnGridCellRightClick(wxGridEvent& event);
+    void OnCopyKeyName(wxCommandEvent& event);
+    void OnCopyKeyValue(wxCommandEvent& event);
 
 private:
-    void setupUi();
-    void setupTable();
-    void setupToolbar();
-    void setupContextMenu();
-    void loadKeys();
-    void saveKeys();
-    void updateTable();
-    void filterTable(const QString &filter);
+    void SetupUi();
+    void SetupGrid();
+    void SetupToolbar();
+    void SetupContextMenu();
+    void LoadKeys();
+    void SaveKeys();
+    void UpdateGrid();
+    void FilterGrid(const wxString &filter);
     
     // Utility methods
-    void addKeyToTable(const QString &name, const QString &value, const QString &service, const QString &apiUrl);
-    QString detectService(const QString &keyName);
-    QString getServiceApiUrl(const QString &service);
-    QString getServiceCode(const QString &displayName);
-    void updateTestStatus(const QString &keyName, bool success, const QString &message = "");
-    bool validateKeyName(const QString &name);
-    void showError(const QString &message);
-    void showSuccess(const QString &message);
+    void AddKeyToGrid(const wxString &name, const wxString &value,
+                     const wxString &service, const wxString &apiUrl);
+    wxString DetectService(const wxString &keyName);
+    wxString GetServiceApiUrl(const wxString &service);
+    wxString GetServiceCode(const wxString &displayName);
+    void UpdateTestStatus(const wxString &keyName, bool success, const wxString &message = wxEmptyString);
+    bool ValidateKeyName(const wxString &name);
+    void ShowError(const wxString &message);
+    void ShowSuccess(const wxString &message);
+    void SendStatusEvent(const wxString &message);
     
     // Configuration and data
     const core::Config& config;
     core::KeyStore keyStore;
     
     // UI components
-    QVBoxLayout *mainLayout;
-    QHBoxLayout *toolbarLayout;
+    wxBoxSizer *mainSizer;
+    wxBoxSizer *toolbarSizer;
     
     // Toolbar components
-    QLineEdit *searchEdit;
-    QPushButton *addButton;
-    QPushButton *editButton;
-    QPushButton *deleteButton;
-    QPushButton *toggleVisibilityButton;
-    QPushButton *refreshButton;
-    QPushButton *testSelectedButton;
-    QPushButton *testAllButton;
-    QLabel *statusLabel;
+    wxTextCtrl *searchEdit;
+    wxButton *addButton;
+    wxButton *editButton;
+    wxButton *deleteButton;
+    wxButton *toggleVisibilityButton;
+    wxButton *refreshButton;
+    wxButton *testSelectedButton;
+    wxButton *testAllButton;
+    wxStaticText *statusLabel;
     
-    // Table
-    QTableWidget *table;
+    // Grid for keys
+    wxGrid *grid;
     
     // Context menu
-    QMenu *contextMenu;
-    QAction *addAction;
-    QAction *editAction;
-    QAction *deleteAction;
-    QAction *copyNameAction;
-    QAction *copyValueAction;
-    QAction *toggleVisibilityAction;
-    
-    // Table columns
-    enum TableColumn {
-        ColumnName = 0,
-        ColumnService = 1,
-        ColumnUrl = 2,
-        ColumnValue = 3,
-        ColumnTestStatus = 4,
-        ColumnActions = 5,
-        ColumnCount = 6
-    };
+    wxMenu *contextMenu;
     
     // State
     bool globalVisibilityState;
-    QString currentFilter;
+    wxString currentFilter;
+    std::map<int, wxString> gridRowKeyMap; // Maps grid rows to key names
+    std::map<wxString, bool> keyVisibilityMap; // Maps key names to visibility state
+
+    // Grid columns
+    enum GridColumn {
+        ColName = 0,
+        ColService = 1,
+        ColUrl = 2,
+        ColValue = 3,
+        ColTestStatus = 4,
+        ColCount = 5
+    };
+    
+    // Custom event IDs
+    enum {
+        ID_ADD_KEY = wxID_HIGHEST + 100,
+        ID_EDIT_KEY,
+        ID_DELETE_KEY,
+        ID_SEARCH,
+        ID_TOGGLE_VISIBILITY,
+        ID_TEST_SELECTED,
+        ID_TEST_ALL,
+        ID_COPY_NAME,
+        ID_COPY_VALUE,
+        ID_GRID
+    };
+
+    // wxWidgets event table
+    wxDECLARE_EVENT_TABLE();
 };
 
 } // namespace widgets
