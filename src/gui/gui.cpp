@@ -5,8 +5,7 @@
 
 #ifdef BUILD_GUI
 #include "gui/mainwindow.hpp"
-#include <QApplication>
-#include <QMessageBox>
+#include <slint.h>
 #endif
 
 namespace ak {
@@ -23,47 +22,29 @@ bool isGuiAvailable() {
 int runGuiApplication(const core::Config& cfg, const std::vector<std::string>& args) {
 #ifdef BUILD_GUI
     try {
-        // Convert args to Qt format
-        int argc = static_cast<int>(args.size()) + 1;
-        char** argv = new char*[argc];
+        std::cerr << "DEBUG: Starting GUI application" << std::endl;
         
-        // Set program name
-        std::string progName = "ak";
-        argv[0] = new char[progName.size() + 1];
-        std::strcpy(argv[0], progName.c_str());
+        // Initialize Slint (init is handled automatically in Slint 1.13.0)
+        std::cerr << "DEBUG: Slint initialization" << std::endl;
         
-        // Copy arguments
-        for (size_t i = 0; i < args.size(); ++i) {
-            argv[i + 1] = new char[args[i].size() + 1];
-            std::strcpy(argv[i + 1], args[i].c_str());
-        }
+        // Suppress unused parameter warning
+        (void)args;
         
-        // Create QApplication
-        QApplication app(argc, argv);
-        
-        // Set application properties
-        app.setApplicationName("AK - API Key Manager");
-        app.setApplicationVersion(AK_VERSION_STRING);
-        app.setOrganizationName("AK");
-        app.setApplicationDisplayName("AK GUI");
-        
-        // Create and show main window
+        // Create main window
+        std::cerr << "DEBUG: Creating MainWindow" << std::endl;
         MainWindow window(cfg);
-        window.show();
         
-        // Start event loop
-        int result = app.exec();
+        // Run the main window (this blocks until the window is closed)
+        std::cerr << "DEBUG: Running MainWindow" << std::endl;
+        window.run();
         
-        // Cleanup
-        for (int i = 0; i < argc; ++i) {
-            delete[] argv[i];
-        }
-        delete[] argv;
-        
-        return result;
-        
+        std::cerr << "DEBUG: GUI application completed" << std::endl;
+        return 0;
     } catch (const std::exception& e) {
         std::cerr << "GUI Error: " << e.what() << std::endl;
+        return 1;
+    } catch (...) {
+        std::cerr << "GUI Error: Unknown exception" << std::endl;
         return 1;
     }
 #else
