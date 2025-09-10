@@ -6,354 +6,389 @@
 #include "storage/vault.hpp"
 #include "services/services.hpp"
 #include "core/config.hpp"
-#include <QApplication>
-#include <QClipboard>
-#include <QHeaderView>
-#include <QMessageBox>
-#include <QProgressDialog>
-#include <QTimer>
-#include <QRegularExpression>
-#include <QMap>
-#include <QPushButton>
+#include <wx/wx.h>
+#include <wx/clipbrd.h>
+#include <wx/progdlg.h>
+#include <wx/timer.h>
+#include <wx/regex.h>
 #include <algorithm>
 
 namespace ak {
 namespace gui {
 namespace widgets {
 
-// MaskedTableItem Implementation
-MaskedTableItem::MaskedTableItem(const QString &actualValue)
-    : QTableWidgetItem(), actualValue(actualValue), masked(true)
+// Event table for KeyManagerWidget
+wxBEGIN_EVENT_TABLE(KeyManagerWidget, wxPanel)
+    EVT_BUTTON(ID_ADD_KEY, KeyManagerWidget::OnAddKey)
+    EVT_BUTTON(ID_EDIT_KEY, KeyManagerWidget::OnEditKey)
+    EVT_BUTTON(ID_DELETE_KEY, KeyManagerWidget::OnDeleteKey)
+    EVT_BUTTON(ID_TOGGLE_VISIBILITY, KeyManagerWidget::OnToggleKeyVisibility)
+    EVT_BUTTON(ID_TEST_SELECTED, KeyManagerWidget::OnTestSelectedKey)
+    EVT_BUTTON(ID_TEST_ALL, KeyManagerWidget::OnTestAllKeys)
+    EVT_TEXT(ID_SEARCH, KeyManagerWidget::OnSearch)
+    EVT_MENU(ID_COPY_NAME, KeyManagerWidget::OnCopyKeyName)
+    EVT_MENU(ID_COPY_VALUE, KeyManagerWidget::OnCopyKeyValue)
+    EVT_GRID_CELL_RIGHT_CLICK(KeyManagerWidget::OnGridCellRightClick)
+    EVT_GRID_SELECT_CELL(KeyManagerWidget::OnGridCellSelected)
+    EVT_CONTEXT_MENU(KeyManagerWidget::OnContextMenu)
+wxEND_EVENT_TABLE()
+
+// MaskedCellRenderer Implementation
+MaskedCellRenderer::MaskedCellRenderer()
+    : wxGridCellStringRenderer()
 {
-    updateDisplayValue();
 }
 
-void MaskedTableItem::setMasked(bool masked)
+void MaskedCellRenderer::Draw(wxGrid& grid, wxGridCellAttr& attr, wxDC& dc,
+                             const wxRect& rect, int row, int col, bool isSelected)
 {
-    this->masked = masked;
-    updateDisplayValue();
-}
-
-bool MaskedTableItem::isMasked() const
-{
-    return masked;
-}
-
-QString MaskedTableItem::getActualValue() const
-{
-    return actualValue;
-}
-
-void MaskedTableItem::updateDisplayValue()
-{
-    if (masked) {
-        QString maskedValue;
-        if (actualValue.length() > 8) {
-            maskedValue = actualValue.left(4) + QString("*").repeated(actualValue.length() - 8) + actualValue.right(4);
-        } else {
-            maskedValue = QString("*").repeated(actualValue.length());
+    // Get the cell value
+    wxString value = grid.GetCellValue(row, col);
+    
+    // Get the custom data from the grid
+    KeyManagerWidget* widget = dynamic_cast<KeyManagerWidget*>(grid.GetParent());
+    if (widget) {
+        // Check if this is a masked cell and if it should be displayed masked
+        wxString keyName = grid.GetCellValue(row, ColName);
+        if (widget->gridRowKeyMap.find(row) != widget->gridRowKeyMap.end()) {
+            keyName = widget->gridRowKeyMap[row];
         }
-        setText(maskedValue);
-        setToolTip("Click the eye button to reveal value");
-    } else {
-        setText(actualValue);
-        setToolTip("");
+        
+        bool isMasked = widget->keyVisibilityMap.find(keyName) != widget->keyVisibilityMap.end() ?
+                        widget->keyVisibilityMap[keyName] : true;
+        
+        if (isMasked && col == ColValue) {
+            // Create masked version
+            wxString maskedValue;
+            if (value.Length() > 8) {
+                maskedValue = value.Left(4) + wxString('*', value.Length() - 8) + value.Right(4);
+            } else {
+                maskedValue = wxString('*', value.Length());
+            }
+            
+            // Save actual value
+            wxString oldValue = value;
+            grid.SetCellValue(row, col, maskedValue);
+            
+            // Draw the masked value
+            wxGridCellStringRenderer::Draw(grid, attr, dc, rect, row, col, isSelected);
+            
+            // Restore actual value
+            grid.SetCellValue(row, col, oldValue);
+            return;
+        }
     }
+    
+    // Draw normally
+    wxGridCellStringRenderer::Draw(grid, attr, dc, rect, row, col, isSelected);
 }
 
 // KeyManagerWidget Implementation
-KeyManagerWidget::KeyManagerWidget(const core::Config& config, QWidget *parent)
-    : QWidget(parent), config(config), mainLayout(nullptr), toolbarLayout(nullptr),
+KeyManagerWidget::KeyManagerWidget(const core::Config& config, wxWindow *parent)
+    : wxPanel(parent, wxID_ANY), config(config), mainSizer(nullptr), toolbarSizer(nullptr),
       searchEdit(nullptr), addButton(nullptr), editButton(nullptr), deleteButton(nullptr),
       toggleVisibilityButton(nullptr), refreshButton(nullptr), statusLabel(nullptr),
-      table(nullptr), contextMenu(nullptr), addAction(nullptr), editAction(nullptr),
-      deleteAction(nullptr), copyNameAction(nullptr), copyValueAction(nullptr),
-      toggleVisibilityAction(nullptr), globalVisibilityState(true)
+      grid(nullptr), contextMenu(nullptr), globalVisibilityState(true)
 {
-    setupUi();
-    loadKeys();
-    updateTable();
+    SetupUi();
+    LoadKeys();
+    UpdateGrid();
 }
 
-void KeyManagerWidget::setupUi()
+KeyManagerWidget::~KeyManagerWidget()
 {
-    mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
-    mainLayout->setSpacing(10);
+    // wxWidgets handles cleanup of child widgets
+}
+
+void KeyManagerWidget::SetupUi()
+{
+    mainSizer = new wxBoxSizer(wxVERTICAL);
+    SetSizer(mainSizer);
     
-    setupToolbar();
-    setupTable();
-    setupContextMenu();
+    SetupToolbar();
+    SetupGrid();
+    SetupContextMenu();
     
     // Status label
-    statusLabel = new QLabel("Ready", this);
-    statusLabel->setStyleSheet("color: #666; font-size: 12px;");
-    mainLayout->addWidget(statusLabel);
+    statusLabel = new wxStaticText(this, wxID_ANY, "Ready");
+    statusLabel->SetForegroundColour(wxColour(100, 100, 100));
+    wxFont smallFont = statusLabel->GetFont();
+    smallFont.SetPointSize(smallFont.GetPointSize() - 1);
+    statusLabel->SetFont(smallFont);
+    mainSizer->Add(statusLabel, 0, wxALL, 5);
 }
 
-void KeyManagerWidget::setupToolbar()
+void KeyManagerWidget::SetupToolbar()
 {
-    toolbarLayout = new QHBoxLayout();
+    toolbarSizer = new wxBoxSizer(wxHORIZONTAL);
     
     // Search box
-    searchEdit = new QLineEdit(this);
-    searchEdit->setPlaceholderText("Search keys...");
-    searchEdit->setMaximumWidth(200);
-    connect(searchEdit, &QLineEdit::textChanged, this, &KeyManagerWidget::searchKeys);
+    searchEdit = new wxTextCtrl(this, ID_SEARCH, wxEmptyString,
+                              wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER);
+    searchEdit->SetHint("Search keys...");
     
     // Buttons
-    addButton = new QPushButton("Add Key", this);
-    addButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileIcon));
-    connect(addButton, &QPushButton::clicked, this, &KeyManagerWidget::addKey);
+    addButton = new wxButton(this, ID_ADD_KEY, "Add Key");
     
-    editButton = new QPushButton("Edit", this);
-    editButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileDialogDetailedView));
-    editButton->setEnabled(false);
-    connect(editButton, &QPushButton::clicked, this, &KeyManagerWidget::editKey);
+    editButton = new wxButton(this, ID_EDIT_KEY, "Edit");
+    editButton->Disable();
     
-    deleteButton = new QPushButton("Delete", this);
-    deleteButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_TrashIcon));
-    deleteButton->setEnabled(false);
-    connect(deleteButton, &QPushButton::clicked, this, &KeyManagerWidget::deleteKey);
+    deleteButton = new wxButton(this, ID_DELETE_KEY, "Delete");
+    deleteButton->Disable();
     
-    toggleVisibilityButton = new QPushButton("Show All", this);
-    toggleVisibilityButton->setCheckable(true);
-    toggleVisibilityButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
-    connect(toggleVisibilityButton, &QPushButton::clicked, this, &KeyManagerWidget::toggleKeyVisibility);
+    toggleVisibilityButton = new wxButton(this, ID_TOGGLE_VISIBILITY, "Show All");
+    toggleVisibilityButton->SetWindowStyleFlag(wxBU_EXACTFIT);
     
-    refreshButton = new QPushButton("Refresh", this);
-    refreshButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_BrowserReload));
-    connect(refreshButton, &QPushButton::clicked, this, &KeyManagerWidget::refreshKeys);
+    refreshButton = new wxButton(this, wxID_REFRESH, "Refresh");
+    refreshButton->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { RefreshKeys(); });
     
     // Test buttons
-    testSelectedButton = new QPushButton("Test", this);
-    testSelectedButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPlay));
-    testSelectedButton->setEnabled(false);
-    connect(testSelectedButton, &QPushButton::clicked, this, &KeyManagerWidget::testSelectedKey);
+    testSelectedButton = new wxButton(this, ID_TEST_SELECTED, "Test");
+    testSelectedButton->Disable();
     
-    testAllButton = new QPushButton("Test All", this);
-    testAllButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
-    connect(testAllButton, &QPushButton::clicked, this, &KeyManagerWidget::testAllKeys);
+    testAllButton = new wxButton(this, ID_TEST_ALL, "Test All");
     
     // Layout
-    toolbarLayout->addWidget(searchEdit);
-    toolbarLayout->addStretch();
-    toolbarLayout->addWidget(addButton);
-    toolbarLayout->addWidget(editButton);
-    toolbarLayout->addWidget(deleteButton);
-    toolbarLayout->addWidget(testSelectedButton);
-    toolbarLayout->addWidget(testAllButton);
-    toolbarLayout->addWidget(toggleVisibilityButton);
-    toolbarLayout->addWidget(refreshButton);
+    toolbarSizer->Add(searchEdit, 1, wxEXPAND | wxALL, 5);
+    toolbarSizer->AddStretchSpacer();
+    toolbarSizer->Add(addButton, 0, wxALL, 2);
+    toolbarSizer->Add(editButton, 0, wxALL, 2);
+    toolbarSizer->Add(deleteButton, 0, wxALL, 2);
+    toolbarSizer->Add(testSelectedButton, 0, wxALL, 2);
+    toolbarSizer->Add(testAllButton, 0, wxALL, 2);
+    toolbarSizer->Add(toggleVisibilityButton, 0, wxALL, 2);
+    toolbarSizer->Add(refreshButton, 0, wxALL, 2);
     
-    mainLayout->addLayout(toolbarLayout);
+    mainSizer->Add(toolbarSizer, 0, wxEXPAND | wxALL, 5);
 }
 
-void KeyManagerWidget::setupTable()
+void KeyManagerWidget::SetupGrid()
 {
-    table = new QTableWidget(this);
-    table->setColumnCount(ColumnCount);
+    // Create grid control
+    grid = new wxGrid(this, ID_GRID, wxDefaultPosition, wxDefaultSize);
     
-    QStringList headers = {"Key Name", "Service", "API URL", "Value", "Test Status", "Actions"};
-    table->setHorizontalHeaderLabels(headers);
+    // Initialize grid with columns
+    grid->CreateGrid(0, ColCount);
     
-    // Configure table appearance
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    table->setSelectionMode(QAbstractItemView::SingleSelection);
-    table->setAlternatingRowColors(true);
-    table->setSortingEnabled(true);
-    table->setContextMenuPolicy(Qt::CustomContextMenu);
+    // Set column headers
+    grid->SetColLabelValue(ColName, "Key Name");
+    grid->SetColLabelValue(ColService, "Service");
+    grid->SetColLabelValue(ColUrl, "API URL");
+    grid->SetColLabelValue(ColValue, "Value");
+    grid->SetColLabelValue(ColTestStatus, "Test Status");
     
-    // Disable sorting for actions column specifically
-    QHeaderView *headerForSorting = table->horizontalHeader();
-    connect(headerForSorting, &QHeaderView::sortIndicatorChanged, [this](int logicalIndex, Qt::SortOrder) {
-        if (logicalIndex == ColumnActions) {
-            // Prevent sorting on Actions column
-            table->horizontalHeader()->setSortIndicator(-1, Qt::AscendingOrder);
-        }
+    // Configure grid appearance
+    grid->EnableEditing(false);
+    grid->SetSelectionMode(wxGrid::wxGridSelectRows);
+    grid->SetRowLabelSize(40);
+    
+    // Set column sizes
+    grid->SetColSize(ColName, 200);
+    grid->SetColSize(ColService, 100);
+    grid->SetColSize(ColUrl, 200);
+    grid->SetColSize(ColValue, 250);
+    grid->SetColSize(ColTestStatus, 120);
+    
+    // Enable automatic column size
+    grid->AutoSizeColumns();
+    
+    // Set custom renderer for the value column
+    grid->SetDefaultRenderer(new wxGridCellStringRenderer());
+    grid->SetColFormatCustom(ColValue, wxGRID_VALUE_STRING);
+    grid->SetColRenderer(ColValue, new MaskedCellRenderer());
+    
+    // Set alternate row colors
+    grid->EnableGridLines(true);
+    grid->SetDefaultCellBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+    grid->SetDefaultCellTextColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+    
+    // Add grid to main sizer with expansion
+    mainSizer->Add(grid, 1, wxEXPAND | wxALL, 5);
+    
+    // Double click to edit
+    grid->Bind(wxEVT_GRID_CELL_LEFT_DCLICK, [this](wxGridEvent& event) {
+        OnEditKey(wxCommandEvent());
     });
-    
-    // Configure column widths - responsive design
-    QHeaderView *header = table->horizontalHeader();
-    header->setSectionResizeMode(ColumnName, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(ColumnService, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(ColumnUrl, QHeaderView::Interactive);
-    header->setSectionResizeMode(ColumnValue, QHeaderView::Stretch);
-    header->setSectionResizeMode(ColumnTestStatus, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(ColumnActions, QHeaderView::Fixed);
-    
-    // Set fixed width for actions column
-    header->resizeSection(ColumnActions, 60);
-    
-    // Connect signals
-    connect(table, &QTableWidget::itemSelectionChanged, this, &KeyManagerWidget::onSelectionChanged);
-    connect(table, &QTableWidget::itemChanged, this, &KeyManagerWidget::onTableItemChanged);
-    connect(table, &QTableWidget::customContextMenuRequested, this, &KeyManagerWidget::showContextMenu);
-    connect(table, &QTableWidget::itemDoubleClicked, this, &KeyManagerWidget::editKey);
-    
-    mainLayout->addWidget(table);
 }
 
-void KeyManagerWidget::setupContextMenu()
+void KeyManagerWidget::SetupContextMenu()
 {
-    contextMenu = new QMenu(this);
+    // Create context menu
+    contextMenu = new wxMenu();
     
-    addAction = contextMenu->addAction("Add Key");
-    addAction->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileIcon));
-    connect(addAction, &QAction::triggered, this, &KeyManagerWidget::addKey);
+    // Add menu items
+    contextMenu->Append(ID_ADD_KEY, "Add Key");
+    contextMenu->Append(ID_EDIT_KEY, "Edit Key");
+    contextMenu->Append(ID_DELETE_KEY, "Delete Key");
     
-    editAction = contextMenu->addAction("Edit Key");
-    editAction->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileDialogDetailedView));
-    connect(editAction, &QAction::triggered, this, &KeyManagerWidget::editKey);
+    contextMenu->AppendSeparator();
     
-    deleteAction = contextMenu->addAction("Delete Key");
-    deleteAction->setIcon(QApplication::style()->standardIcon(QStyle::SP_TrashIcon));
-    connect(deleteAction, &QAction::triggered, this, &KeyManagerWidget::deleteKey);
-    
-    contextMenu->addSeparator();
-    
-    copyNameAction = contextMenu->addAction("Copy Name");
-    copyNameAction->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogApplyButton));
-    connect(copyNameAction, &QAction::triggered, [this]() {
-        int row = table->currentRow();
-        if (row >= 0) {
-            QString name = table->item(row, ColumnName)->text();
-            QApplication::clipboard()->setText(name);
-            showSuccess("Key name copied to clipboard");
-        }
-    });
-    
-    copyValueAction = contextMenu->addAction("Copy Value");
-    copyValueAction->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogApplyButton));
-    connect(copyValueAction, &QAction::triggered, [this]() {
-        int row = table->currentRow();
-        if (row >= 0) {
-            MaskedTableItem *item = dynamic_cast<MaskedTableItem*>(table->item(row, ColumnValue));
-            if (item) {
-                QApplication::clipboard()->setText(item->getActualValue());
-                showSuccess("Key value copied to clipboard");
-            }
-        }
-    });
-    
-    toggleVisibilityAction = contextMenu->addAction("Toggle Visibility");
-    connect(toggleVisibilityAction, &QAction::triggered, [this]() {
-        int row = table->currentRow();
-        if (row >= 0) {
-            MaskedTableItem *item = dynamic_cast<MaskedTableItem*>(table->item(row, ColumnValue));
-            if (item) {
-                item->setMasked(!item->isMasked());
-            }
-        }
-    });
+    contextMenu->Append(ID_COPY_NAME, "Copy Key Name");
+    contextMenu->Append(ID_COPY_VALUE, "Copy Value");
+    contextMenu->Append(ID_TOGGLE_VISIBILITY, "Toggle Visibility");
 }
 
-void KeyManagerWidget::loadKeys()
+// Event handlers for context menu actions
+void KeyManagerWidget::OnCopyKeyName(wxCommandEvent& WXUNUSED(event))
+{
+    int row = grid->GetGridCursorRow();
+    if (row >= 0) {
+        wxString name = grid->GetCellValue(row, ColName);
+        if (wxTheClipboard->Open()) {
+            wxTheClipboard->SetData(new wxTextDataObject(name));
+            wxTheClipboard->Close();
+            ShowSuccess("Key name copied to clipboard");
+        }
+    }
+}
+
+void KeyManagerWidget::OnCopyKeyValue(wxCommandEvent& WXUNUSED(event))
+{
+    int row = grid->GetGridCursorRow();
+    if (row >= 0) {
+        wxString value = grid->GetCellValue(row, ColValue);
+        if (wxTheClipboard->Open()) {
+            wxTheClipboard->SetData(new wxTextDataObject(value));
+            wxTheClipboard->Close();
+            ShowSuccess("Key value copied to clipboard");
+        }
+    }
+}
+
+void KeyManagerWidget::LoadKeys()
 {
     try {
         keyStore = ak::storage::loadVault(config);
-        emit statusMessage(QString("Loaded %1 keys").arg(keyStore.kv.size()));
+        wxString msg = wxString::Format("Loaded %zu keys", keyStore.kv.size());
+        SendStatusEvent(msg);
     } catch (const std::exception& e) {
-        showError(QString("Failed to load keys: %1").arg(e.what()));
+        ShowError(wxString::Format("Failed to load keys: %s", e.what()));
         keyStore = core::KeyStore(); // Empty keystore on error
     }
 }
 
-void KeyManagerWidget::saveKeys()
+void KeyManagerWidget::SaveKeys()
 {
     try {
         ak::storage::saveVault(config, keyStore);
-        emit statusMessage("Keys saved successfully");
+        SendStatusEvent("Keys saved successfully");
     } catch (const std::exception& e) {
-        showError(QString("Failed to save keys: %1").arg(e.what()));
+        ShowError(wxString::Format("Failed to save keys: %s", e.what()));
     }
 }
 
-void KeyManagerWidget::updateTable()
+void KeyManagerWidget::UpdateGrid()
 {
-    // Clear table
-    table->setRowCount(0);
+    // Pause rendering during update for performance
+    grid->BeginBatch();
     
-    // Add keys to table
+    // Clear grid
+    if (grid->GetNumberRows() > 0) {
+        grid->DeleteRows(0, grid->GetNumberRows());
+    }
+    
+    // Reset row map
+    gridRowKeyMap.clear();
+    
+    // Add keys to grid
     int row = 0;
     for (const auto& [name, value] : keyStore.kv) {
-        QString qname = QString::fromStdString(name);
-        QString qvalue = QString::fromStdString(value);
+        wxString wxName = wxString::FromUTF8(name);
+        wxString wxValue = wxString::FromUTF8(value);
         
         // Apply filter if active
-        if (!currentFilter.isEmpty()) {
-            if (!qname.contains(currentFilter, Qt::CaseInsensitive)) {
+        if (!currentFilter.IsEmpty()) {
+            if (!wxName.Lower().Contains(currentFilter.Lower())) {
                 continue;
             }
         }
         
-        QString service = detectService(qname);
-        QString apiUrl = getServiceApiUrl(service);
-        addKeyToTable(qname, qvalue, service, apiUrl);
+        wxString service = DetectService(wxName);
+        wxString apiUrl = GetServiceApiUrl(service);
+        AddKeyToGrid(wxName, wxValue, service, apiUrl);
+        
+        // Store key name for this row
+        gridRowKeyMap[row] = wxName;
+        
+        // Initialize visibility state if not already set
+        if (keyVisibilityMap.find(wxName) == keyVisibilityMap.end()) {
+            keyVisibilityMap[wxName] = true; // Default to masked
+        }
+        
         row++;
     }
     
+    // Resume rendering
+    grid->EndBatch();
+    
     // Update status
-    statusLabel->setText(QString("Showing %1 keys").arg(table->rowCount()));
+    statusLabel->SetLabel(wxString::Format("Showing %d keys", grid->GetNumberRows()));
     
     // Update button states
-    onSelectionChanged();
+    OnGridCellSelected(wxGridEvent());
 }
 
-void KeyManagerWidget::addKeyToTable(const QString &name, const QString &value, const QString &service, const QString &apiUrl)
+// Helper to send status messages
+void KeyManagerWidget::SendStatusEvent(const wxString &message)
 {
-    int row = table->rowCount();
-    table->insertRow(row);
+    wxCommandEvent event(wxEVT_COMMAND_TEXT_UPDATED, ID_StatusMessage);
+    event.SetString(message);
+    wxPostEvent(GetParent(), event);
+    
+    // Also update our status label
+    statusLabel->SetLabel(message);
+}
+
+void KeyManagerWidget::AddKeyToGrid(const wxString &name, const wxString &value,
+                                   const wxString &service, const wxString &apiUrl)
+{
+    // Add a new row to the grid
+    int row = grid->GetNumberRows();
+    grid->AppendRows(1);
     
     // Name column
-    QTableWidgetItem *nameItem = new QTableWidgetItem(name);
-    nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
-    table->setItem(row, ColumnName, nameItem);
+    grid->SetCellValue(row, ColName, name);
     
     // Service column
-    QTableWidgetItem *serviceItem = new QTableWidgetItem(service);
-    serviceItem->setFlags(serviceItem->flags() & ~Qt::ItemIsEditable);
-    table->setItem(row, ColumnService, serviceItem);
+    grid->SetCellValue(row, ColService, service);
     
     // API URL column
-    QTableWidgetItem *urlItem = new QTableWidgetItem(apiUrl.isEmpty() ? "N/A" : apiUrl);
-    urlItem->setFlags(urlItem->flags() & ~Qt::ItemIsEditable);
-    if (!apiUrl.isEmpty()) {
-        urlItem->setToolTip("API Endpoint: " + apiUrl);
+    grid->SetCellValue(row, ColUrl, apiUrl.IsEmpty() ? "N/A" : apiUrl);
+    if (!apiUrl.IsEmpty()) {
+        // Set tooltip on cell
+        wxGridCellAttr* attr = new wxGridCellAttr();
+        attr->SetToolTip("API Endpoint: " + apiUrl);
+        grid->SetAttrCell(row, ColUrl, attr);
     }
-    table->setItem(row, ColumnUrl, urlItem);
     
-    // Value column (masked)
-    MaskedTableItem *valueItem = new MaskedTableItem(value);
-    valueItem->setMasked(globalVisibilityState);
-    valueItem->setFlags(valueItem->flags() & ~Qt::ItemIsEditable);
-    table->setItem(row, ColumnValue, valueItem);
+    // Value column
+    grid->SetCellValue(row, ColValue, value);
     
     // Test Status column
-    QTableWidgetItem *testStatusItem = new QTableWidgetItem("Not tested");
-    testStatusItem->setFlags(testStatusItem->flags() & ~Qt::ItemIsEditable);
-    testStatusItem->setTextAlignment(Qt::AlignCenter);
-    table->setItem(row, ColumnTestStatus, testStatusItem);
+    grid->SetCellValue(row, ColTestStatus, "Not tested");
     
-    // Actions column - make it clickable for context menu
-    QPushButton *actionsButton = new QPushButton("⚙️");
-    actionsButton->setToolTip("Click for actions");
-    actionsButton->setMaximumSize(30, 25);
-    connect(actionsButton, &QPushButton::clicked, [this, row, actionsButton]() {
-        table->selectRow(row);
-        // Get the global position of the button to show menu nearby
-        QPoint globalPos = actionsButton->mapToGlobal(QPoint(actionsButton->width()/2, actionsButton->height()));
-        contextMenu->exec(globalPos);
-    });
-    table->setCellWidget(row, ColumnActions, actionsButton);
+    // Set alignment for test status
+    wxGridCellAttr* testStatusAttr = new wxGridCellAttr();
+    testStatusAttr->SetAlignment(wxALIGN_CENTER, wxALIGN_CENTER);
+    grid->SetAttrCell(row, ColTestStatus, testStatusAttr);
+    
+    // Style the row with alternating colors
+    if (row % 2 == 1) {
+        wxGridCellAttr* rowAttr = new wxGridCellAttr();
+        rowAttr->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOX));
+        grid->SetRowAttr(row, rowAttr);
+    }
+    
+    // Store the key visibility state
+    keyVisibilityMap[name] = globalVisibilityState;
 }
 
-QString KeyManagerWidget::detectService(const QString &keyName)
+wxString KeyManagerWidget::DetectService(const wxString &keyName)
 {
-    QString lowerName = keyName.toLower();
+    wxString lowerName = keyName.Lower();
     
     // Map key patterns to services - more comprehensive mapping
-    static const QMap<QString, QString> servicePatterns = {
+    static const std::map<wxString, wxString> servicePatterns = {
         {"openai", "OpenAI"},
         {"anthropic", "Anthropic"},
         {"google", "Google"},
@@ -389,18 +424,18 @@ QString KeyManagerWidget::detectService(const QString &keyName)
     };
     
     // Check each pattern for better matching
-    for (auto it = servicePatterns.begin(); it != servicePatterns.end(); ++it) {
-        if (lowerName.contains(it.key())) {
-            return it.value();
+    for (const auto& [pattern, serviceName] : servicePatterns) {
+        if (lowerName.Find(pattern) != wxNOT_FOUND) {
+            return serviceName;
         }
     }
     
     return "Custom";
 }
 
-QString KeyManagerWidget::getServiceApiUrl(const QString &service)
+wxString KeyManagerWidget::GetServiceApiUrl(const wxString &service)
 {
-    static const QMap<QString, QString> serviceUrls = {
+    static const std::map<wxString, wxString> serviceUrls = {
         {"OpenAI", "https://api.openai.com"},
         {"Anthropic", "https://api.anthropic.com"},
         {"Google", "https://api.google.com"},
@@ -435,188 +470,208 @@ QString KeyManagerWidget::getServiceApiUrl(const QString &service)
     };
     
     auto it = serviceUrls.find(service);
-    return it != serviceUrls.end() ? it.value() : "";
+    return it != serviceUrls.end() ? it->second : wxEmptyString;
 }
 
-void KeyManagerWidget::refreshKeys()
+void KeyManagerWidget::RefreshKeys()
 {
-    loadKeys();
-    updateTable();
-    showSuccess("Keys refreshed");
+    LoadKeys();
+    UpdateGrid();
+    ShowSuccess("Keys refreshed");
 }
 
-void KeyManagerWidget::selectKey(const QString &keyName)
+void KeyManagerWidget::SelectKey(const wxString &keyName)
 {
-    for (int row = 0; row < table->rowCount(); ++row) {
-        if (table->item(row, ColumnName)->text() == keyName) {
-            table->selectRow(row);
-            table->scrollToItem(table->item(row, ColumnName));
+    for (int row = 0; row < grid->GetNumberRows(); ++row) {
+        if (grid->GetCellValue(row, ColName) == keyName) {
+            grid->SelectRow(row);
+            grid->MakeCellVisible(row, ColName);
             break;
         }
     }
 }
 
-void KeyManagerWidget::addKey()
+// Event handler implementation for buttons
+void KeyManagerWidget::OnAddKey(wxCommandEvent& WXUNUSED(event))
 {
-    KeyEditDialog dialog(this);
-    if (dialog.exec() == QDialog::Accepted) {
-        QString name = dialog.getKeyName();
-        QString value = dialog.getKeyValue();
+    // TODO: Implement dialog for adding keys
+    // For now, using a simple dialog as placeholder
+    wxString name = wxGetTextFromUser("Enter key name:", "Add Key");
+    if (name.IsEmpty())
+        return;
         
-        // Check if key already exists
-        if (keyStore.kv.find(name.toStdString()) != keyStore.kv.end()) {
-            showError("Key with this name already exists!");
-            return;
-        }
+    wxString value = wxGetPasswordFromUser("Enter key value:", "Add Key");
+    if (value.IsEmpty())
+        return;
+    
+    // Check if key already exists
+    if (keyStore.kv.find(name.ToStdString()) != keyStore.kv.end()) {
+        ShowError("Key with this name already exists!");
+        return;
+    }
+    
+    // Add key to store and save
+    keyStore.kv[name.ToStdString()] = value.ToStdString();
+    SaveKeys();
+    
+    // Update grid
+    UpdateGrid();
+    ShowSuccess("Key added successfully");
+}
+
+void KeyManagerWidget::OnEditKey(wxCommandEvent& WXUNUSED(event))
+{
+    int row = grid->GetGridCursorRow();
+    if (row < 0) {
+        ShowError("No key selected");
+        return;
+    }
+    
+    wxString name = grid->GetCellValue(row, ColName);
+    wxString oldValue = grid->GetCellValue(row, ColValue);
+    
+    // Show dialog to edit value
+    wxString newValue = wxGetPasswordFromUser(
+        wxString::Format("Edit value for key '%s':", name),
+        "Edit Key", oldValue);
+    
+    if (!newValue.IsEmpty() && newValue != oldValue) {
+        // Update key store
+        keyStore.kv[name.ToStdString()] = newValue.ToStdString();
+        SaveKeys();
         
-        // Add to keystore
-        keyStore.kv[name.toStdString()] = value.toStdString();
-        saveKeys();
-        updateTable();
-        selectKey(name);
-        
-        showSuccess(QString("Added key: %1").arg(name));
+        // Update grid
+        grid->SetCellValue(row, ColValue, newValue);
+        ShowSuccess("Key updated successfully");
     }
 }
 
-void KeyManagerWidget::editKey()
+void KeyManagerWidget::OnDeleteKey(wxCommandEvent& WXUNUSED(event))
 {
-    int row = table->currentRow();
-    if (row < 0) return;
-    
-    QString name = table->item(row, ColumnName)->text();
-    MaskedTableItem *valueItem = dynamic_cast<MaskedTableItem*>(table->item(row, ColumnValue));
-    QString service = table->item(row, ColumnService)->text();
-    
-    if (!valueItem) return;
-    
-    KeyEditDialog dialog(name, valueItem->getActualValue(), service, this);
-    if (dialog.exec() == QDialog::Accepted) {
-        QString newValue = dialog.getKeyValue();
-        
-        // Update keystore
-        keyStore.kv[name.toStdString()] = newValue.toStdString();
-        saveKeys();
-        
-        // Update table item
-        valueItem = new MaskedTableItem(newValue);
-        valueItem->setMasked(globalVisibilityState);
-        valueItem->setFlags(valueItem->flags() & ~Qt::ItemIsEditable);
-        table->setItem(row, ColumnValue, valueItem);
-        
-        showSuccess(QString("Updated key: %1").arg(name));
+    int row = grid->GetGridCursorRow();
+    if (row < 0) {
+        ShowError("No key selected");
+        return;
     }
-}
-
-void KeyManagerWidget::deleteKey()
-{
-    int row = table->currentRow();
-    if (row < 0) return;
     
-    QString name = table->item(row, ColumnName)->text();
+    wxString name = grid->GetCellValue(row, ColName);
     
-    if (ConfirmationDialog::confirm(this, "Delete Key", 
-        QString("Are you sure you want to delete the key '%1'?").arg(name),
-        "This action cannot be undone.")) {
-        
+    // Confirm deletion
+    wxMessageDialog dialog(this,
+        wxString::Format("Are you sure you want to delete the key '%s'?", name),
+        "Confirm Delete", wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION);
+    
+    if (dialog.ShowModal() == wxID_YES) {
         // Remove from keystore
-        keyStore.kv.erase(name.toStdString());
-        saveKeys();
-        updateTable();
+        keyStore.kv.erase(name.ToStdString());
+        SaveKeys();
         
-        showSuccess(QString("Deleted key: %1").arg(name));
+        // Update grid
+        UpdateGrid();
+        ShowSuccess(wxString::Format("Key '%s' deleted", name));
     }
 }
 
-void KeyManagerWidget::searchKeys(const QString &text)
+void KeyManagerWidget::OnSearch(wxCommandEvent& event)
 {
-    currentFilter = text.trimmed();
-    updateTable();
+    currentFilter = event.GetString();
+    UpdateGrid();
 }
 
-void KeyManagerWidget::toggleKeyVisibility()
+void KeyManagerWidget::OnToggleKeyVisibility(wxCommandEvent& WXUNUSED(event))
 {
+    // Toggle global visibility state
     globalVisibilityState = !globalVisibilityState;
     
-    // Update all masked items
-    for (int row = 0; row < table->rowCount(); ++row) {
-        MaskedTableItem *item = dynamic_cast<MaskedTableItem*>(table->item(row, ColumnValue));
-        if (item) {
-            item->setMasked(globalVisibilityState);
-        }
+    // Update all visibility states
+    for (auto& [key, masked] : keyVisibilityMap) {
+        masked = globalVisibilityState;
     }
     
-    // Update button text
-    toggleVisibilityButton->setText(globalVisibilityState ? "Show All" : "Hide All");
-    toggleVisibilityButton->setChecked(!globalVisibilityState);
+    // Update the button text to reflect state
+    toggleVisibilityButton->SetLabel(globalVisibilityState ? "Show All" : "Hide All");
+    
+    // Refresh grid display
+    grid->Refresh();
 }
 
-void KeyManagerWidget::showContextMenu(const QPoint &pos)
+void KeyManagerWidget::OnGridCellSelected(wxGridEvent& event)
 {
-    QTableWidgetItem *item = table->itemAt(pos);
-    if (!item) return;
+    // Enable/disable buttons based on selection
+    bool hasSelection = grid->GetGridCursorRow() >= 0;
     
-    int row = item->row();
-    bool hasSelection = row >= 0;
+    editButton->Enable(hasSelection);
+    deleteButton->Enable(hasSelection);
+    testSelectedButton->Enable(hasSelection);
     
-    editAction->setEnabled(hasSelection);
-    deleteAction->setEnabled(hasSelection);
-    copyNameAction->setEnabled(hasSelection);
-    copyValueAction->setEnabled(hasSelection);
-    toggleVisibilityAction->setEnabled(hasSelection);
-    
-    contextMenu->exec(table->mapToGlobal(pos));
+    event.Skip(); // Allow default processing
 }
 
-void KeyManagerWidget::onTableItemChanged(QTableWidgetItem *item)
+void KeyManagerWidget::OnGridCellRightClick(wxGridEvent& event)
 {
-    // Currently all items are read-only, so this shouldn't be called
-    Q_UNUSED(item)
-}
-
-void KeyManagerWidget::onSelectionChanged()
-{
-    bool hasSelection = table->currentRow() >= 0;
-    editButton->setEnabled(hasSelection);
-    deleteButton->setEnabled(hasSelection);
-    testSelectedButton->setEnabled(hasSelection);
-}
-
-bool KeyManagerWidget::validateKeyName(const QString &name)
-{
-    if (name.isEmpty()) return false;
+    // Select the cell/row that was right-clicked
+    grid->SetGridCursor(event.GetRow(), event.GetCol());
+    grid->SelectRow(event.GetRow());
     
-    // Check for valid environment variable name format
-    QRegularExpression regex("^[A-Z][A-Z0-9_]*$");
-    return regex.match(name).hasMatch();
+    // Show context menu
+    PopupMenu(contextMenu);
 }
 
-void KeyManagerWidget::showError(const QString &message)
+void KeyManagerWidget::OnContextMenu(wxContextMenuEvent& event)
 {
-    statusLabel->setText(QString("Error: %1").arg(message));
-    statusLabel->setStyleSheet("color: #ff4444; font-size: 12px;");
+    // Only show if we have a selection
+    if (grid->GetGridCursorRow() >= 0) {
+        PopupMenu(contextMenu);
+    }
+}
+
+// Utility methods for feedback and validation
+void KeyManagerWidget::ShowError(const wxString &message)
+{
+    wxMessageBox(message, "Error", wxICON_ERROR | wxOK, this);
+    statusLabel->SetLabel(message);
+    statusLabel->SetForegroundColour(wxColour(255, 0, 0));
     
-    // Reset to normal after 5 seconds
-    QTimer::singleShot(5000, [this]() {
-        statusLabel->setText("Ready");
-        statusLabel->setStyleSheet("color: #666; font-size: 12px;");
+    // Reset color after 3 seconds
+    wxTimer* timer = new wxTimer(this);
+    timer->StartOnce(3000);
+    timer->Bind(wxEVT_TIMER, [this, timer](wxTimerEvent&) {
+        statusLabel->SetForegroundColour(wxColour(100, 100, 100));
+        timer->Destroy();
     });
-    
-    emit statusMessage(QString("Error: %1").arg(message));
 }
 
-void KeyManagerWidget::showSuccess(const QString &message)
+void KeyManagerWidget::ShowSuccess(const wxString &message)
 {
-    statusLabel->setText(message);
-    statusLabel->setStyleSheet("color: #00aa00; font-size: 12px;");
+    SendStatusEvent(message);
+    statusLabel->SetLabel(message);
+    statusLabel->SetForegroundColour(wxColour(0, 128, 0));
     
-    // Reset to normal after 3 seconds
-    QTimer::singleShot(3000, [this]() {
-        statusLabel->setText("Ready");
-        statusLabel->setStyleSheet("color: #666; font-size: 12px;");
+    // Reset color after 3 seconds
+    wxTimer* timer = new wxTimer(this);
+    timer->StartOnce(3000);
+    timer->Bind(wxEVT_TIMER, [this, timer](wxTimerEvent&) {
+        statusLabel->SetForegroundColour(wxColour(100, 100, 100));
+        timer->Destroy();
     });
+}
+
+bool KeyManagerWidget::ValidateKeyName(const wxString &name)
+{
+    // Key name validation rules
+    if (name.IsEmpty()) {
+        ShowError("Key name cannot be empty");
+        return false;
+    }
     
-    emit statusMessage(message);
+    // Check for valid characters (alphanumeric and underscore)
+    wxRegEx regEx("^[A-Za-z0-9_]+$");
+    if (!regEx.Matches(name)) {
+        ShowError("Key name can only contain letters, numbers, and underscores");
+        return false;
+    }
+    
+    return true;
 }
 
 void KeyManagerWidget::testSelectedKey()
