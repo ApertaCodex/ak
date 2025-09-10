@@ -59,20 +59,25 @@ set(CORE_SOURCES
 # GUI Configuration
 # ============================================================================
 
-option(BUILD_GUI "Build GUI support with Qt 6" ON)
+option(BUILD_GUI "Build GUI support with Slint" ON)
 
 if(BUILD_GUI)
-    # Find Qt 6 components - require minimum 6.4.0 for compatibility
-    find_package(Qt6 6.4.0 REQUIRED COMPONENTS Core Widgets)
+    # Include Slint using FetchContent (provides a clean dependency management)
+    include(FetchContent)
     
-    # Enable Qt 6 MOC (Meta-Object Compiler) globally
-    set(CMAKE_AUTOMOC ON)
-    set(CMAKE_AUTOUIC ON)
-    set(CMAKE_AUTORCC ON)
+    # Fetch Slint from GitHub
+    FetchContent_Declare(
+        slint
+        GIT_REPOSITORY https://github.com/slint-ui/slint.git
+        GIT_TAG v1.5.0
+    )
     
-    message(STATUS "Qt6 found: Building with GUI support")
+    # Make Slint available for the build
+    FetchContent_MakeAvailable(slint)
     
-    # Add GUI sources and headers for AUTOMOC discovery
+    message(STATUS "Slint found: Building with GUI support")
+    
+    # Add GUI sources
     set(GUI_SOURCES
         src/gui/gui.cpp
         src/gui/mainwindow.cpp
@@ -82,16 +87,19 @@ if(BUILD_GUI)
         src/gui/widgets/servicemanager.cpp
         src/gui/widgets/common/secureinput.cpp
         src/gui/widgets/common/dialogs.cpp
-        include/gui/mainwindow.hpp
-        include/gui/widgets/keymanager.hpp
-        include/gui/widgets/servicetester.hpp
-        include/gui/widgets/profilemanager.hpp
-        include/gui/widgets/servicemanager.hpp
-        include/gui/widgets/common/secureinput.hpp
-        include/gui/widgets/common/dialogs.hpp
+        # Include Slint generated code
+        ${CMAKE_CURRENT_BINARY_DIR}/slint_generated.cpp
+    )
+
+    # Create a custom command to generate Slint code from .slint files
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/slint_generated.cpp
+        COMMAND slint-compiler ${CMAKE_CURRENT_SOURCE_DIR}/src/gui/ui/main.slint --output ${CMAKE_CURRENT_BINARY_DIR}/slint_generated.cpp
+        DEPENDS src/gui/ui/main.slint
+        COMMENT "Generating Slint UI code"
     )
 else()
-    message(STATUS "Qt6 not enabled: Building CLI-only version")
+    message(STATUS "Slint not enabled: Building CLI-only version")
     set(GUI_SOURCES "")
 endif()
 
@@ -102,10 +110,11 @@ add_executable(ak
     ${GUI_SOURCES}
 )
 
-# Link Qt6 libraries if GUI is enabled
+# Link Slint libraries if GUI is enabled
 if(BUILD_GUI)
-    target_link_libraries(ak Qt6::Core Qt6::Widgets)
+    target_link_libraries(ak PRIVATE Slint::Slint)
     target_include_directories(ak PRIVATE include/gui)
+    target_include_directories(ak PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
     target_compile_definitions(ak PRIVATE BUILD_GUI)
 endif()
 
@@ -168,9 +177,9 @@ if(BUILD_TESTS)
         ${GUI_SOURCES}
     )
     
-    # Link Qt6 to tests if GUI enabled
+    # Link Slint to tests if GUI enabled
     if(BUILD_GUI)
-        target_link_libraries(ak_tests Qt6::Core Qt6::Widgets)
+        target_link_libraries(ak_tests PRIVATE Slint::Slint)
         target_compile_definitions(ak_tests PRIVATE BUILD_GUI)
     endif()
     
