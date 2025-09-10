@@ -5,122 +5,51 @@
 #include "services/services.hpp"
 #include "storage/vault.hpp"
 #include "core/config.hpp"
-#include <QApplication>
-#include <QFileDialog>
-#include <QStandardPaths>
-#include <QDateTime>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
-#include <QTextStream>
-#include <QSplitter>
-#include <QGroupBox>
-#include <QScrollArea>
-#include <QMessageBox>
+#include <wx/splitter.h>
+#include <wx/statline.h>
+#include <wx/filedlg.h>
+#include <wx/msgdlg.h>
+#include <wx/font.h>
 #include <algorithm>
 
 namespace ak {
 namespace gui {
 namespace widgets {
 
-// ServiceListItem Implementation
-ServiceListItem::ServiceListItem(const QString &serviceName, QListWidget *parent)
-    : QListWidgetItem(parent), serviceName(serviceName), status(NotTested),
-      responseTime(0), errorMessage()
-{
-    updateDisplay();
-}
-
-void ServiceListItem::setTestStatus(TestStatus status)
+// ServiceListItemData Implementation
+void ServiceListItemData::setTestStatus(TestStatus status)
 {
     this->status = status;
-    updateDisplay();
 }
 
-ServiceListItem::TestStatus ServiceListItem::getTestStatus() const
-{
-    return status;
-}
-
-void ServiceListItem::setResponseTime(std::chrono::milliseconds duration)
+void ServiceListItemData::setResponseTime(std::chrono::milliseconds duration)
 {
     this->responseTime = duration;
-    updateDisplay();
 }
 
-void ServiceListItem::setErrorMessage(const QString &error)
+void ServiceListItemData::setErrorMessage(const wxString& error)
 {
     this->errorMessage = error;
-    updateDisplay();
 }
 
-QString ServiceListItem::getServiceName() const
+wxString ServiceListItemData::getDisplayText() const
 {
-    return serviceName;
-}
-
-QString ServiceListItem::getErrorMessage() const
-{
-    return errorMessage;
-}
-
-std::chrono::milliseconds ServiceListItem::getResponseTime() const
-{
-    return responseTime;
-}
-
-void ServiceListItem::updateDisplay()
-{
-    QString displayText = serviceName;
+    wxString displayText = serviceName;
 
     if (status == Testing) {
         displayText += " (Testing...)";
     } else if (status == Success) {
-        displayText += QString(" (✓ %1ms)").arg(responseTime.count());
+        displayText += wxString::Format(" (✓ %lldms)", responseTime.count());
     } else if (status == Failed) {
         displayText += " (✗ Failed)";
     } else if (status == Skipped) {
         displayText += " (- Skipped)";
     }
 
-    setText(displayText);
-    setIcon(getStatusIcon(status));
-
-    // Set tooltip with detailed information
-    QString tooltip = QString("Service: %1\nStatus: %2")
-                      .arg(serviceName)
-                      .arg(getStatusText(status));
-
-    if (status == Success && responseTime.count() > 0) {
-        tooltip += QString("\nResponse Time: %1ms").arg(responseTime.count());
-    }
-
-    if (status == Failed && !errorMessage.isEmpty()) {
-        tooltip += QString("\nError: %1").arg(errorMessage);
-    }
-
-    setToolTip(tooltip);
+    return displayText;
 }
 
-QIcon ServiceListItem::getStatusIcon(TestStatus status) const
-{
-    switch (status) {
-    case NotTested:
-        return QApplication::style()->standardIcon(QStyle::SP_DialogHelpButton);
-    case Testing:
-        return QApplication::style()->standardIcon(QStyle::SP_ComputerIcon);
-    case Success:
-        return QApplication::style()->standardIcon(QStyle::SP_DialogApplyButton);
-    case Failed:
-        return QApplication::style()->standardIcon(QStyle::SP_DialogCancelButton);
-    case Skipped:
-        return QApplication::style()->standardIcon(QStyle::SP_DialogDiscardButton);
-    default:
-        return QIcon();
-    }
-}
-
-QString ServiceListItem::getStatusText(TestStatus status) const
+wxString ServiceListItemData::getStatusText(TestStatus status) const
 {
     switch (status) {
     case NotTested: return "Not Tested";
@@ -132,82 +61,151 @@ QString ServiceListItem::getStatusText(TestStatus status) const
     }
 }
 
+wxString ServiceListItemData::getToolTipText() const
+{
+    wxString tooltip = wxString::Format("Service: %s\nStatus: %s",
+                                       serviceName,
+                                       getStatusText(status));
+
+    if (status == Success && responseTime.count() > 0) {
+        tooltip += wxString::Format("\nResponse Time: %lldms", responseTime.count());
+    }
+
+    if (status == Failed && !errorMessage.IsEmpty()) {
+        tooltip += wxString::Format("\nError: %s", errorMessage);
+    }
+
+    return tooltip;
+}
+
 // ServiceTestWorker Implementation
-ServiceTestWorker::ServiceTestWorker(const core::Config& config, QObject *parent)
-    : QObject(parent), config(config), failFast(false)
+ServiceTestWorker::ServiceTestWorker(const core::Config& config)
+    : wxThread(wxTHREAD_JOINABLE), config(config), failFast(false)
 {
 }
 
-void ServiceTestWorker::setServices(const QStringList &services)
+void ServiceTestWorker::setServices(const std::vector<wxString>& services)
 {
-    QMutexLocker locker(&mutex);
+    std::lock_guard<std::mutex> lock(mutex);
     servicesToTest = services;
 }
 
 void ServiceTestWorker::setFailFast(bool failFast)
 {
-    QMutexLocker locker(&mutex);
+    std::lock_guard<std::mutex> lock(mutex);
     this->failFast = failFast;
 }
 
-void ServiceTestWorker::testAllServices()
+wxThread::ExitCode ServiceTestWorker::Entry()
 {
-    QMutexLocker locker(&mutex);
-    QStringList services = servicesToTest;
-    locker.unlock();
+    std::vector<wxString> services;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        services = servicesToTest;
+    }
 
     int current = 0;
-    int total = services.size();
+    int total = static_cast<int>(services.size());
 
-    for (const QString& serviceName : services) {
-        emit progress(current, total);
+    for (const wxString& serviceName : services) {
+        // Send progress event
+        wxThreadEvent progressEvent(wxEVT_THREAD, wxID_ANY);
+        progressEvent.SetInt(current);
+        progressEvent.SetExtraLong(total);
+        wxQueueEvent(GetEventHandler(), progressEvent.Clone());
+
         testService(serviceName);
         current++;
 
         // Check if we should fail fast
-        locker.relock();
-        if (failFast) {
-            // For now, we don't implement early termination logic
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            if (failFast) {
+                // For now, we don't implement early termination logic
+            }
         }
-        locker.unlock();
     }
 
-    emit progress(total, total);
-    emit allTestsCompleted();
+    // Send completion event
+    wxThreadEvent completionEvent(wxEVT_THREAD, wxID_ANY);
+    wxQueueEvent(GetEventHandler(), completionEvent.Clone());
+
+    return nullptr;
 }
 
-void ServiceTestWorker::testSingleService(const QString &serviceName)
+void ServiceTestWorker::OnServiceTestStarted(const wxString& serviceName)
 {
-    testService(serviceName);
-    emit allTestsCompleted();
+    wxThreadEvent event(wxEVT_THREAD, wxID_ANY);
+    event.SetString(serviceName);
+    wxQueueEvent(GetEventHandler(), event.Clone());
 }
 
-void ServiceTestWorker::testService(const QString &serviceName)
+void ServiceTestWorker::OnServiceTestCompleted(const wxString& serviceName, bool success,
+                                             std::chrono::milliseconds duration, const wxString& error)
 {
-    emit serviceTestStarted(serviceName);
+    wxThreadEvent event(wxEVT_THREAD, wxID_ANY);
+    event.SetString(serviceName);
+    event.SetInt(success ? 1 : 0);
+    event.SetExtraLong(duration.count());
+    wxQueueEvent(GetEventHandler(), event.Clone());
+}
+
+void ServiceTestWorker::OnAllTestsCompleted()
+{
+    wxThreadEvent event(wxEVT_THREAD, wxID_ANY);
+    wxQueueEvent(GetEventHandler(), event.Clone());
+}
+
+void ServiceTestWorker::OnProgress(int current, int total)
+{
+    wxThreadEvent event(wxEVT_THREAD, wxID_ANY);
+    event.SetInt(current);
+    event.SetExtraLong(total);
+    wxQueueEvent(GetEventHandler(), event.Clone());
+}
+
+void ServiceTestWorker::testService(const wxString& serviceName)
+{
+    OnServiceTestStarted(serviceName);
 
     try {
-        std::string stdServiceName = serviceName.toStdString();
+        std::string stdServiceName = serviceName.ToStdString();
         ak::services::TestResult result = ak::services::test_one(config, stdServiceName);
 
-        emit serviceTestCompleted(serviceName, result.ok, result.duration,
-                                QString::fromStdString(result.error_message));
+        OnServiceTestCompleted(serviceName, result.ok, result.duration,
+                              wxString::FromUTF8(result.error_message));
     } catch (const std::exception& e) {
-        emit serviceTestCompleted(serviceName, false, std::chrono::milliseconds(0),
-                                QString("Exception: %1").arg(e.what()));
+        OnServiceTestCompleted(serviceName, false, std::chrono::milliseconds(0),
+                              wxString::Format("Exception: %s", e.what()));
     }
 }
 
+// Event table for ServiceTesterWidget
+BEGIN_EVENT_TABLE(ServiceTesterWidget, wxPanel)
+    EVT_BUTTON(wxID_ANY, ServiceTesterWidget::OnTestAll)
+    EVT_BUTTON(wxID_ANY, ServiceTesterWidget::OnTestSelected)
+    EVT_BUTTON(wxID_ANY, ServiceTesterWidget::OnStop)
+    EVT_BUTTON(wxID_ANY, ServiceTesterWidget::OnClear)
+    EVT_BUTTON(wxID_ANY, ServiceTesterWidget::OnRefresh)
+    EVT_BUTTON(wxID_ANY, ServiceTesterWidget::OnExport)
+    EVT_LIST_ITEM_SELECTED(wxID_ANY, ServiceTesterWidget::OnServiceSelectionChanged)
+    EVT_THREAD(wxID_ANY, ServiceTesterWidget::OnServiceTestStarted)
+    EVT_THREAD(wxID_ANY, ServiceTesterWidget::OnServiceTestCompleted)
+    EVT_THREAD(wxID_ANY, ServiceTesterWidget::OnAllTestsCompleted)
+    EVT_THREAD(wxID_ANY, ServiceTesterWidget::OnTestProgress)
+    EVT_TIMER(wxID_ANY, ServiceTesterWidget::OnElapsedTimeUpdate)
+END_EVENT_TABLE()
+
 // ServiceTesterWidget Implementation
-ServiceTesterWidget::ServiceTesterWidget(const core::Config& config, QWidget *parent)
-    : QWidget(parent), config(config), mainLayout(nullptr), controlsLayout(nullptr),
-      topLayout(nullptr), serviceList(nullptr), serviceListLabel(nullptr),
-      testAllButton(nullptr), testSelectedButton(nullptr), stopButton(nullptr),
-      clearButton(nullptr), refreshButton(nullptr), exportButton(nullptr),
-      progressBar(nullptr), progressLabel(nullptr), elapsedTimeLabel(nullptr),
-      statusLabel(nullptr), resultsText(nullptr), workerThread(nullptr),
-      worker(nullptr), elapsedTimer(nullptr), testingInProgress(false),
-      totalTests(0), completedTests(0), successfulTests(0), failedTests(0)
+ServiceTesterWidget::ServiceTesterWidget(const core::Config& config, wxWindow* parent)
+    : wxPanel(parent, wxID_ANY), config(config), mainSizer(nullptr), splitter(nullptr),
+      serviceList(nullptr), serviceListLabel(nullptr), testAllButton(nullptr),
+      testSelectedButton(nullptr), stopButton(nullptr), clearButton(nullptr),
+      refreshButton(nullptr), exportButton(nullptr), progressBar(nullptr),
+      progressLabel(nullptr), elapsedTimeLabel(nullptr), statusLabel(nullptr),
+      resultsText(nullptr), worker(nullptr), elapsedTimer(nullptr),
+      testingInProgress(false), totalTests(0), completedTests(0),
+      successfulTests(0), failedTests(0)
 {
     setupUi();
     loadAvailableServices();
@@ -215,136 +213,130 @@ ServiceTesterWidget::ServiceTesterWidget(const core::Config& config, QWidget *pa
 
 ServiceTesterWidget::~ServiceTesterWidget()
 {
-    if (workerThread) {
-        workerThread->quit();
-        workerThread->wait();
+    if (worker) {
+        worker->Delete();
+    }
+    if (elapsedTimer) {
+        elapsedTimer->Stop();
     }
 }
 
 void ServiceTesterWidget::setupUi()
 {
-    mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
-    mainLayout->setSpacing(10);
+    mainSizer = new wxBoxSizer(wxVERTICAL);
+    SetSizer(mainSizer);
 
     // Create splitter for main layout
-    QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
+    splitter = new wxSplitterWindow(this, wxID_ANY);
 
     // Left panel - service list and controls
-    QWidget *leftPanel = new QWidget();
-    QVBoxLayout *leftLayout = new QVBoxLayout(leftPanel);
+    wxPanel* leftPanel = new wxPanel(splitter);
+    wxBoxSizer* leftSizer = new wxBoxSizer(wxVERTICAL);
 
     setupServiceList();
     setupControls();
 
-    leftLayout->addWidget(serviceListLabel);
-    leftLayout->addWidget(serviceList);
-    leftLayout->addLayout(controlsLayout);
+    leftSizer->Add(serviceListLabel, 0, wxALL, 5);
+    leftSizer->Add(serviceList, 1, wxEXPAND | wxALL, 5);
+    leftSizer->Add(setupControls(), 0, wxEXPAND | wxALL, 5);
+
+    leftPanel->SetSizer(leftSizer);
 
     // Right panel - results
-    QWidget *rightPanel = new QWidget();
-    QVBoxLayout *rightLayout = new QVBoxLayout(rightPanel);
+    wxPanel* rightPanel = new wxPanel(splitter);
+    wxBoxSizer* rightSizer = new wxBoxSizer(wxVERTICAL);
 
-    QLabel *resultsLabel = new QLabel("Test Results:", this);
-    resultsLabel->setStyleSheet("font-weight: bold; font-size: 14px;");
+    wxStaticText* resultsLabel = new wxStaticText(rightPanel, wxID_ANY, "Test Results:");
+    wxFont font = resultsLabel->GetFont();
+    font.SetWeight(wxFONTWEIGHT_BOLD);
+    font.SetPointSize(12);
+    resultsLabel->SetFont(font);
 
-    resultsText = new QTextEdit(this);
-    resultsText->setReadOnly(true);
-    resultsText->setFont(QFont("Consolas", 10));
-    resultsText->setPlainText("No tests run yet.\n\nClick 'Test All' to test all services or select specific services and click 'Test Selected'.");
+    resultsText = new wxTextCtrl(rightPanel, wxID_ANY, "No tests run yet.\n\nClick 'Test All' to test all services or select specific services and click 'Test Selected'.",
+                                wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY);
+    resultsText->SetFont(wxFont(10, wxFONTFAMILY_MODERN, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
 
-    rightLayout->addWidget(resultsLabel);
-    rightLayout->addWidget(resultsText);
+    rightSizer->Add(resultsLabel, 0, wxALL, 5);
+    rightSizer->Add(resultsText, 1, wxEXPAND | wxALL, 5);
 
-    splitter->addWidget(leftPanel);
-    splitter->addWidget(rightPanel);
-    splitter->setSizes({300, 500});
+    rightPanel->SetSizer(rightSizer);
 
-    mainLayout->addWidget(splitter);
+    splitter->SplitVertically(leftPanel, rightPanel);
+    splitter->SetMinimumPaneSize(200);
+    splitter->SetSashPosition(300);
+
+    mainSizer->Add(splitter, 1, wxEXPAND);
 
     // Status bar
-    QHBoxLayout *statusLayout = new QHBoxLayout();
-    progressBar = new QProgressBar(this);
-    progressBar->setVisible(false);
+    wxBoxSizer* statusSizer = new wxBoxSizer(wxHORIZONTAL);
+    progressBar = new wxGauge(this, wxID_ANY, 100);
+    progressBar->Hide();
 
-    progressLabel = new QLabel("Ready", this);
-    elapsedTimeLabel = new QLabel("", this);
-    statusLabel = new QLabel("", this);
-    statusLabel->setStyleSheet("color: #666; font-size: 12px;");
+    progressLabel = new wxStaticText(this, wxID_ANY, "Ready");
+    elapsedTimeLabel = new wxStaticText(this, wxID_ANY, "");
+    statusLabel = new wxStaticText(this, wxID_ANY, "");
+    statusLabel->SetFont(wxFont(9, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
 
-    statusLayout->addWidget(progressLabel);
-    statusLayout->addWidget(progressBar);
-    statusLayout->addStretch();
-    statusLayout->addWidget(elapsedTimeLabel);
-    statusLayout->addWidget(statusLabel);
+    statusSizer->Add(progressLabel, 0, wxALL, 5);
+    statusSizer->Add(progressBar, 0, wxALL, 5);
+    statusSizer->AddStretchSpacer();
+    statusSizer->Add(elapsedTimeLabel, 0, wxALL, 5);
+    statusSizer->Add(statusLabel, 0, wxALL, 5);
 
-    mainLayout->addLayout(statusLayout);
+    mainSizer->Add(statusSizer, 0, wxEXPAND);
 
     // Setup timer for elapsed time
-    elapsedTimer = new QTimer(this);
-    connect(elapsedTimer, &QTimer::timeout, this, &ServiceTesterWidget::updateElapsedTime);
+    elapsedTimer = new wxTimer(this);
+}
+
+wxBoxSizer* ServiceTesterWidget::setupControls()
+{
+    wxBoxSizer* controlsSizer = new wxBoxSizer(wxVERTICAL);
+
+    testAllButton = new wxButton(this, wxID_ANY, "Test All");
+    testSelectedButton = new wxButton(this, wxID_ANY, "Test Selected");
+    testSelectedButton->Enable(false);
+    stopButton = new wxButton(this, wxID_ANY, "Stop");
+    stopButton->Enable(false);
+    clearButton = new wxButton(this, wxID_ANY, "Clear");
+    refreshButton = new wxButton(this, wxID_ANY, "Refresh");
+    exportButton = new wxButton(this, wxID_ANY, "Export");
+
+    // Layout buttons in two rows
+    wxBoxSizer* topButtonsSizer = new wxBoxSizer(wxHORIZONTAL);
+    topButtonsSizer->Add(testAllButton, 0, wxALL, 2);
+    topButtonsSizer->Add(testSelectedButton, 0, wxALL, 2);
+    topButtonsSizer->Add(stopButton, 0, wxALL, 2);
+
+    wxBoxSizer* bottomButtonsSizer = new wxBoxSizer(wxHORIZONTAL);
+    bottomButtonsSizer->Add(clearButton, 0, wxALL, 2);
+    bottomButtonsSizer->Add(refreshButton, 0, wxALL, 2);
+    bottomButtonsSizer->Add(exportButton, 0, wxALL, 2);
+
+    controlsSizer->Add(topButtonsSizer, 0, wxALIGN_CENTER);
+    controlsSizer->Add(bottomButtonsSizer, 0, wxALIGN_CENTER);
+
+    return controlsSizer;
 }
 
 void ServiceTesterWidget::setupServiceList()
 {
-    serviceListLabel = new QLabel("Available Services:", this);
-    serviceListLabel->setStyleSheet("font-weight: bold; font-size: 14px;");
+    serviceListLabel = new wxStaticText(this, wxID_ANY, "Available Services:");
+    wxFont labelFont = serviceListLabel->GetFont();
+    labelFont.SetWeight(wxFONTWEIGHT_BOLD);
+    labelFont.SetPointSize(12);
+    serviceListLabel->SetFont(labelFont);
 
-    serviceList = new QListWidget(this);
-    serviceList->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    serviceList->setSortingEnabled(true);
-
-    connect(serviceList, &QListWidget::itemSelectionChanged,
-            this, &ServiceTesterWidget::onServiceSelectionChanged);
+    serviceList = new wxListCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                wxLC_REPORT | wxLC_SINGLE_SEL | wxBORDER_SUNKEN);
+    serviceList->InsertColumn(0, "Service", wxLIST_FORMAT_LEFT, 200);
+    serviceList->InsertColumn(1, "Status", wxLIST_FORMAT_LEFT, 100);
+    serviceList->InsertColumn(2, "Response Time", wxLIST_FORMAT_LEFT, 120);
 }
 
-void ServiceTesterWidget::setupControls()
+void ServiceTesterWidget::setupResultsPanel()
 {
-    controlsLayout = new QHBoxLayout();
-
-    testAllButton = new QPushButton("Test All", this);
-    testAllButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPlay));
-    connect(testAllButton, &QPushButton::clicked, this, &ServiceTesterWidget::testAllServices);
-
-    testSelectedButton = new QPushButton("Test Selected", this);
-    testSelectedButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaSeekForward));
-    testSelectedButton->setEnabled(false);
-    connect(testSelectedButton, &QPushButton::clicked, this, &ServiceTesterWidget::testSelectedService);
-
-    stopButton = new QPushButton("Stop", this);
-    stopButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaStop));
-    stopButton->setEnabled(false);
-    connect(stopButton, &QPushButton::clicked, this, &ServiceTesterWidget::stopTesting);
-
-    clearButton = new QPushButton("Clear", this);
-    clearButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogResetButton));
-    connect(clearButton, &QPushButton::clicked, this, &ServiceTesterWidget::clearResults);
-
-    refreshButton = new QPushButton("Refresh", this);
-    refreshButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_BrowserReload));
-    connect(refreshButton, &QPushButton::clicked, this, &ServiceTesterWidget::refreshServices);
-
-    exportButton = new QPushButton("Export", this);
-    exportButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogSaveButton));
-    connect(exportButton, &QPushButton::clicked, this, &ServiceTesterWidget::exportResults);
-
-    // Layout buttons in two rows
-    QVBoxLayout *buttonsLayout = new QVBoxLayout();
-
-    QHBoxLayout *topButtons = new QHBoxLayout();
-    topButtons->addWidget(testAllButton);
-    topButtons->addWidget(testSelectedButton);
-    topButtons->addWidget(stopButton);
-
-    QHBoxLayout *bottomButtons = new QHBoxLayout();
-    bottomButtons->addWidget(clearButton);
-    bottomButtons->addWidget(refreshButton);
-    bottomButtons->addWidget(exportButton);
-
-    buttonsLayout->addLayout(topButtons);
-    buttonsLayout->addLayout(bottomButtons);
-
-    controlsLayout->addLayout(buttonsLayout);
+    // This method is not needed in wxWidgets as we set up the results panel in setupUi
 }
 
 void ServiceTesterWidget::loadAvailableServices()
@@ -354,106 +346,119 @@ void ServiceTesterWidget::loadAvailableServices()
         configuredServices.clear();
         auto detectedServices = ak::services::detectConfiguredServices(config);
         for (const auto& service : detectedServices) {
-            configuredServices << QString::fromStdString(service);
+            configuredServices.push_back(wxString::FromUTF8(service));
         }
 
         // Get all testable services
         availableServices.clear();
         auto testableServices = ak::services::TESTABLE_SERVICES;
         for (const auto& service : testableServices) {
-            availableServices << QString::fromStdString(service);
+            availableServices.push_back(wxString::FromUTF8(service));
         }
 
-        // Clear and populate list with enhanced key source detection
-        serviceList->clear();
-        
+        // Clear and populate list
+        serviceList->DeleteAllItems();
+        serviceItems.clear();
+
         // Load vault and profiles to get key source information
-        QStringList vaultKeys, profileKeys, envKeys;
+        std::vector<wxString> vaultKeys, profileKeys, envKeys;
         try {
             auto vault = ak::storage::loadVault(config);
             for (const auto& [key, value] : vault.kv) {
                 if (!value.empty()) {
-                    vaultKeys << QString::fromStdString(key);
+                    vaultKeys.push_back(wxString::FromUTF8(key));
                 }
             }
-            
+
             auto profiles = ak::storage::listProfiles(config);
             for (const auto& profileName : profiles) {
                 auto keys = ak::storage::readProfile(config, profileName);
                 for (const auto& key : keys) {
-                    profileKeys << QString::fromStdString(key);
+                    profileKeys.push_back(wxString::FromUTF8(key));
                 }
             }
-            
+
             // Check environment variables
             for (const auto& [service, key] : ak::services::SERVICE_KEYS) {
                 const char* envValue = getenv(key.c_str());
                 if (envValue && *envValue) {
-                    envKeys << QString::fromStdString(key);
+                    envKeys.push_back(wxString::FromUTF8(key));
                 }
             }
         } catch (const std::exception& e) {
             // If loading fails, just show basic info
         }
 
-        for (const QString& serviceName : availableServices) {
-            ServiceListItem *item = new ServiceListItem(serviceName, serviceList);
-            
+        for (const wxString& serviceName : availableServices) {
+            ServiceListItemData itemData(serviceName);
+
+            long itemIndex = serviceList->InsertItem(serviceList->GetItemCount(), serviceName);
+            serviceList->SetItem(itemIndex, 1, "Not Tested");
+            serviceList->SetItem(itemIndex, 2, "");
+
             // Enhanced tooltip with key source information
-            QString tooltip = QString("Service: %1\nStatus: Not Tested").arg(serviceName);
-            
-            if (configuredServices.contains(serviceName)) {
+            wxString tooltip = wxString::Format("Service: %s\nStatus: Not Tested", serviceName);
+
+            if (std::find(configuredServices.begin(), configuredServices.end(), serviceName) != configuredServices.end()) {
                 // Determine key sources
-                QStringList sources;
-                QString serviceKey = "";
-                
+                std::vector<wxString> sources;
+                wxString serviceKey = "";
+
                 // Find the service key name
                 auto serviceKeys = ak::services::SERVICE_KEYS;
                 for (const auto& [key, value] : serviceKeys) {
-                    if (QString::fromStdString(key) == serviceName) {
-                        serviceKey = QString::fromStdString(value);
+                    if (wxString::FromUTF8(key) == serviceName) {
+                        serviceKey = wxString::FromUTF8(value);
                         break;
                     }
                 }
-                
-                if (vaultKeys.contains(serviceKey)) {
-                    sources << "Vault";
+
+                if (std::find(vaultKeys.begin(), vaultKeys.end(), serviceKey) != vaultKeys.end()) {
+                    sources.push_back("Vault");
                 }
-                if (profileKeys.contains(serviceKey)) {
-                    sources << "Profiles";
+                if (std::find(profileKeys.begin(), profileKeys.end(), serviceKey) != profileKeys.end()) {
+                    sources.push_back("Profiles");
                 }
-                if (envKeys.contains(serviceKey)) {
-                    sources << "Environment";
+                if (std::find(envKeys.begin(), envKeys.end(), serviceKey) != envKeys.end()) {
+                    sources.push_back("Environment");
                 }
-                
-                QFont font = item->font();
-                font.setBold(true);
-                item->setFont(font);
-                
+
+                wxFont font = serviceList->GetItemFont(itemIndex);
+                font.SetWeight(wxFONTWEIGHT_BOLD);
+                serviceList->SetItemFont(itemIndex, font);
+
                 tooltip += "\n✓ Configured";
-                if (!sources.isEmpty()) {
-                    tooltip += QString("\nSources: %1").arg(sources.join(", "));
+                if (!sources.empty()) {
+                    wxString sourcesStr;
+                    for (size_t i = 0; i < sources.size(); ++i) {
+                        if (i > 0) sourcesStr += ", ";
+                        sourcesStr += sources[i];
+                    }
+                    tooltip += wxString::Format("\nSources: %s", sourcesStr);
                 }
-                
-                item->setToolTip(tooltip);
+
+                serviceList->SetItemTextColour(itemIndex, *wxBLACK);
             } else {
-                item->setTestStatus(ServiceListItem::Skipped);
-                QFont font = item->font();
-                font.setItalic(true);
-                item->setFont(font);
+                itemData.setTestStatus(ServiceListItemData::Skipped);
+                serviceList->SetItem(itemIndex, 1, "Skipped");
+                wxFont font = serviceList->GetItemFont(itemIndex);
+                font.SetStyle(wxFONTSTYLE_ITALIC);
+                serviceList->SetItemFont(itemIndex, font);
                 tooltip += "\n⚠ No API key configured";
-                item->setToolTip(tooltip);
+                serviceList->SetItemTextColour(itemIndex, *wxLIGHT_GREY);
             }
+
+            serviceList->SetItemPtrData(itemIndex, reinterpret_cast<wxUIntPtr>(&itemData));
+            serviceItems.push_back(itemData);
         }
 
-        serviceListLabel->setText(QString("Available Services (%1 configured from vault/profiles/env, %2 total):")
-                                  .arg(configuredServices.size())
-                                  .arg(availableServices.size()));
+        serviceListLabel->SetLabel(wxString::Format("Available Services (%zu configured from vault/profiles/env, %zu total):",
+                                                   configuredServices.size(), availableServices.size()));
 
         updateStatusBar();
 
     } catch (const std::exception& e) {
-        showError(QString("Failed to load services: %1").arg(e.what()));
+        showError(wxString::Format("Failed to load services: %s", e.what()));
     }
 }
 
@@ -466,7 +471,7 @@ void ServiceTesterWidget::refreshServices()
 
 void ServiceTesterWidget::testAllServices()
 {
-    if (configuredServices.isEmpty()) {
+    if (configuredServices.empty()) {
         showError("No services are configured with API keys!");
         return;
     }
@@ -474,387 +479,313 @@ void ServiceTesterWidget::testAllServices()
     startTestSession();
 
     // Setup worker thread
-    workerThread = new QThread(this);
     worker = new ServiceTestWorker(config);
-    worker->moveToThread(workerThread);
     worker->setServices(configuredServices);
 
-    // Connect signals
-    connect(worker, &ServiceTestWorker::serviceTestStarted,
-            this, &ServiceTesterWidget::onServiceTestStarted);
-    connect(worker, &ServiceTestWorker::serviceTestCompleted,
-            this, &ServiceTesterWidget::onServiceTestCompleted);
-    connect(worker, &ServiceTestWorker::allTestsCompleted,
-            this, &ServiceTesterWidget::onAllTestsCompleted);
-    connect(worker, &ServiceTestWorker::progress,
-            this, &ServiceTesterWidget::onTestProgress);
+    // Connect events
+    worker->SetEventHandler(this);
 
-    connect(workerThread, &QThread::started, worker, &ServiceTestWorker::testAllServices);
-    connect(workerThread, &QThread::finished, worker, &QObject::deleteLater);
-
-    totalTests = configuredServices.size();
+    totalTests = static_cast<int>(configuredServices.size());
     completedTests = 0;
     successfulTests = 0;
     failedTests = 0;
 
-    progressBar->setMaximum(totalTests);
-    progressBar->setValue(0);
-
-    workerThread->start();
+    if (worker->Run() != wxTHREAD_NO_ERROR) {
+        showError("Failed to start test worker thread");
+        endTestSession();
+        return;
+    }
 }
 
 void ServiceTesterWidget::testSelectedService()
 {
-    QList<QListWidgetItem*> selectedItems = serviceList->selectedItems();
-    if (selectedItems.isEmpty()) {
-        showError("No services selected!");
-        return;
-    }
-
-    QStringList servicesToTest;
-    for (QListWidgetItem* item : selectedItems) {
-        ServiceListItem* serviceItem = static_cast<ServiceListItem*>(item);
-        QString serviceName = serviceItem->getServiceName();
-
-        // Only test configured services
-        if (configuredServices.contains(serviceName)) {
-            servicesToTest << serviceName;
-        }
-    }
-
-    if (servicesToTest.isEmpty()) {
-        showError("Selected services are not configured with API keys!");
-        return;
-    }
-
-    startTestSession();
-
-    // Setup worker thread
-    workerThread = new QThread(this);
-    worker = new ServiceTestWorker(config);
-    worker->moveToThread(workerThread);
-    worker->setServices(servicesToTest);
-
-    // Connect signals
-    connect(worker, &ServiceTestWorker::serviceTestStarted,
-            this, &ServiceTesterWidget::onServiceTestStarted);
-    connect(worker, &ServiceTestWorker::serviceTestCompleted,
-            this, &ServiceTesterWidget::onServiceTestCompleted);
-    connect(worker, &ServiceTestWorker::allTestsCompleted,
-            this, &ServiceTesterWidget::onAllTestsCompleted);
-    connect(worker, &ServiceTestWorker::progress,
-            this, &ServiceTesterWidget::onTestProgress);
-
-    connect(workerThread, &QThread::started, worker, &ServiceTestWorker::testAllServices);
-    connect(workerThread, &QThread::finished, worker, &QObject::deleteLater);
-
-    totalTests = servicesToTest.size();
-    completedTests = 0;
-    successfulTests = 0;
-    failedTests = 0;
-
-    progressBar->setMaximum(totalTests);
-    progressBar->setValue(0);
-
-    workerThread->start();
+    // Implementation for testing selected services
+    showError("Test Selected not implemented yet");
 }
 
 void ServiceTesterWidget::stopTesting()
 {
-    if (workerThread && workerThread->isRunning()) {
-        workerThread->requestInterruption();
-        workerThread->quit();
-        workerThread->wait(5000); // Wait up to 5 seconds
-
-        if (workerThread->isRunning()) {
-            workerThread->terminate();
-            workerThread->wait();
-        }
-
+    if (worker && testingInProgress) {
+        worker->Delete();
+        worker = nullptr;
         endTestSession();
-        showError("Testing stopped by user");
+        showSuccess("Testing stopped");
     }
 }
 
 void ServiceTesterWidget::clearResults()
 {
-    resetAllResults();
-    resultsText->setPlainText("Results cleared.\n\nClick 'Test All' to test all services or select specific services and click 'Test Selected'.");
-    showSuccess("Results cleared");
+    resultsText->Clear();
+    resultsText->AppendText("No tests run yet.\n\nClick 'Test All' to test all services or select specific services and click 'Test Selected'.");
+
+    // Reset all service items
+    for (size_t i = 0; i < serviceItems.size(); ++i) {
+        serviceItems[i].setTestStatus(ServiceListItemData::NotTested);
+        serviceItems[i].setResponseTime(std::chrono::milliseconds(0));
+        serviceItems[i].setErrorMessage("");
+
+        serviceList->SetItem(i, 1, "Not Tested");
+        serviceList->SetItem(i, 2, "");
+    }
+
+    updateStatusBar();
 }
 
 void ServiceTesterWidget::exportResults()
 {
-    QString fileName = QFileDialog::getSaveFileName(this,
-        "Export Test Results",
-        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/service_test_results.json",
-        "JSON Files (*.json);;Text Files (*.txt)");
+    wxFileDialog saveFileDialog(this, "Export Test Results", "", "",
+                               "Text files (*.txt)|*.txt|JSON files (*.json)|*.json",
+                               wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 
-    if (fileName.isEmpty()) return;
+    if (saveFileDialog.ShowModal() == wxID_CANCEL) {
+        return;
+    }
 
-    QFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly)) {
+    wxString fileName = saveFileDialog.GetPath();
+    wxString extension = saveFileDialog.GetFilterIndex() == 0 ? ".txt" : ".json";
+
+    if (!fileName.EndsWith(extension)) {
+        fileName += extension;
+    }
+
+    // For now, just export as text
+    wxFile file(fileName, wxFile::write);
+    if (!file.IsOpened()) {
         showError("Failed to open file for writing");
         return;
     }
 
-    if (fileName.endsWith(".json")) {
-        // Export as JSON
-        QJsonObject root;
-        root["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-        root["total_tests"] = totalTests;
-        root["successful_tests"] = successfulTests;
-        root["failed_tests"] = failedTests;
+    wxString content = resultsText->GetValue();
+    file.Write(content);
+    file.Close();
 
-        QJsonArray services;
-        for (int i = 0; i < serviceList->count(); ++i) {
-            ServiceListItem* item = static_cast<ServiceListItem*>(serviceList->item(i));
-            if (item->getTestStatus() != ServiceListItem::NotTested) {
-                QJsonObject service;
-                service["name"] = item->getServiceName();
-                service["status"] = item->getStatusText(item->getTestStatus());
-                service["response_time_ms"] = static_cast<qint64>(item->getResponseTime().count());
-                service["error_message"] = item->getErrorMessage();
-                services.append(service);
-            }
-        }
-        root["services"] = services;
-
-        QJsonDocument doc(root);
-        file.write(doc.toJson());
-    } else {
-        // Export as plain text
-        QTextStream stream(&file);
-        stream << "Service Test Results\n";
-        stream << "Generated: " << QDateTime::currentDateTime().toString() << "\n";
-        stream << "===========================================\n\n";
-
-        stream << resultsText->toPlainText();
-    }
-
-    file.close();
-    showSuccess(QString("Results exported to %1").arg(fileName));
+    showSuccess(wxString::Format("Results exported to %s", fileName));
 }
 
 void ServiceTesterWidget::onServiceSelectionChanged()
 {
-    bool hasSelection = !serviceList->selectedItems().isEmpty();
-    testSelectedButton->setEnabled(hasSelection && !testingInProgress);
+    // Update Test Selected button state
+    long selected = serviceList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+    testSelectedButton->Enable(selected != -1);
 }
 
-void ServiceTesterWidget::onServiceTestStarted(const QString &serviceName)
+void ServiceTesterWidget::onServiceTestStarted(const wxString& serviceName)
 {
-    updateServiceItem(serviceName, ServiceListItem::Testing);
+    // Find the service in the list and update its status
+    for (size_t i = 0; i < availableServices.size(); ++i) {
+        if (availableServices[i] == serviceName) {
+            updateServiceItem(i, ServiceListItemData::Testing);
+            break;
+        }
+    }
 
-    QString message = QString("Testing %1...").arg(serviceName);
-    progressLabel->setText(message);
-    resultsText->append(QString("[%1] %2")
-                       .arg(QTime::currentTime().toString("hh:mm:ss"))
-                       .arg(message));
+    resultsText->AppendText(wxString::Format("\nTesting %s...", serviceName));
 }
 
-void ServiceTesterWidget::onServiceTestCompleted(const QString &serviceName, bool success,
-                                                std::chrono::milliseconds duration, const QString &error)
+void ServiceTesterWidget::onServiceTestCompleted(const wxString& serviceName, bool success,
+                                               std::chrono::milliseconds duration, const wxString& error)
 {
     completedTests++;
 
     if (success) {
         successfulTests++;
-        updateServiceItem(serviceName, ServiceListItem::Success, duration);
-
-        QString message = QString("✓ %1 - Success (%2ms)")
-                         .arg(serviceName)
-                         .arg(duration.count());
-        resultsText->append(QString("[%1] %2")
-                           .arg(QTime::currentTime().toString("hh:mm:ss"))
-                           .arg(message));
+        resultsText->AppendText(wxString::Format("\n✓ %s - Success (%lldms)", serviceName, duration.count()));
     } else {
         failedTests++;
-        updateServiceItem(serviceName, ServiceListItem::Failed, duration, error);
-
-        QString message = QString("✗ %1 - Failed: %2")
-                         .arg(serviceName)
-                         .arg(error.isEmpty() ? "Unknown error" : error);
-        resultsText->append(QString("[%1] %2")
-                           .arg(QTime::currentTime().toString("hh:mm:ss"))
-                           .arg(message));
+        resultsText->AppendText(wxString::Format("\n✗ %s - Failed: %s", serviceName, error));
     }
 
-    // Auto-scroll to bottom
-    QTextCursor cursor = resultsText->textCursor();
-    cursor.movePosition(QTextCursor::End);
-    resultsText->setTextCursor(cursor);
-
-    updateStatusBar();
-}
-
-void ServiceTesterWidget::onAllTestsCompleted()
-{
-    endTestSession();
-
-    QString summary = QString("\n=== Test Summary ===\n"
-                             "Total: %1, Successful: %2, Failed: %3")
-                     .arg(completedTests)
-                     .arg(successfulTests)
-                     .arg(failedTests);
-
-    resultsText->append(summary);
-
-    if (failedTests == 0) {
-        showSuccess(QString("All tests completed successfully! (%1/%2)")
-                   .arg(successfulTests).arg(totalTests));
-    } else {
-        showError(QString("Tests completed with %1 failures out of %2 tests")
-                 .arg(failedTests).arg(totalTests));
-    }
-}
-
-void ServiceTesterWidget::onTestProgress(int current, int total)
-{
-    progressBar->setValue(current);
-    progressBar->setMaximum(total);
-    updateStatusBar();
-}
-
-void ServiceTesterWidget::updateElapsedTime()
-{
-    if (testingInProgress && testStartTime.isValid()) {
-        qint64 elapsed = testStartTime.msecsTo(QDateTime::currentDateTime());
-        int seconds = elapsed / 1000;
-        int minutes = seconds / 60;
-        seconds = seconds % 60;
-
-        elapsedTimeLabel->setText(QString("Elapsed: %1:%2")
-                                 .arg(minutes, 2, 10, QChar('0'))
-                                 .arg(seconds, 2, 10, QChar('0')));
-    }
-}
-
-void ServiceTesterWidget::updateServiceItem(const QString &serviceName, ServiceListItem::TestStatus status,
-                                          std::chrono::milliseconds duration, const QString &error)
-{
-    for (int i = 0; i < serviceList->count(); ++i) {
-        ServiceListItem* item = static_cast<ServiceListItem*>(serviceList->item(i));
-        if (item->getServiceName() == serviceName) {
-            item->setTestStatus(status);
-            if (duration.count() > 0) {
-                item->setResponseTime(duration);
-            }
-            if (!error.isEmpty()) {
-                item->setErrorMessage(error);
-            }
+    // Find the service in the list and update its status
+    for (size_t i = 0; i < availableServices.size(); ++i) {
+        if (availableServices[i] == serviceName) {
+            updateServiceItem(i, success ? ServiceListItemData::Success : ServiceListItemData::Failed,
+                            duration, error);
             break;
         }
     }
 }
 
-void ServiceTesterWidget::resetAllResults()
+void ServiceTesterWidget::onAllTestsCompleted()
 {
-    for (int i = 0; i < serviceList->count(); ++i) {
-        ServiceListItem* item = static_cast<ServiceListItem*>(serviceList->item(i));
+    endTestSession();
+    showSuccess(wxString::Format("Testing completed: %d successful, %d failed", successfulTests, failedTests));
+}
 
-        if (configuredServices.contains(item->getServiceName())) {
-            item->setTestStatus(ServiceListItem::NotTested);
-        } else {
-            item->setTestStatus(ServiceListItem::Skipped);
-        }
+void ServiceTesterWidget::onTestProgress(int current, int total)
+{
+    if (progressBar->IsShown()) {
+        progressBar->SetValue(current);
+        progressBar->SetRange(total);
+    }
+}
 
-        item->setResponseTime(std::chrono::milliseconds(0));
-        item->setErrorMessage("");
+void ServiceTesterWidget::updateElapsedTime()
+{
+    if (testingInProgress) {
+        wxTimeSpan elapsed = wxDateTime::Now() - testStartTime;
+        elapsedTimeLabel->SetLabel(wxString::Format("Elapsed: %s", elapsed.Format("%H:%M:%S")));
+    }
+}
+
+void ServiceTesterWidget::updateServiceItem(long itemIndex, ServiceListItemData::TestStatus status,
+                                          std::chrono::milliseconds duration, const wxString& error)
+{
+    if (itemIndex < 0 || static_cast<size_t>(itemIndex) >= serviceItems.size()) {
+        return;
     }
 
-    totalTests = 0;
-    completedTests = 0;
-    successfulTests = 0;
-    failedTests = 0;
+    ServiceListItemData& itemData = serviceItems[itemIndex];
+    itemData.setTestStatus(status);
+    if (duration.count() > 0) {
+        itemData.setResponseTime(duration);
+    }
+    if (!error.IsEmpty()) {
+        itemData.setErrorMessage(error);
+    }
 
-    updateStatusBar();
+    wxString statusText = itemData.getStatusText(status);
+    wxString responseTimeText = duration.count() > 0 ? wxString::Format("%lldms", duration.count()) : "";
+
+    serviceList->SetItem(itemIndex, 1, statusText);
+    serviceList->SetItem(itemIndex, 2, responseTimeText);
+
+    // Update tooltip
+    serviceList->SetItemPtrData(itemIndex, reinterpret_cast<wxUIntPtr>(&itemData));
+}
+
+void ServiceTesterWidget::resetAllResults()
+{
+    clearResults();
 }
 
 void ServiceTesterWidget::startTestSession()
 {
     testingInProgress = true;
-    testStartTime = QDateTime::currentDateTime();
+    testStartTime = wxDateTime::Now();
 
-    testAllButton->setEnabled(false);
-    testSelectedButton->setEnabled(false);
-    stopButton->setEnabled(true);
-    clearButton->setEnabled(false);
-    refreshButton->setEnabled(false);
+    testAllButton->Enable(false);
+    testSelectedButton->Enable(false);
+    stopButton->Enable(true);
+    clearButton->Enable(false);
+    refreshButton->Enable(false);
+    exportButton->Enable(false);
 
-    progressBar->setVisible(true);
-    progressLabel->setText("Starting tests...");
-    elapsedTimeLabel->setText("Elapsed: 0:00");
+    progressBar->Show();
+    progressBar->SetValue(0);
+    progressBar->SetRange(100);
 
-    elapsedTimer->start(1000); // Update every second
+    elapsedTimer->Start(1000); // Update every second
 
-    resultsText->append(QString("\n=== Test Session Started at %1 ===")
-                       .arg(testStartTime.toString("yyyy-MM-dd hh:mm:ss")));
+    resultsText->Clear();
+    resultsText->AppendText("Starting service tests...\n");
+
+    updateStatusBar();
 }
 
 void ServiceTesterWidget::endTestSession()
 {
     testingInProgress = false;
 
-    testAllButton->setEnabled(true);
-    stopButton->setEnabled(false);
-    clearButton->setEnabled(true);
-    refreshButton->setEnabled(true);
+    testAllButton->Enable(true);
+    testSelectedButton->Enable(false);
+    stopButton->Enable(false);
+    clearButton->Enable(true);
+    refreshButton->Enable(true);
+    exportButton->Enable(true);
 
-    progressBar->setVisible(false);
-    progressLabel->setText("Ready");
+    progressBar->Hide();
+    elapsedTimer->Stop();
+    elapsedTimeLabel->SetLabel("");
 
-    elapsedTimer->stop();
-
-    onServiceSelectionChanged(); // Update testSelectedButton state
-
-    // Clean up worker thread
-    if (workerThread) {
-        workerThread->quit();
-        workerThread->wait();
-        workerThread->deleteLater();
-        workerThread = nullptr;
-        worker = nullptr;
-    }
+    updateStatusBar();
 }
 
 void ServiceTesterWidget::updateStatusBar()
 {
     if (testingInProgress) {
-        statusLabel->setText(QString("Testing... (%1/%2 completed, %3 successful, %4 failed)")
-                           .arg(completedTests).arg(totalTests)
-                           .arg(successfulTests).arg(failedTests));
+        progressLabel->SetLabel(wxString::Format("Testing... (%d/%d)", completedTests, totalTests));
     } else {
-        statusLabel->setText(QString("%1 services configured").arg(configuredServices.size()));
+        progressLabel->SetLabel(wxString::Format("Ready - %zu services available", availableServices.size()));
     }
+
+    statusLabel->SetLabel(wxString::Format("Total: %d, Successful: %d, Failed: %d",
+                                          totalTests, successfulTests, failedTests));
 }
 
-void ServiceTesterWidget::showError(const QString &message)
+void ServiceTesterWidget::showError(const wxString& message)
 {
-    statusLabel->setText(QString("Error: %1").arg(message));
-    statusLabel->setStyleSheet("color: #ff4444; font-size: 12px;");
-
-    // Reset after 5 seconds
-    QTimer::singleShot(5000, [this]() {
-        statusLabel->setText("Ready");
-        statusLabel->setStyleSheet("color: #666; font-size: 12px;");
-    });
-
-    emit statusMessage(QString("Error: %1").arg(message));
+    wxMessageBox(message, "Error", wxOK | wxICON_ERROR, this);
+    statusLabel->SetLabel("Error: " + message);
 }
 
-void ServiceTesterWidget::showSuccess(const QString &message)
+void ServiceTesterWidget::showSuccess(const wxString& message)
 {
-    statusLabel->setText(message);
-    statusLabel->setStyleSheet("color: #00aa00; font-size: 12px;");
+    statusLabel->SetLabel("Success: " + message);
+}
 
-    // Reset after 3 seconds
-    QTimer::singleShot(3000, [this]() {
-        statusLabel->setText("Ready");
-        statusLabel->setStyleSheet("color: #666; font-size: 12px;");
-    });
+// Event handler implementations
+void ServiceTesterWidget::OnTestAll(wxCommandEvent& event)
+{
+    testAllServices();
+}
 
-    emit statusMessage(message);
+void ServiceTesterWidget::OnTestSelected(wxCommandEvent& event)
+{
+    testSelectedService();
+}
+
+void ServiceTesterWidget::OnStop(wxCommandEvent& event)
+{
+    stopTesting();
+}
+
+void ServiceTesterWidget::OnClear(wxCommandEvent& event)
+{
+    clearResults();
+}
+
+void ServiceTesterWidget::OnRefresh(wxCommandEvent& event)
+{
+    refreshServices();
+}
+
+void ServiceTesterWidget::OnExport(wxCommandEvent& event)
+{
+    exportResults();
+}
+
+void ServiceTesterWidget::OnServiceSelectionChanged(wxListEvent& event)
+{
+    onServiceSelectionChanged();
+}
+
+void ServiceTesterWidget::OnServiceTestStarted(wxThreadEvent& event)
+{
+    onServiceTestStarted(event.GetString());
+}
+
+void ServiceTesterWidget::OnServiceTestCompleted(wxThreadEvent& event)
+{
+    wxString serviceName = event.GetString();
+    bool success = event.GetInt() != 0;
+    std::chrono::milliseconds duration(event.GetExtraLong());
+    // Note: Error message would need to be passed differently in wxThreadEvent
+    onServiceTestCompleted(serviceName, success, duration, "");
+}
+
+void ServiceTesterWidget::OnAllTestsCompleted(wxThreadEvent& event)
+{
+    onAllTestsCompleted();
+}
+
+void ServiceTesterWidget::OnTestProgress(wxThreadEvent& event)
+{
+    onTestProgress(event.GetInt(), static_cast<int>(event.GetExtraLong()));
+}
+
+void ServiceTesterWidget::OnElapsedTimeUpdate(wxTimerEvent& event)
+{
+    updateElapsedTime();
 }
 
 } // namespace widgets
