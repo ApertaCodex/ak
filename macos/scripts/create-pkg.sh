@@ -138,9 +138,15 @@ setup_workspace() {
     PKG_ROOT="$WORK_DIR/pkg-root"
     TEMP_RESOURCES="$WORK_DIR/resources"
     
+    # For CLI components
     mkdir -p "$PKG_ROOT/usr/local/bin"
     mkdir -p "$PKG_ROOT/usr/local/share/ak"
     mkdir -p "$PKG_ROOT/usr/local/share/man/man1"
+    
+    # For GUI Application Bundle
+    mkdir -p "$PKG_ROOT/Applications"
+    
+    # For installer resources
     mkdir -p "$TEMP_RESOURCES"
     mkdir -p "$OUTPUT_DIR"
     
@@ -155,11 +161,70 @@ prepare_files() {
     cp "$BUILD_DIR/ak" "$PKG_ROOT/usr/local/bin/"
     chmod 755 "$PKG_ROOT/usr/local/bin/ak"
     
-    # Copy GUI executable if it exists
+    # Create an app bundle if GUI executable exists
     if [[ -f "$BUILD_DIR/ak-gui" ]]; then
-        cp "$BUILD_DIR/ak-gui" "$PKG_ROOT/usr/local/bin/"
-        chmod 755 "$PKG_ROOT/usr/local/bin/ak-gui"
-        log_info "GUI executable included"
+        # Create app bundle directory structure
+        local app_bundle="$PKG_ROOT/Applications/AK.app"
+        mkdir -p "$app_bundle/Contents/MacOS"
+        mkdir -p "$app_bundle/Contents/Resources"
+        
+        # Copy GUI executable
+        cp "$BUILD_DIR/ak-gui" "$app_bundle/Contents/MacOS/"
+        chmod 755 "$app_bundle/Contents/MacOS/ak-gui"
+        
+        # Create symbolic link for CLI in the app bundle
+        cp "$BUILD_DIR/ak" "$app_bundle/Contents/MacOS/"
+        chmod 755 "$app_bundle/Contents/MacOS/ak"
+        
+        # Create Info.plist
+        sed -e "s/{{VERSION}}/$VERSION/g" \
+            -e "s/{{BUNDLE_ID}}/$BUNDLE_ID/g" \
+            -e "s/{{BUILD_NUMBER}}/1/g" \
+            "$MACOS_DIR/app-bundle/Info.plist" > "$app_bundle/Contents/Info.plist"
+        
+        # Copy icons
+        if [[ -f "$PROJECT_ROOT/logo.png" ]]; then
+            # Create iconset
+            local temp_iconset="$WORK_DIR/ak.iconset"
+            mkdir -p "$temp_iconset"
+            
+            # Generate different sizes if sips is available
+            if command -v sips >/dev/null 2>&1; then
+                for size in 16 32 64 128 256 512 1024; do
+                    sips -z $size $size "$PROJECT_ROOT/logo.png" --out "$temp_iconset/icon_${size}x${size}.png" >/dev/null 2>&1 || true
+                    
+                    # Create @2x versions for retina
+                    if [[ $size -le 512 ]]; then
+                        local retina_size=$((size * 2))
+                        sips -z $retina_size $retina_size "$PROJECT_ROOT/logo.png" --out "$temp_iconset/icon_${size}x${size}@2x.png" >/dev/null 2>&1 || true
+                    fi
+                done
+                
+                # Convert to ICNS if iconutil is available
+                if command -v iconutil >/dev/null 2>&1; then
+                    iconutil -c icns "$temp_iconset" -o "$app_bundle/Contents/Resources/ak.icns" || true
+                else
+                    cp "$PROJECT_ROOT/logo.png" "$app_bundle/Contents/Resources/ak.png"
+                fi
+            else
+                # Just copy the PNG if sips is not available
+                cp "$PROJECT_ROOT/logo.png" "$app_bundle/Contents/Resources/ak.png"
+            fi
+            
+            # Clean up temporary iconset
+            rm -rf "$temp_iconset"
+        elif [[ -f "$PROJECT_ROOT/logo.svg" ]]; then
+            # Just copy the SVG if no PNG is available
+            cp "$PROJECT_ROOT/logo.svg" "$app_bundle/Contents/Resources/ak.svg"
+        fi
+        
+        # Copy launcher script
+        sed -e "s/{{VERSION}}/$VERSION/g" \
+            -e "s/{{BUNDLE_ID}}/$BUNDLE_ID/g" \
+            "$MACOS_DIR/app-bundle/launcher.sh" > "$app_bundle/Contents/MacOS/launcher"
+        chmod +x "$app_bundle/Contents/MacOS/launcher"
+        
+        log_info "GUI application bundle created in Applications folder"
     fi
     
     # Copy man page if it exists
@@ -214,16 +279,17 @@ create_component_packages() {
     log_success "CLI component package created"
     
     # Create GUI component package (if GUI exists)
-    if [[ -f "$PKG_ROOT/usr/local/bin/ak-gui" ]]; then
+    if [[ -d "$PKG_ROOT/Applications/AK.app" ]]; then
         # Create separate root for GUI
         local gui_root="$WORK_DIR/gui-root"
-        mkdir -p "$gui_root/usr/local/bin"
-        cp "$PKG_ROOT/usr/local/bin/ak-gui" "$gui_root/usr/local/bin/"
+        mkdir -p "$gui_root/Applications"
+        cp -R "$PKG_ROOT/Applications/AK.app" "$gui_root/Applications/"
         
         pkgbuild \
             --root "$gui_root" \
             --identifier "${BUNDLE_ID}.gui" \
             --version "$VERSION" \
+            --install-location "/" \
             "$gui_pkg"
         
         log_success "GUI component package created"

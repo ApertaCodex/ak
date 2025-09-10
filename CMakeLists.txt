@@ -315,6 +315,29 @@ if(NOT WIN32)
     )
 endif()
 
+# Install desktop file and icons (Linux only)
+if(UNIX AND NOT APPLE AND BUILD_GUI)
+    # Install desktop file
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ak.desktop
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+    )
+    
+    # Install SVG icon
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/logo.svg
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps
+        RENAME ak.svg
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+    )
+    
+    # Install PNG icon
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/logo.png
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps
+        RENAME ak.png
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+    )
+endif()
+
 # ============================================================================
 # Version Management and Publishing
 # ============================================================================
