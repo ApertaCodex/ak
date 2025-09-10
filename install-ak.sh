@@ -1,8 +1,14 @@
 #!/bin/bash
 # AK API Key Manager - Quick Install Script
 # Alternative to the problematic Launchpad PPA
-
 set -e
+
+# Function to handle apt update errors
+apt_update() {
+    # Run apt update and continue even if some repositories fail
+    sudo apt update || true
+}
+
 
 echo "🚀 Installing AK API Key Manager..."
 echo "📍 Using GitHub Pages repository (recommended)"
@@ -26,7 +32,7 @@ echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertac
 
 # Update package list
 echo "🔄 Updating package list..."
-sudo apt update
+apt_update
 
 # Check Qt6 version compatibility
 echo "🔍 Checking Qt6 version requirements..."
@@ -115,13 +121,8 @@ if [[ -n "$QT6_VERSION" ]]; then
             echo ""
             echo "   3. Continue anyway (will likely fail at runtime)"
             echo ""
-            read -p "❓ Continue with binary installation anyway? (y/N): " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                echo "❌ Installation cancelled by user"
-                echo "💡 Consider building from source for Qt6 $QT6_VERSION compatibility"
-                exit 1
-            fi
+            echo "❓ Auto-continuing with installation (non-interactive mode)"
+            # Non-interactive mode - continue anyway
         fi
     else
         echo "⚠️  Warning: Qt6 version $QT6_VERSION appears to be Qt5 or older"
