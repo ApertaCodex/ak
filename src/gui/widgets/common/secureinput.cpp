@@ -1,15 +1,20 @@
 #ifdef BUILD_GUI
 
 #include "gui/widgets/common/secureinput.hpp"
-#include <QApplication>
-#include <QStyle>
 
 namespace ak {
 namespace gui {
 namespace widgets {
 
-SecureInputWidget::SecureInputWidget(QWidget *parent)
-    : QWidget(parent), lineEdit(nullptr), toggleButton(nullptr), layout(nullptr),
+// Event table implementation
+wxBEGIN_EVENT_TABLE(SecureInputWidget, wxPanel)
+    EVT_BUTTON(wxID_ANY, SecureInputWidget::OnToggleVisibility)
+    EVT_TEXT(wxID_ANY, SecureInputWidget::OnTextChanged)
+wxEND_EVENT_TABLE()
+
+SecureInputWidget::SecureInputWidget(wxWindow *parent)
+    : wxPanel(parent, wxID_ANY), 
+      lineEdit(nullptr), toggleButton(nullptr), layout(nullptr),
       masked(true), valid(true)
 {
     setupUi();
@@ -19,112 +24,126 @@ SecureInputWidget::SecureInputWidget(QWidget *parent)
 
 void SecureInputWidget::setupUi()
 {
-    layout = new QHBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(2);
+    layout = new wxBoxSizer(wxHORIZONTAL);
     
-    lineEdit = new QLineEdit(this);
-    lineEdit->setEchoMode(QLineEdit::Password);
+    lineEdit = new wxTextCtrl(this, wxID_ANY, wxEmptyString, 
+                              wxDefaultPosition, wxDefaultSize, 
+                              wxTE_PASSWORD);
     
-    toggleButton = new QPushButton(this);
-    toggleButton->setFixedSize(24, 24);
-    toggleButton->setFlat(true);
-    toggleButton->setCursor(Qt::PointingHandCursor);
-    toggleButton->setToolTip("Toggle visibility");
+    toggleButton = new wxButton(this, wxID_ANY, "👁", 
+                                wxDefaultPosition, wxSize(24, 24),
+                                wxBORDER_NONE);
+    toggleButton->SetToolTip("Toggle visibility");
     
-    layout->addWidget(lineEdit);
-    layout->addWidget(toggleButton);
+    layout->Add(lineEdit, 1, wxEXPAND | wxRIGHT, 2);
+    layout->Add(toggleButton, 0, wxALIGN_CENTER_VERTICAL);
     
-    // Connect signals
-    connect(lineEdit, &QLineEdit::textChanged, this, &SecureInputWidget::onTextChanged);
-    connect(lineEdit, &QLineEdit::editingFinished, this, &SecureInputWidget::editingFinished);
-    connect(toggleButton, &QPushButton::clicked, this, &SecureInputWidget::toggleVisibility);
+    SetSizer(layout);
 }
 
-void SecureInputWidget::setText(const QString &text)
+void SecureInputWidget::SetText(const wxString &text)
 {
     originalText = text;
-    lineEdit->setText(text);
+    lineEdit->SetValue(text);
 }
 
-QString SecureInputWidget::text() const
+wxString SecureInputWidget::GetText() const
 {
-    return lineEdit->text();
+    return lineEdit->GetValue();
 }
 
-void SecureInputWidget::setPlaceholderText(const QString &text)
+void SecureInputWidget::SetPlaceholderText(const wxString &text)
 {
-    lineEdit->setPlaceholderText(text);
+    // wxWidgets doesn't have built-in placeholder, but we could implement it
+    // with event handling if needed. For now, just store the value.
+    lineEdit->SetHint(text);
 }
 
-void SecureInputWidget::setReadOnly(bool readOnly)
+void SecureInputWidget::SetReadOnly(bool readOnly)
 {
-    lineEdit->setReadOnly(readOnly);
-    toggleButton->setEnabled(!readOnly);
+    lineEdit->SetEditable(!readOnly);
+    toggleButton->Enable(!readOnly);
 }
 
-bool SecureInputWidget::isReadOnly() const
+bool SecureInputWidget::IsReadOnly() const
 {
-    return lineEdit->isReadOnly();
+    return !lineEdit->IsEditable();
 }
 
-void SecureInputWidget::setMasked(bool masked)
+void SecureInputWidget::SetMasked(bool masked)
 {
     this->masked = masked;
     updateVisibility();
 }
 
-bool SecureInputWidget::isMasked() const
+bool SecureInputWidget::IsMasked() const
 {
     return masked;
 }
 
-void SecureInputWidget::setValid(bool valid)
+void SecureInputWidget::SetValid(bool valid)
 {
     this->valid = valid;
     updateStyleSheet();
 }
 
-bool SecureInputWidget::isValid() const
+bool SecureInputWidget::IsValid() const
 {
     return valid;
 }
 
-void SecureInputWidget::toggleVisibility()
+void SecureInputWidget::OnToggleVisibility(wxCommandEvent& event)
 {
-    setMasked(!masked);
+    SetMasked(!masked);
+    
+    // Allow event to propagate to parent handlers
+    event.Skip();
 }
 
-void SecureInputWidget::onTextChanged(const QString &text)
+void SecureInputWidget::OnTextChanged(wxCommandEvent& event)
 {
-    originalText = text;
-    emit textChanged(text);
+    originalText = lineEdit->GetValue();
+    
+    // Create and send a custom event
+    wxCommandEvent textEvent(wxEVT_COMMAND_TEXT_UPDATED, GetId());
+    textEvent.SetString(originalText);
+    GetEventHandler()->ProcessEvent(textEvent);
+    
+    // Allow event to propagate to parent handlers
+    event.Skip();
 }
 
 void SecureInputWidget::updateVisibility()
 {
     if (masked) {
-        lineEdit->setEchoMode(QLineEdit::Password);
-        toggleButton->setText("👁");
-        toggleButton->setToolTip("Show value");
+        // Set password mode
+        long style = lineEdit->GetWindowStyle();
+        lineEdit->SetWindowStyle(style | wxTE_PASSWORD);
+        toggleButton->SetLabel("👁");
+        toggleButton->SetToolTip("Show value");
     } else {
-        lineEdit->setEchoMode(QLineEdit::Normal);
-        toggleButton->setText("🙈");
-        toggleButton->setToolTip("Hide value");
+        // Remove password mode
+        long style = lineEdit->GetWindowStyle();
+        lineEdit->SetWindowStyle(style & ~wxTE_PASSWORD);
+        toggleButton->SetLabel("🙈");
+        toggleButton->SetToolTip("Hide value");
     }
+    
+    // Need to refresh to apply style changes
+    lineEdit->Refresh();
 }
 
 void SecureInputWidget::updateStyleSheet()
 {
-    QString style = "QLineEdit { padding: 4px; border: 1px solid %1; border-radius: 3px; }";
-    if (!valid) {
-        style = style.arg("#ff6b6b");
-        lineEdit->setToolTip("Invalid value");
+    if (valid) {
+        lineEdit->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+        lineEdit->SetToolTip("");
     } else {
-        style = style.arg("#ccc");
-        lineEdit->setToolTip("");
+        lineEdit->SetBackgroundColour(wxColour(255, 107, 107)); // #ff6b6b
+        lineEdit->SetToolTip("Invalid value");
     }
-    lineEdit->setStyleSheet(style);
+    
+    lineEdit->Refresh();
 }
 
 } // namespace widgets

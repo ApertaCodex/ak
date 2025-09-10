@@ -4,23 +4,17 @@
 
 #include "core/config.hpp"
 #include "services/services.hpp"
-#include <QWidget>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QListWidget>
-#include <QListWidgetItem>
-#include <QPushButton>
-#include <QLabel>
-#include <QProgressBar>
-#include <QTextEdit>
-#include <QTimer>
-#include <QThread>
-#include <QMutex>
-#include <QString>
-#include <QStringList>
-#include <QIcon>
-#include <QDateTime>
+#include <wx/wx.h>
+#include <wx/listctrl.h>
+#include <wx/gauge.h>
+#include <wx/textctrl.h>
+#include <wx/timer.h>
+#include <wx/thread.h>
+#include <wx/datetime.h>
+#include <wx/splitter.h>
 #include <chrono>
+#include <mutex>
+#include <vector>
 
 namespace ak {
 namespace gui {
@@ -29,10 +23,9 @@ namespace widgets {
 // Forward declarations
 class ServiceTestWorker;
 
-// Custom list item for service display
-class ServiceListItem : public QListWidgetItem
+// Custom list item data for service display
+struct ServiceListItemData
 {
-public:
     enum TestStatus {
         NotTested,
         Testing,
@@ -40,90 +33,80 @@ public:
         Failed,
         Skipped
     };
-    
-    explicit ServiceListItem(const QString &serviceName, QListWidget *parent = nullptr);
-    
-    void setTestStatus(TestStatus status);
-    TestStatus getTestStatus() const;
-    
-    void setResponseTime(std::chrono::milliseconds duration);
-    void setErrorMessage(const QString &error);
-    
-    QString getServiceName() const;
-    QString getErrorMessage() const;
-    std::chrono::milliseconds getResponseTime() const;
 
-private:
-    void updateDisplay();
-    QIcon getStatusIcon(TestStatus status) const;
-public:
-    QString getStatusText(TestStatus status) const;
-    
-private:
-    QString serviceName;
+    wxString serviceName;
     TestStatus status;
     std::chrono::milliseconds responseTime;
-    QString errorMessage;
+    wxString errorMessage;
+
+    ServiceListItemData(const wxString& name)
+        : serviceName(name), status(NotTested), responseTime(0) {}
+
+    void setTestStatus(TestStatus status);
+    TestStatus getTestStatus() const { return status; }
+
+    void setResponseTime(std::chrono::milliseconds duration);
+    void setErrorMessage(const wxString& error);
+
+    wxString getServiceName() const { return serviceName; }
+    wxString getErrorMessage() const { return errorMessage; }
+    std::chrono::milliseconds getResponseTime() const { return responseTime; }
+
+    wxString getDisplayText() const;
+    wxString getStatusText(TestStatus status) const;
+    wxString getToolTipText() const;
 };
 
 // Worker thread for service testing
-class ServiceTestWorker : public QObject
+class ServiceTestWorker : public wxThread
 {
-    Q_OBJECT
-
 public:
-    explicit ServiceTestWorker(const core::Config& config, QObject *parent = nullptr);
-    
-    void setServices(const QStringList &services);
+    explicit ServiceTestWorker(const core::Config& config);
+
+    void setServices(const std::vector<wxString>& services);
     void setFailFast(bool failFast);
 
-public slots:
-    void testAllServices();
-    void testSingleService(const QString &serviceName);
+    // Thread entry point
+    virtual ExitCode Entry() override;
 
-signals:
-    void serviceTestStarted(const QString &serviceName);
-    void serviceTestCompleted(const QString &serviceName, bool success, 
-                             std::chrono::milliseconds duration, const QString &error);
-    void allTestsCompleted();
-    void progress(int current, int total);
+    // Event handling
+    void OnServiceTestStarted(const wxString& serviceName);
+    void OnServiceTestCompleted(const wxString& serviceName, bool success,
+                               std::chrono::milliseconds duration, const wxString& error);
+    void OnAllTestsCompleted();
+    void OnProgress(int current, int total);
 
 private:
-    void testService(const QString &serviceName);
-    
+    void testService(const wxString& serviceName);
+
     const core::Config& config;
-    QStringList servicesToTest;
+    std::vector<wxString> servicesToTest;
     bool failFast;
-    QMutex mutex;
+    std::mutex mutex;
 };
 
 // Service Tester Widget
-class ServiceTesterWidget : public QWidget
+class ServiceTesterWidget : public wxPanel
 {
-    Q_OBJECT
-
 public:
-    explicit ServiceTesterWidget(const core::Config& config, QWidget *parent = nullptr);
+    explicit ServiceTesterWidget(const core::Config& config, wxWindow* parent = nullptr);
     ~ServiceTesterWidget();
-    
+
     void refreshServices();
 
-signals:
-    void statusMessage(const QString &message);
-
-private slots:
-    void testAllServices();
-    void testSelectedService();
-    void stopTesting();
-    void clearResults();
-    void exportResults();
-    void onServiceSelectionChanged();
-    void onServiceTestStarted(const QString &serviceName);
-    void onServiceTestCompleted(const QString &serviceName, bool success,
-                               std::chrono::milliseconds duration, const QString &error);
-    void onAllTestsCompleted();
-    void onTestProgress(int current, int total);
-    void updateElapsedTime();
+    // Event handlers
+    void OnTestAll(wxCommandEvent& event);
+    void OnTestSelected(wxCommandEvent& event);
+    void OnStop(wxCommandEvent& event);
+    void OnClear(wxCommandEvent& event);
+    void OnRefresh(wxCommandEvent& event);
+    void OnExport(wxCommandEvent& event);
+    void OnServiceSelectionChanged(wxListEvent& event);
+    void OnServiceTestStarted(wxThreadEvent& event);
+    void OnServiceTestCompleted(wxThreadEvent& event);
+    void OnAllTestsCompleted(wxThreadEvent& event);
+    void OnTestProgress(wxThreadEvent& event);
+    void OnElapsedTimeUpdate(wxTimerEvent& event);
 
 private:
     void setupUi();
@@ -131,59 +114,61 @@ private:
     void setupControls();
     void setupResultsPanel();
     void loadAvailableServices();
-    void updateServiceItem(const QString &serviceName, ServiceListItem::TestStatus status,
+    void updateServiceItem(long itemIndex, ServiceListItemData::TestStatus status,
                           std::chrono::milliseconds duration = std::chrono::milliseconds(0),
-                          const QString &error = QString());
+                          const wxString& error = wxEmptyString);
     void resetAllResults();
     void startTestSession();
     void endTestSession();
     void updateStatusBar();
-    void showError(const QString &message);
-    void showSuccess(const QString &message);
-    
+    void showError(const wxString& message);
+    void showSuccess(const wxString& message);
+
     // Configuration and data
     const core::Config& config;
-    QStringList availableServices;
-    QStringList configuredServices;
-    
+    std::vector<wxString> availableServices;
+    std::vector<wxString> configuredServices;
+    std::vector<ServiceListItemData> serviceItems;
+
     // UI components
-    QVBoxLayout *mainLayout;
-    QHBoxLayout *controlsLayout;
-    QHBoxLayout *topLayout;
-    
+    wxBoxSizer* mainSizer;
+    wxSplitterWindow* splitter;
+
     // Service list
-    QListWidget *serviceList;
-    QLabel *serviceListLabel;
-    
+    wxListCtrl* serviceList;
+    wxStaticText* serviceListLabel;
+
     // Controls
-    QPushButton *testAllButton;
-    QPushButton *testSelectedButton;
-    QPushButton *stopButton;
-    QPushButton *clearButton;
-    QPushButton *refreshButton;
-    QPushButton *exportButton;
-    
+    wxButton* testAllButton;
+    wxButton* testSelectedButton;
+    wxButton* stopButton;
+    wxButton* clearButton;
+    wxButton* refreshButton;
+    wxButton* exportButton;
+
     // Progress and status
-    QProgressBar *progressBar;
-    QLabel *progressLabel;
-    QLabel *elapsedTimeLabel;
-    QLabel *statusLabel;
-    
+    wxGauge* progressBar;
+    wxStaticText* progressLabel;
+    wxStaticText* elapsedTimeLabel;
+    wxStaticText* statusLabel;
+
     // Results panel
-    QTextEdit *resultsText;
-    
+    wxTextCtrl* resultsText;
+
     // Testing infrastructure
-    QThread *workerThread;
-    ServiceTestWorker *worker;
-    QTimer *elapsedTimer;
-    
+    ServiceTestWorker* worker;
+    wxTimer* elapsedTimer;
+
     // Test session state
     bool testingInProgress;
-    QDateTime testStartTime;
+    wxDateTime testStartTime;
     int totalTests;
     int completedTests;
     int successfulTests;
     int failedTests;
+
+    // Event table
+    DECLARE_EVENT_TABLE()
 };
 
 } // namespace widgets

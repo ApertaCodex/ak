@@ -4,457 +4,663 @@
 #include "gui/widgets/common/dialogs.hpp"
 #include "storage/vault.hpp"
 #include "core/config.hpp"
-#include <QApplication>
-#include <QInputDialog>
-#include <QMessageBox>
-#include <QSplitter>
-#include <QFileDialog>
-#include <QStandardPaths>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
-#include <QTextStream>
-#include <QRegularExpression>
-#include <QTimer>
+#include <wx/wx.h>
+#include <wx/splitter.h>
+#include <wx/filedlg.h>
+#include <wx/msgdlg.h>
+#include <wx/statbox.h>
+#include <wx/regex.h>
+#include <wx/timer.h>
+#include <wx/textdlg.h>
 #include <fstream>
 #include <algorithm>
+#include <filesystem>
 
 namespace ak {
 namespace gui {
 namespace widgets {
 
-// ProfileListItem Implementation
-ProfileListItem::ProfileListItem(const QString &profileName, int keyCount, QListWidget *parent)
-    : QListWidgetItem(parent), profileName(profileName), keyCount(keyCount)
-{
-    updateDisplay();
-}
-
-QString ProfileListItem::getProfileName() const
-{
-    return profileName;
-}
-
-int ProfileListItem::getKeyCount() const
-{
-    return keyCount;
-}
-
-void ProfileListItem::setKeyCount(int count)
-{
-    keyCount = count;
-    updateDisplay();
-}
-
-void ProfileListItem::updateDisplay()
-{
-    QString displayText = QString("%1 (%2 keys)").arg(profileName).arg(keyCount);
-    setText(displayText);
-
-    setIcon(QApplication::style()->standardIcon(QStyle::SP_FileIcon));
-
-    QString tooltip = QString("Profile: %1\nKeys: %2").arg(profileName).arg(keyCount);
-    setToolTip(tooltip);
-}
+// Event table for ProfileManagerWidget
+wxBEGIN_EVENT_TABLE(ProfileManagerWidget, wxPanel)
+    EVT_BUTTON(ID_CREATE_PROFILE, ProfileManagerWidget::OnCreateProfile)
+    EVT_BUTTON(ID_DELETE_PROFILE, ProfileManagerWidget::OnDeleteProfile)
+    EVT_BUTTON(ID_RENAME_PROFILE, ProfileManagerWidget::OnRenameProfile)
+    EVT_BUTTON(ID_DUPLICATE_PROFILE, ProfileManagerWidget::OnDuplicateProfile)
+    EVT_BUTTON(ID_IMPORT_PROFILE, ProfileManagerWidget::OnImportProfile)
+    EVT_BUTTON(ID_EXPORT_PROFILE, ProfileManagerWidget::OnExportProfile)
+    EVT_BUTTON(ID_REFRESH_PROFILES, ProfileManagerWidget::OnRefresh)
+    EVT_LISTBOX(ID_PROFILE_LIST, ProfileManagerWidget::OnProfileSelectionChanged)
+    EVT_LISTBOX_DCLICK(ID_PROFILE_LIST, ProfileManagerWidget::OnProfileDoubleClicked)
+wxEND_EVENT_TABLE()
 
 // ProfileManagerWidget Implementation
-ProfileManagerWidget::ProfileManagerWidget(const core::Config& config, QWidget *parent)
-    : QWidget(parent), config(config), mainLayout(nullptr), controlsLayout(nullptr),
+ProfileManagerWidget::ProfileManagerWidget(const core::Config& config, wxWindow *parent)
+    : wxPanel(parent, wxID_ANY), config(config), mainSizer(nullptr), controlsSizer(nullptr),
       profileList(nullptr), profileListLabel(nullptr), createButton(nullptr),
-      deleteButton(nullptr), renameButton(nullptr), importButton(nullptr),
-      exportButton(nullptr), refreshButton(nullptr), detailsGroup(nullptr),
-      profileNameLabel(nullptr), keyCountLabel(nullptr), keysText(nullptr),
-      statusLabel(nullptr)
+      deleteButton(nullptr), renameButton(nullptr), duplicateButton(nullptr),
+      importButton(nullptr), exportButton(nullptr), refreshButton(nullptr),
+      detailsGroup(nullptr), profileNameLabel(nullptr), keyCountLabel(nullptr),
+      keysText(nullptr), statusLabel(nullptr)
 {
-    setupUi();
-    loadProfiles();
+    SetupUi();
+    LoadProfiles();
 }
 
-void ProfileManagerWidget::setupUi()
+ProfileManagerWidget::~ProfileManagerWidget()
 {
-    mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
-    mainLayout->setSpacing(10);
+    // wxWidgets handles cleanup of child widgets
+}
+
+void ProfileManagerWidget::SetupUi()
+{
+    mainSizer = new wxBoxSizer(wxVERTICAL);
+    SetSizer(mainSizer);
 
     // Create splitter for main layout
-    QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
+    wxSplitterWindow *splitter = new wxSplitterWindow(this, wxID_ANY,
+                                                    wxDefaultPosition, wxDefaultSize,
+                                                    wxSP_3D | wxSP_LIVE_UPDATE);
+    splitter->SetMinimumPaneSize(200); // Prevent panel from disappearing
 
     // Left panel - profile list and controls
-    QWidget *leftPanel = new QWidget();
-    QVBoxLayout *leftLayout = new QVBoxLayout(leftPanel);
+    wxPanel *leftPanel = new wxPanel(splitter, wxID_ANY);
+    wxBoxSizer *leftSizer = new wxBoxSizer(wxVERTICAL);
+    leftPanel->SetSizer(leftSizer);
 
-    setupProfileList();
-    setupControls();
+    SetupProfileList();
+    SetupControls();
 
-    leftLayout->addWidget(profileListLabel);
-    leftLayout->addWidget(profileList);
-    leftLayout->addLayout(controlsLayout);
+    leftSizer->Add(profileListLabel, 0, wxEXPAND | wxALL, 5);
+    leftSizer->Add(profileList, 1, wxEXPAND | wxALL, 5);
+    leftSizer->Add(controlsSizer, 0, wxEXPAND | wxALL, 5);
 
     // Right panel - profile details
-    QWidget *rightPanel = new QWidget();
-    setupProfileDetails();
+    wxPanel *rightPanel = new wxPanel(splitter, wxID_ANY);
+    wxBoxSizer *rightSizer = new wxBoxSizer(wxVERTICAL);
+    rightPanel->SetSizer(rightSizer);
 
-    splitter->addWidget(leftPanel);
-    splitter->addWidget(rightPanel);
-    splitter->setSizes({300, 500});
+    SetupProfileDetails();
+    rightSizer->Add(detailsGroup, 1, wxEXPAND | wxALL, 5);
 
-    mainLayout->addWidget(splitter);
+    // Add panels to splitter
+    splitter->SplitVertically(leftPanel, rightPanel);
+    splitter->SetSashPosition(300); // Initial position of splitter
 
-    // Status bar
-    statusLabel = new QLabel("Ready", this);
-    statusLabel->setStyleSheet("color: #666; font-size: 12px;");
-    mainLayout->addWidget(statusLabel);
+    // Add splitter to main layout
+    mainSizer->Add(splitter, 1, wxEXPAND | wxALL, 5);
+
+    // Status label
+    statusLabel = new wxStaticText(this, wxID_ANY, "Ready");
+    statusLabel->SetForegroundColour(wxColour(100, 100, 100));
+    wxFont smallFont = statusLabel->GetFont();
+    smallFont.SetPointSize(smallFont.GetPointSize() - 1);
+    statusLabel->SetFont(smallFont);
+    mainSizer->Add(statusLabel, 0, wxALL, 5);
 }
 
-void ProfileManagerWidget::setupProfileList()
+void ProfileManagerWidget::SetupProfileList()
 {
-    profileListLabel = new QLabel("Available Profiles:", this);
-    profileListLabel->setStyleSheet("font-weight: bold; font-size: 14px;");
+    profileListLabel = new wxStaticText(this, wxID_ANY, "Available Profiles:");
+    wxFont boldFont = profileListLabel->GetFont();
+    boldFont.SetWeight(wxFONTWEIGHT_BOLD);
+    profileListLabel->SetFont(boldFont);
 
-    profileList = new QListWidget(this);
-    profileList->setSelectionMode(QAbstractItemView::SingleSelection);
-    profileList->setSortingEnabled(true);
-
-    connect(profileList, &QListWidget::itemSelectionChanged,
-            this, &ProfileManagerWidget::onProfileSelectionChanged);
-    connect(profileList, &QListWidget::itemDoubleClicked,
-            this, &ProfileManagerWidget::onProfileDoubleClicked);
+    profileList = new wxListBox(this, ID_PROFILE_LIST, wxDefaultPosition, wxDefaultSize, 0, NULL,
+                               wxLB_SINGLE | wxLB_NEEDED_SB);
 }
 
-void ProfileManagerWidget::setupControls()
+void ProfileManagerWidget::SetupControls()
 {
-    controlsLayout = new QHBoxLayout();
+    controlsSizer = new wxBoxSizer(wxVERTICAL);
 
-    createButton = new QPushButton("Create", this);
-    createButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileIcon));
-    connect(createButton, &QPushButton::clicked, this, &ProfileManagerWidget::createProfile);
+    // Create main buttons row
+    wxBoxSizer *mainButtonsSizer = new wxBoxSizer(wxHORIZONTAL);
 
-    deleteButton = new QPushButton("Delete", this);
-    deleteButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_TrashIcon));
-    deleteButton->setEnabled(false);
-    connect(deleteButton, &QPushButton::clicked, this, &ProfileManagerWidget::deleteProfile);
+    // Create action buttons row
+    wxBoxSizer *actionButtonsSizer = new wxBoxSizer(wxHORIZONTAL);
 
-    renameButton = new QPushButton("Rename", this);
-    renameButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileDialogDetailedView));
-    renameButton->setEnabled(false);
-    connect(renameButton, &QPushButton::clicked, this, &ProfileManagerWidget::renameProfile);
+    // Create buttons
+    createButton = new wxButton(this, ID_CREATE_PROFILE, "Create");
+    deleteButton = new wxButton(this, ID_DELETE_PROFILE, "Delete");
+    renameButton = new wxButton(this, ID_RENAME_PROFILE, "Rename");
+    duplicateButton = new wxButton(this, ID_DUPLICATE_PROFILE, "Duplicate");
+    importButton = new wxButton(this, ID_IMPORT_PROFILE, "Import");
+    exportButton = new wxButton(this, ID_EXPORT_PROFILE, "Export");
+    refreshButton = new wxButton(this, ID_REFRESH_PROFILES, "Refresh");
 
-    duplicateButton = new QPushButton("Duplicate", this);
-    duplicateButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileDialogNewFolder));
-    duplicateButton->setEnabled(false);
-    connect(duplicateButton, &QPushButton::clicked, this, &ProfileManagerWidget::duplicateProfile);
+    // Initially disable buttons that require selection
+    deleteButton->Disable();
+    renameButton->Disable();
+    duplicateButton->Disable();
+    exportButton->Disable();
 
-    importButton = new QPushButton("Import", this);
-    importButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowDown));
-    connect(importButton, &QPushButton::clicked, this, &ProfileManagerWidget::importProfile);
+    // Add buttons to layout
+    mainButtonsSizer->Add(createButton, 1, wxALL, 2);
+    mainButtonsSizer->Add(duplicateButton, 1, wxALL, 2);
+    mainButtonsSizer->Add(renameButton, 1, wxALL, 2);
+    mainButtonsSizer->Add(deleteButton, 1, wxALL, 2);
 
-    exportButton = new QPushButton("Export", this);
-    exportButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowUp));
-    exportButton->setEnabled(false);
-    connect(exportButton, &QPushButton::clicked, this, &ProfileManagerWidget::exportProfile);
+    actionButtonsSizer->Add(importButton, 1, wxALL, 2);
+    actionButtonsSizer->Add(exportButton, 1, wxALL, 2);
+    actionButtonsSizer->Add(refreshButton, 1, wxALL, 2);
 
-    refreshButton = new QPushButton("Refresh", this);
-    refreshButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_BrowserReload));
-    connect(refreshButton, &QPushButton::clicked, this, &ProfileManagerWidget::refreshProfiles);
-
-    // Layout buttons
-    QVBoxLayout *buttonsLayout = new QVBoxLayout();
-
-    // Reorganize buttons into logical groups
-    QHBoxLayout *mainButtons = new QHBoxLayout();
-    mainButtons->addWidget(createButton);
-    mainButtons->addWidget(duplicateButton);
-    mainButtons->addWidget(renameButton);
-    mainButtons->addWidget(deleteButton);
-
-    QHBoxLayout *actionButtons = new QHBoxLayout();
-    actionButtons->addWidget(importButton);
-    actionButtons->addWidget(exportButton);
-    actionButtons->addWidget(refreshButton);
-
-    buttonsLayout->addLayout(mainButtons);
-    buttonsLayout->addLayout(actionButtons);
-
-    controlsLayout->addLayout(buttonsLayout);
+    // Add button rows to main controls sizer
+    controlsSizer->Add(mainButtonsSizer, 0, wxEXPAND);
+    controlsSizer->Add(actionButtonsSizer, 0, wxEXPAND);
 }
 
-void ProfileManagerWidget::setupProfileDetails()
+void ProfileManagerWidget::SetupProfileDetails()
 {
-    QVBoxLayout *detailsLayout = new QVBoxLayout();
+    wxPanel *detailsPanel = new wxPanel(this, wxID_ANY);
+    detailsGroup = new wxStaticBoxSizer(wxVERTICAL, detailsPanel, "Profile Details");
 
-    detailsGroup = new QGroupBox("Profile Details", this);
-    QVBoxLayout *groupLayout = new QVBoxLayout(detailsGroup);
+    // Profile name and key count
+    profileNameLabel = new wxStaticText(detailsPanel, wxID_ANY, "No profile selected");
+    wxFont boldFont = profileNameLabel->GetFont();
+    boldFont.SetWeight(wxFONTWEIGHT_BOLD);
+    profileNameLabel->SetFont(boldFont);
 
-    profileNameLabel = new QLabel("No profile selected", this);
-    profileNameLabel->setStyleSheet("font-weight: bold; font-size: 14px;");
+    keyCountLabel = new wxStaticText(detailsPanel, wxID_ANY, "");
 
-    keyCountLabel = new QLabel("", this);
-    keyCountLabel->setStyleSheet("color: #666;");
+    // Keys in profile
+    keysText = new wxTextCtrl(detailsPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+                            wxTE_MULTILINE | wxTE_READONLY | wxTE_RICH);
 
-    keysText = new QTextEdit(this);
-    keysText->setReadOnly(true);
-    keysText->setFont(QFont("Consolas", 10));
-    keysText->setPlainText("Select a profile to view its keys...");
-
-    groupLayout->addWidget(profileNameLabel);
-    groupLayout->addWidget(keyCountLabel);
-    groupLayout->addWidget(keysText);
-
-    detailsLayout->addWidget(detailsGroup);
+    // Add components to layout
+    detailsGroup->Add(profileNameLabel, 0, wxEXPAND | wxALL, 5);
+    detailsGroup->Add(keyCountLabel, 0, wxEXPAND | wxALL, 5);
+    detailsGroup->Add(new wxStaticText(detailsPanel, wxID_ANY, "Keys in profile:"), 0, wxEXPAND | wxALL, 5);
+    detailsGroup->Add(keysText, 1, wxEXPAND | wxALL, 5);
 }
 
-void ProfileManagerWidget::loadProfiles()
+void ProfileManagerWidget::LoadProfiles()
 {
     try {
+        // Clear existing data
+        profileList->Clear();
         availableProfiles.clear();
-        auto profiles = ak::storage::listProfiles(config);
+        profileKeyCounts.clear();
+
+        // Get profiles from storage
+        auto profiles = storage::listProfiles(config);
+
+        // Sort profiles alphabetically
+        std::sort(profiles.begin(), profiles.end());
+
+        // Add profiles to list
         for (const auto& profile : profiles) {
-            availableProfiles << QString::fromStdString(profile);
+            wxString profileName = wxString::FromUTF8(profile);
+            availableProfiles.push_back(profileName);
+
+            // Get key count
+            auto keys = storage::readProfile(config, profile);
+            int keyCount = static_cast<int>(keys.size());
+            profileKeyCounts[profileName] = keyCount;
+
+            // Add to list with formatted display
+            wxString displayText = wxString::Format("%s (%d keys)", profileName, keyCount);
+            profileList->Append(displayText);
         }
 
-        // Clear and populate list
-        profileList->clear();
+        // Update status
+        statusLabel->SetLabel(wxString::Format("Loaded %zu profiles", profiles.size()));
 
-        for (const QString& profileName : availableProfiles) {
-            // Get key count for this profile
-            auto keys = ak::storage::readProfile(config, profileName.toStdString());
-            int keyCount = keys.size();
+        // Update profile list label
+        profileListLabel->SetLabel(wxString::Format("Available Profiles (%zu):", profiles.size()));
 
-            new ProfileListItem(profileName, keyCount, profileList);
-        }
-
-        profileListLabel->setText(QString("Available Profiles (%1):").arg(availableProfiles.size()));
-
-        // Clear details if no profiles
-        if (availableProfiles.isEmpty()) {
-            updateProfileDetails("");
-        }
+        // Update UI state
+        OnProfileSelectionChanged(wxCommandEvent());
 
     } catch (const std::exception& e) {
-        showError(QString("Failed to load profiles: %1").arg(e.what()));
+        ShowError(wxString::Format("Failed to load profiles: %s", e.what()));
     }
 }
 
-void ProfileManagerWidget::refreshProfiles()
+void ProfileManagerWidget::RefreshProfiles()
 {
-    loadProfiles();
-    showSuccess("Profiles refreshed");
+    wxString currentSelection;
+    int selectedIndex = profileList->GetSelection();
+    if (selectedIndex != wxNOT_FOUND) {
+        currentSelection = availableProfiles[selectedIndex];
+    }
+
+    LoadProfiles();
+
+    // Restore selection if possible
+    if (!currentSelection.IsEmpty()) {
+        for (size_t i = 0; i < availableProfiles.size(); ++i) {
+            if (availableProfiles[i] == currentSelection) {
+                profileList->SetSelection(i);
+                UpdateProfileDetails(currentSelection);
+                break;
+            }
+        }
+    }
 }
 
-void ProfileManagerWidget::createProfile()
+void ProfileManagerWidget::UpdateProfileDetails(const wxString &profileName)
 {
-    ProfileCreateDialog dialog(this);
-    if (dialog.exec() == QDialog::Accepted) {
-        QString profileName = dialog.getProfileName();
+    currentProfile = profileName;
+
+    if (profileName.IsEmpty()) {
+        profileNameLabel->SetLabel("No profile selected");
+        keyCountLabel->SetLabel("");
+        keysText->Clear();
+        keysText->AppendText("Select a profile to view its keys...");
+        return;
+    }
+
+    profileNameLabel->SetLabel(wxString::Format("Profile: %s", profileName));
+
+    try {
+        auto keys = storage::readProfile(config, profileName.ToStdString());
+        keyCountLabel->SetLabel(wxString::Format("%zu keys", keys.size()));
+
+        ShowProfileKeys(profileName);
+
+    } catch (const std::exception& e) {
+        keyCountLabel->SetLabel("Error loading keys");
+        keysText->Clear();
+        keysText->AppendText(wxString::Format("Error: %s", e.what()));
+    }
+}
+
+void ProfileManagerWidget::ShowProfileKeys(const wxString &profileName)
+{
+    try {
+        keysText->Clear();
+
+        // Get keys in profile
+        auto keys = storage::readProfile(config, profileName.ToStdString());
+
+        // Load vault to get values (if available)
+        core::KeyStore keyStore;
+        bool vaultLoaded = false;
+
+        try {
+            keyStore = storage::loadVault(config);
+            vaultLoaded = true;
+        } catch (...) {
+            // Vault loading failed, continue without values
+        }
+
+        // Sort keys
+        std::sort(keys.begin(), keys.end());
+
+        // Add keys to text control
+        if (keys.empty()) {
+            keysText->AppendText("This profile contains no keys.");
+        } else {
+            keysText->AppendText("Keys in this profile:\n\n");
+            for (const auto& key : keys) {
+                wxString keyName = wxString::FromUTF8(key);
+                wxString displayText = keyName;
+
+                if (vaultLoaded) {
+                    auto it = keyStore.kv.find(key);
+                    if (it != keyStore.kv.end()) {
+                        wxString value = wxString::FromUTF8(it->second);
+
+                        // Mask the value (first 4 + last 4 chars visible)
+                        wxString maskedValue;
+                        if (value.Length() > 8) {
+                            maskedValue = value.Left(4) + wxString('*', value.Length() - 8) + value.Right(4);
+                        } else {
+                            maskedValue = wxString('*', value.Length());
+                        }
+
+                        displayText += ": " + maskedValue;
+                    }
+                }
+
+                keysText->AppendText(displayText + "\n");
+            }
+        }
+
+    } catch (const std::exception& e) {
+        keysText->Clear();
+        keysText->AppendText(wxString::Format("Error loading keys: %s", e.what()));
+    }
+}
+
+bool ProfileManagerWidget::ValidateProfileName(const wxString &name)
+{
+    if (name.IsEmpty()) {
+        ShowError("Profile name cannot be empty");
+        return false;
+    }
+
+    // Check for valid characters (alphanumeric, underscore, and hyphen)
+    wxRegEx regEx("^[A-Za-z0-9_-]+$");
+    if (!regEx.Matches(name)) {
+        ShowError("Profile name can only contain letters, numbers, hyphens, and underscores");
+        return false;
+    }
+
+    return true;
+}
+
+void ProfileManagerWidget::ShowError(const wxString &message)
+{
+    statusLabel->SetLabel(wxString::Format("Error: %s", message));
+    statusLabel->SetForegroundColour(wxColour(255, 68, 68));
+
+    // Reset after 5 seconds
+    wxTimer *timer = new wxTimer(this, wxID_ANY);
+    timer->StartOnce(5000);
+    Bind(wxEVT_TIMER, [this](wxTimerEvent&) {
+        statusLabel->SetLabel("Ready");
+        statusLabel->SetForegroundColour(wxColour(100, 100, 100));
+    }, timer->GetId());
+}
+
+void ProfileManagerWidget::ShowSuccess(const wxString &message)
+{
+    statusLabel->SetLabel(message);
+    statusLabel->SetForegroundColour(wxColour(0, 170, 0));
+
+    // Reset after 3 seconds
+    wxTimer *timer = new wxTimer(this, wxID_ANY);
+    timer->StartOnce(3000);
+    Bind(wxEVT_TIMER, [this](wxTimerEvent&) {
+        statusLabel->SetLabel("Ready");
+        statusLabel->SetForegroundColour(wxColour(100, 100, 100));
+    }, timer->GetId());
+}
+
+void ProfileManagerWidget::SendStatusEvent(const wxString &message)
+{
+    // Custom status event - could be used by parent window
+    wxCommandEvent event(wxEVT_COMMAND_TEXT_UPDATED, wxID_ANY);
+    event.SetString(message);
+    wxPostEvent(GetParent(), event);
+}
+
+// Event handlers
+void ProfileManagerWidget::OnCreateProfile(wxCommandEvent& event)
+{
+    wxTextEntryDialog dialog(this, "Enter profile name:", "Create Profile", "");
+    if (dialog.ShowModal() == wxID_OK) {
+        wxString profileName = dialog.GetValue();
+
+        if (!ValidateProfileName(profileName)) {
+            return;
+        }
+
+        // Check if profile already exists
+        for (const auto& existingProfile : availableProfiles) {
+            if (existingProfile == profileName) {
+                ShowError("A profile with this name already exists!");
+                return;
+            }
+        }
 
         try {
             // Create empty profile
             std::vector<std::string> emptyKeys;
-            ak::storage::writeProfile(config, profileName.toStdString(), emptyKeys);
+            storage::writeProfile(config, profileName.ToStdString(), emptyKeys);
 
-            loadProfiles();
-            showSuccess(QString("Profile '%1' created").arg(profileName));
+            LoadProfiles();
+            ShowSuccess(wxString::Format("Profile '%s' created", profileName));
 
         } catch (const std::exception& e) {
-            showError(QString("Failed to create profile: %1").arg(e.what()));
+            ShowError(wxString::Format("Failed to create profile: %s", e.what()));
         }
     }
 }
 
-void ProfileManagerWidget::deleteProfile()
+void ProfileManagerWidget::OnDeleteProfile(wxCommandEvent& event)
 {
-    QListWidgetItem *selectedItem = profileList->currentItem();
-    if (!selectedItem) return;
+    int selectedIndex = profileList->GetSelection();
+    if (selectedIndex == wxNOT_FOUND) return;
 
-    ProfileListItem *profileItem = static_cast<ProfileListItem*>(selectedItem);
-    QString profileName = profileItem->getProfileName();
+    wxString profileName = availableProfiles[selectedIndex];
 
-    if (ConfirmationDialog::confirm(this, "Delete Profile",
-        QString("Are you sure you want to delete the profile '%1'?").arg(profileName),
-        "This action cannot be undone.")) {
+    wxMessageDialog dialog(this,
+                          wxString::Format("Are you sure you want to delete the profile '%s'?", profileName),
+                          "Delete Profile",
+                          wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION);
 
+    if (dialog.ShowModal() == wxID_YES) {
         try {
             // Delete profile file
-            std::filesystem::path profilePath = ak::storage::profilePath(config, profileName.toStdString());
+            std::filesystem::path profilePath = storage::profilePath(config, profileName.ToStdString());
             if (std::filesystem::exists(profilePath)) {
                 std::filesystem::remove(profilePath);
             }
 
-            loadProfiles();
-            showSuccess(QString("Profile '%1' deleted").arg(profileName));
+            LoadProfiles();
+            ShowSuccess(wxString::Format("Profile '%s' deleted", profileName));
 
         } catch (const std::exception& e) {
-            showError(QString("Failed to delete profile: %1").arg(e.what()));
+            ShowError(wxString::Format("Failed to delete profile: %s", e.what()));
         }
     }
 }
 
-void ProfileManagerWidget::duplicateProfile()
+void ProfileManagerWidget::OnRenameProfile(wxCommandEvent& event)
 {
-    QListWidgetItem *selectedItem = profileList->currentItem();
-    if (!selectedItem) return;
+    int selectedIndex = profileList->GetSelection();
+    if (selectedIndex == wxNOT_FOUND) return;
 
-    ProfileListItem *profileItem = static_cast<ProfileListItem*>(selectedItem);
-    QString originalProfileName = profileItem->getProfileName();
-    
-    QString newProfileName = QInputDialog::getText(this, "Duplicate Profile",
-        QString("Enter name for duplicate of '%1':").arg(originalProfileName),
-        QLineEdit::Normal, originalProfileName + "_copy");
+    wxString oldName = availableProfiles[selectedIndex];
 
-    if (!newProfileName.isEmpty() && validateProfileName(newProfileName)) {
-        if (availableProfiles.contains(newProfileName)) {
-            showError("A profile with this name already exists!");
+    wxTextEntryDialog dialog(this, "Enter new profile name:", "Rename Profile", oldName);
+    if (dialog.ShowModal() == wxID_OK) {
+        wxString newName = dialog.GetValue();
+
+        if (!ValidateProfileName(newName) || newName == oldName) {
             return;
         }
 
-        try {
-            // Read original profile keys
-            auto originalKeys = ak::storage::readProfile(config, originalProfileName.toStdString());
-            
-            // Create new profile with same keys
-            ak::storage::writeProfile(config, newProfileName.toStdString(), originalKeys);
-
-            loadProfiles();
-            
-            // Select the newly created profile
-            for (int i = 0; i < profileList->count(); ++i) {
-                ProfileListItem *item = static_cast<ProfileListItem*>(profileList->item(i));
-                if (item->getProfileName() == newProfileName) {
-                    profileList->setCurrentItem(item);
-                    break;
-                }
+        // Check if new name already exists
+        for (const auto& existingProfile : availableProfiles) {
+            if (existingProfile == newName) {
+                ShowError("A profile with this name already exists!");
+                return;
             }
-            
-            showSuccess(QString("Profile '%1' duplicated as '%2'").arg(originalProfileName).arg(newProfileName));
-
-        } catch (const std::exception& e) {
-            showError(QString("Failed to duplicate profile: %1").arg(e.what()));
-        }
-    }
-}
-
-void ProfileManagerWidget::renameProfile()
-{
-    QListWidgetItem *selectedItem = profileList->currentItem();
-    if (!selectedItem) return;
-
-    ProfileListItem *profileItem = static_cast<ProfileListItem*>(selectedItem);
-    QString oldName = profileItem->getProfileName();
-
-    bool ok;
-    QString newName = QInputDialog::getText(this, "Rename Profile",
-        "Enter new profile name:", QLineEdit::Normal, oldName, &ok);
-
-    if (ok && !newName.isEmpty() && newName != oldName) {
-        if (!validateProfileName(newName)) {
-            showError("Invalid profile name. Use only letters, numbers, hyphens, and underscores.");
-            return;
-        }
-
-        if (availableProfiles.contains(newName)) {
-            showError("A profile with this name already exists.");
-            return;
         }
 
         try {
             // Read old profile
-            auto keys = ak::storage::readProfile(config, oldName.toStdString());
+            auto keys = storage::readProfile(config, oldName.ToStdString());
 
             // Write to new profile
-            ak::storage::writeProfile(config, newName.toStdString(), keys);
+            storage::writeProfile(config, newName.ToStdString(), keys);
 
             // Delete old profile
-            std::filesystem::path oldPath = ak::storage::profilePath(config, oldName.toStdString());
+            std::filesystem::path oldPath = storage::profilePath(config, oldName.ToStdString());
             if (std::filesystem::exists(oldPath)) {
                 std::filesystem::remove(oldPath);
             }
 
-            loadProfiles();
-            showSuccess(QString("Profile renamed from '%1' to '%2'").arg(oldName).arg(newName));
+            LoadProfiles();
+            ShowSuccess(wxString::Format("Profile renamed from '%s' to '%s'", oldName, newName));
 
         } catch (const std::exception& e) {
-            showError(QString("Failed to rename profile: %1").arg(e.what()));
+            ShowError(wxString::Format("Failed to rename profile: %s", e.what()));
         }
     }
 }
 
-void ProfileManagerWidget::importProfile()
+void ProfileManagerWidget::OnDuplicateProfile(wxCommandEvent& event)
+{
+    int selectedIndex = profileList->GetSelection();
+    if (selectedIndex == wxNOT_FOUND) return;
+
+    wxString originalProfileName = availableProfiles[selectedIndex];
+
+    wxTextEntryDialog dialog(this,
+                            wxString::Format("Enter name for duplicate of '%s':", originalProfileName),
+                            "Duplicate Profile",
+                            originalProfileName + "_copy");
+
+    if (dialog.ShowModal() == wxID_OK) {
+        wxString newProfileName = dialog.GetValue();
+
+        if (!ValidateProfileName(newProfileName)) {
+            return;
+        }
+
+        // Check if profile already exists
+        for (const auto& existingProfile : availableProfiles) {
+            if (existingProfile == newProfileName) {
+                ShowError("A profile with this name already exists!");
+                return;
+            }
+        }
+
+        try {
+            // Read original profile keys
+            auto originalKeys = storage::readProfile(config, originalProfileName.ToStdString());
+
+            // Create new profile with same keys
+            storage::writeProfile(config, newProfileName.ToStdString(), originalKeys);
+
+            LoadProfiles();
+
+            // Select the newly created profile
+            for (size_t i = 0; i < availableProfiles.size(); ++i) {
+                if (availableProfiles[i] == newProfileName) {
+                    profileList->SetSelection(i);
+                    UpdateProfileDetails(newProfileName);
+                    break;
+                }
+            }
+
+            ShowSuccess(wxString::Format("Profile '%s' duplicated as '%s'", originalProfileName, newProfileName));
+
+        } catch (const std::exception& e) {
+            ShowError(wxString::Format("Failed to duplicate profile: %s", e.what()));
+        }
+    }
+}
+
+void ProfileManagerWidget::OnImportProfile(wxCommandEvent& event)
 {
     // For import, suggest a new profile name or use current selection if available
-    QString suggestedName = currentProfile.isEmpty() ? "imported_profile" : currentProfile + "_imported";
-    ProfileImportExportDialog dialog(ProfileImportExportDialog::Import, suggestedName, this);
-    if (dialog.exec() == QDialog::Accepted) {
-        QString filePath = dialog.getFilePath();
-        QString format = dialog.getFormat();
-        QString profileName = dialog.getProfileName();
+    wxString suggestedName = currentProfile.IsEmpty() ? "imported_profile" : currentProfile + "_imported";
+
+    wxTextEntryDialog nameDialog(this, "Enter profile name:", "Import Profile", suggestedName);
+    if (nameDialog.ShowModal() != wxID_OK) return;
+
+    wxString profileName = nameDialog.GetValue();
+    if (!ValidateProfileName(profileName)) return;
+
+    // Check if profile already exists
+    for (const auto& existingProfile : availableProfiles) {
+        if (existingProfile == profileName) {
+            ShowError("A profile with this name already exists!");
+            return;
+        }
+    }
+
+    wxFileDialog fileDialog(this, "Import Profile", "", "",
+                           "All supported files (*.env;*.json;*.yaml)|*.env;*.json;*.yaml|"
+                           "Environment files (*.env)|*.env|"
+                           "JSON files (*.json)|*.json|"
+                           "YAML files (*.yaml)|*.yaml",
+                           wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+
+    if (fileDialog.ShowModal() == wxID_OK) {
+        wxString filePath = fileDialog.GetPath();
+        wxString format;
+
+        // Determine format from file extension
+        if (filePath.EndsWith(".env")) {
+            format = "env";
+        } else if (filePath.EndsWith(".json")) {
+            format = "json";
+        } else if (filePath.EndsWith(".yaml") || filePath.EndsWith(".yml")) {
+            format = "yaml";
+        } else {
+            ShowError("Unsupported file format");
+            return;
+        }
 
         try {
             std::vector<std::string> keys;
 
             if (format == "env") {
                 // Parse .env file
-                std::ifstream input(filePath.toStdString());
-                auto parsedKeys = ak::storage::parse_env_file(input);
+                std::ifstream input(filePath.ToStdString());
+                auto parsedKeys = storage::parse_env_file(input);
                 for (const auto& [key, value] : parsedKeys) {
                     keys.push_back(key);
                 }
             } else if (format == "json") {
                 // Parse JSON file
-                std::ifstream input(filePath.toStdString());
+                std::ifstream input(filePath.ToStdString());
                 std::string content((std::istreambuf_iterator<char>(input)),
-                                  std::istreambuf_iterator<char>());
-                auto parsedKeys = ak::storage::parse_json_min(content);
+                                   std::istreambuf_iterator<char>());
+                auto parsedKeys = storage::parse_json_min(content);
                 for (const auto& [key, value] : parsedKeys) {
                     keys.push_back(key);
                 }
             } else if (format == "yaml") {
                 // For now, treat YAML as JSON (simplified)
-                std::ifstream input(filePath.toStdString());
+                std::ifstream input(filePath.ToStdString());
                 std::string content((std::istreambuf_iterator<char>(input)),
-                                  std::istreambuf_iterator<char>());
-                auto parsedKeys = ak::storage::parse_json_min(content);
+                                   std::istreambuf_iterator<char>());
+                auto parsedKeys = storage::parse_json_min(content);
                 for (const auto& [key, value] : parsedKeys) {
                     keys.push_back(key);
                 }
             }
 
             // Write profile
-            ak::storage::writeProfile(config, profileName.toStdString(), keys);
+            storage::writeProfile(config, profileName.ToStdString(), keys);
 
-            loadProfiles();
-            showSuccess(QString("Profile '%1' imported with %2 keys").arg(profileName).arg(keys.size()));
+            LoadProfiles();
+            ShowSuccess(wxString::Format("Profile '%s' imported with %zu keys", profileName, keys.size()));
 
         } catch (const std::exception& e) {
-            showError(QString("Failed to import profile: %1").arg(e.what()));
+            ShowError(wxString::Format("Failed to import profile: %s", e.what()));
         }
     }
 }
 
-void ProfileManagerWidget::exportProfile()
+void ProfileManagerWidget::OnExportProfile(wxCommandEvent& event)
 {
-    QListWidgetItem *selectedItem = profileList->currentItem();
-    if (!selectedItem) return;
+    int selectedIndex = profileList->GetSelection();
+    if (selectedIndex == wxNOT_FOUND) return;
 
-    ProfileListItem *profileItem = static_cast<ProfileListItem*>(selectedItem);
-    QString profileName = profileItem->getProfileName();
+    wxString profileName = availableProfiles[selectedIndex];
 
-    // Auto-populate the dialog with the selected profile name
-    ProfileImportExportDialog dialog(ProfileImportExportDialog::Export, profileName, this);
-    if (dialog.exec() == QDialog::Accepted) {
-        QString filePath = dialog.getFilePath();
-        QString format = dialog.getFormat();
-        QString selectedProfileForExport = dialog.getProfileName(); // Use the profile name from dialog (in case user changed it)
+    wxTextEntryDialog nameDialog(this, "Enter export profile name:", "Export Profile", profileName);
+    if (nameDialog.ShowModal() != wxID_OK) return;
+
+    wxString selectedProfileForExport = nameDialog.GetValue();
+
+    wxFileDialog fileDialog(this, "Export Profile", "", "",
+                           "Environment files (*.env)|*.env|"
+                           "JSON files (*.json)|*.json",
+                           wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+
+    if (fileDialog.ShowModal() == wxID_OK) {
+        wxString filePath = fileDialog.GetPath();
+        wxString format;
+
+        // Determine format from file extension
+        if (filePath.EndsWith(".env")) {
+            format = "env";
+        } else if (filePath.EndsWith(".json")) {
+            format = "json";
+        } else {
+            ShowError("Unsupported file format");
+            return;
+        }
 
         try {
             // Read profile keys (use the name from dialog in case user changed it)
-            auto keys = ak::storage::readProfile(config, selectedProfileForExport.toStdString());
-            
+            auto keys = storage::readProfile(config, selectedProfileForExport.ToStdString());
+
             // Load vault to get actual key values
-            auto vault = ak::storage::loadVault(config);
+            auto vault = storage::loadVault(config);
 
             if (format == "env") {
                 // Export as .env file with values
-                std::ofstream output(filePath.toStdString());
+                std::ofstream output(filePath.ToStdString());
                 for (const auto& key : keys) {
                     auto it = vault.kv.find(key);
                     if (it != vault.kv.end()) {
@@ -474,140 +680,81 @@ void ProfileManagerWidget::exportProfile()
                 }
             } else if (format == "json") {
                 // Export as JSON with values
-                QJsonObject root;
-                QJsonObject keysObject;
-                for (const auto& key : keys) {
-                    auto it = vault.kv.find(key);
-                    if (it != vault.kv.end()) {
-                        keysObject[QString::fromStdString(key)] = QString::fromStdString(it->second);
-                    } else {
-                        keysObject[QString::fromStdString(key)] = "";
-                    }
-                }
-                root["profile"] = QString::fromStdString(profileName.toStdString());
-                root["keys"] = keysObject;
+                wxString jsonContent = "{\n";
+                jsonContent += wxString::Format("  \"profile\": \"%s\",\n", selectedProfileForExport);
+                jsonContent += "  \"keys\": {\n";
 
-                QJsonDocument doc(root);
-                QFile file(filePath);
-                if (file.open(QIODevice::WriteOnly)) {
-                    file.write(doc.toJson());
-                    file.close();
+                for (size_t i = 0; i < keys.size(); ++i) {
+                    const auto& key = keys[i];
+                    auto it = vault.kv.find(key);
+                    wxString keyStr = wxString::FromUTF8(key);
+                    wxString valueStr = "\"\"";
+
+                    if (it != vault.kv.end()) {
+                        // Escape quotes and backslashes in JSON
+                        std::string value = it->second;
+                        std::string escaped;
+                        for (char c : value) {
+                            if (c == '"' || c == '\\') {
+                                escaped += '\\';
+                            }
+                            escaped += c;
+                        }
+                        valueStr = wxString::Format("\"%s\"", wxString::FromUTF8(escaped));
+                    }
+
+                    jsonContent += wxString::Format("    \"%s\": %s", keyStr, valueStr);
+                    if (i < keys.size() - 1) {
+                        jsonContent += ",";
+                    }
+                    jsonContent += "\n";
                 }
+
+                jsonContent += "  }\n}";
+
+                std::ofstream output(filePath.ToStdString());
+                output << jsonContent.ToStdString();
             }
 
-            showSuccess(QString("Profile '%1' exported to %2").arg(selectedProfileForExport).arg(filePath));
+            ShowSuccess(wxString::Format("Profile '%s' exported to %s", selectedProfileForExport, filePath));
 
         } catch (const std::exception& e) {
-            showError(QString("Failed to export profile: %1").arg(e.what()));
+            ShowError(wxString::Format("Failed to export profile: %s", e.what()));
         }
     }
 }
 
-void ProfileManagerWidget::onProfileSelectionChanged()
+void ProfileManagerWidget::OnProfileSelectionChanged(wxCommandEvent& event)
 {
-    QListWidgetItem *selectedItem = profileList->currentItem();
-    bool hasSelection = selectedItem != nullptr;
+    int selectedIndex = profileList->GetSelection();
+    bool hasSelection = selectedIndex != wxNOT_FOUND;
 
-    deleteButton->setEnabled(hasSelection);
-    renameButton->setEnabled(hasSelection);
-    duplicateButton->setEnabled(hasSelection);
-    exportButton->setEnabled(hasSelection);
+    deleteButton->Enable(hasSelection);
+    renameButton->Enable(hasSelection);
+    duplicateButton->Enable(hasSelection);
+    exportButton->Enable(hasSelection);
 
     if (hasSelection) {
-        ProfileListItem *profileItem = static_cast<ProfileListItem*>(selectedItem);
-        updateProfileDetails(profileItem->getProfileName());
+        wxString profileName = availableProfiles[selectedIndex];
+        UpdateProfileDetails(profileName);
     } else {
-        updateProfileDetails("");
+        UpdateProfileDetails("");
     }
 }
 
-void ProfileManagerWidget::onProfileDoubleClicked(QListWidgetItem *item)
+void ProfileManagerWidget::OnProfileDoubleClicked(wxCommandEvent& event)
 {
-    ProfileListItem *profileItem = static_cast<ProfileListItem*>(item);
-    updateProfileDetails(profileItem->getProfileName());
-}
-
-void ProfileManagerWidget::updateProfileDetails(const QString &profileName)
-{
-    currentProfile = profileName;
-
-    if (profileName.isEmpty()) {
-        profileNameLabel->setText("No profile selected");
-        keyCountLabel->setText("");
-        keysText->setPlainText("Select a profile to view its keys...");
-        return;
-    }
-
-    profileNameLabel->setText(QString("Profile: %1").arg(profileName));
-
-    try {
-        auto keys = ak::storage::readProfile(config, profileName.toStdString());
-        keyCountLabel->setText(QString("%1 keys").arg(keys.size()));
-
-        showProfileKeys(profileName);
-
-    } catch (const std::exception& e) {
-        keyCountLabel->setText("Error loading keys");
-        keysText->setPlainText(QString("Error: %1").arg(e.what()));
+    int selectedIndex = profileList->GetSelection();
+    if (selectedIndex != wxNOT_FOUND) {
+        wxString profileName = availableProfiles[selectedIndex];
+        UpdateProfileDetails(profileName);
     }
 }
 
-void ProfileManagerWidget::showProfileKeys(const QString &profileName)
+void ProfileManagerWidget::OnRefresh(wxCommandEvent& event)
 {
-    try {
-        auto keys = ak::storage::readProfile(config, profileName.toStdString());
-
-        QString keysTextContent;
-        if (keys.empty()) {
-            keysTextContent = "This profile contains no keys.";
-        } else {
-            keysTextContent = "Keys in this profile:\n\n";
-            for (const auto& key : keys) {
-                keysTextContent += QString::fromStdString(key) + "\n";
-            }
-        }
-
-        keysText->setPlainText(keysTextContent);
-
-    } catch (const std::exception& e) {
-        keysText->setPlainText(QString("Error loading keys: %1").arg(e.what()));
-    }
-}
-
-bool ProfileManagerWidget::validateProfileName(const QString &name)
-{
-    if (name.isEmpty()) return false;
-
-    QRegularExpression regex("^[a-zA-Z0-9_-]+$");
-    return regex.match(name).hasMatch();
-}
-
-void ProfileManagerWidget::showError(const QString &message)
-{
-    statusLabel->setText(QString("Error: %1").arg(message));
-    statusLabel->setStyleSheet("color: #ff4444; font-size: 12px;");
-
-    // Reset after 5 seconds
-    QTimer::singleShot(5000, [this]() {
-        statusLabel->setText("Ready");
-        statusLabel->setStyleSheet("color: #666; font-size: 12px;");
-    });
-
-    emit statusMessage(QString("Error: %1").arg(message));
-}
-
-void ProfileManagerWidget::showSuccess(const QString &message)
-{
-    statusLabel->setText(message);
-    statusLabel->setStyleSheet("color: #00aa00; font-size: 12px;");
-
-    // Reset after 3 seconds
-    QTimer::singleShot(3000, [this]() {
-        statusLabel->setText("Ready");
-        statusLabel->setStyleSheet("color: #666; font-size: 12px;");
-    });
-
-    emit statusMessage(message);
+    RefreshProfiles();
+    ShowSuccess("Profiles refreshed");
 }
 
 } // namespace widgets

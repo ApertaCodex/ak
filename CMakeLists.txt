@@ -59,18 +59,25 @@ set(CORE_SOURCES
 # GUI Configuration
 # ============================================================================
 
-option(BUILD_GUI "Build GUI support with Qt 6" ON)
+option(BUILD_GUI "Build GUI support with wxWidgets" ON)
 
 if(BUILD_GUI)
-    # Find Qt 6 components - require minimum 6.4.0 for compatibility
-    find_package(Qt6 6.4.0 REQUIRED COMPONENTS Core Widgets)
+    # Find wxWidgets
+    if(WIN32)
+        # Windows may need specific configuration
+        find_package(wxWidgets REQUIRED COMPONENTS core base aui adv)
+    elseif(APPLE)
+        # macOS often uses homebrew or other package managers
+        find_package(wxWidgets REQUIRED COMPONENTS core base aui adv)
+    else()
+        # Linux
+        find_package(wxWidgets REQUIRED COMPONENTS core base aui adv)
+    endif()
     
-    # Enable Qt 6 MOC (Meta-Object Compiler) globally
-    set(CMAKE_AUTOMOC ON)
-    set(CMAKE_AUTOUIC ON)
-    set(CMAKE_AUTORCC ON)
+    # Include the wxWidgets use file to set up environment
+    include(${wxWidgets_USE_FILE})
     
-    message(STATUS "Qt6 found: Building with GUI support")
+    message(STATUS "wxWidgets found: Building with GUI support (version ${wxWidgets_VERSION})")
     
     # Add GUI sources and headers for AUTOMOC discovery
     set(GUI_SOURCES
@@ -91,7 +98,7 @@ if(BUILD_GUI)
         include/gui/widgets/common/dialogs.hpp
     )
 else()
-    message(STATUS "Qt6 not enabled: Building CLI-only version")
+    message(STATUS "wxWidgets not enabled: Building CLI-only version")
     set(GUI_SOURCES "")
 endif()
 
@@ -102,9 +109,9 @@ add_executable(ak
     ${GUI_SOURCES}
 )
 
-# Link Qt6 libraries if GUI is enabled
+# Link wxWidgets libraries if GUI is enabled
 if(BUILD_GUI)
-    target_link_libraries(ak Qt6::Core Qt6::Widgets)
+    target_link_libraries(ak ${wxWidgets_LIBRARIES})
     target_include_directories(ak PRIVATE include/gui)
     target_compile_definitions(ak PRIVATE BUILD_GUI)
 endif()
@@ -168,9 +175,9 @@ if(BUILD_TESTS)
         ${GUI_SOURCES}
     )
     
-    # Link Qt6 to tests if GUI enabled
+    # Link wxWidgets to tests if GUI enabled
     if(BUILD_GUI)
-        target_link_libraries(ak_tests Qt6::Core Qt6::Widgets)
+        target_link_libraries(ak_tests ${wxWidgets_LIBRARIES})
         target_compile_definitions(ak_tests PRIVATE BUILD_GUI)
     endif()
     
