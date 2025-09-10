@@ -59,20 +59,10 @@ set(CORE_SOURCES
 # GUI Configuration
 # ============================================================================
 
-option(BUILD_GUI "Build GUI support with Qt 6" ON)
+option(BUILD_GUI "Build GUI support with Slint" ON)
 
 if(BUILD_GUI)
-    # Find Qt 6 components - require minimum 6.4.0 for compatibility
-    find_package(Qt6 6.4.0 REQUIRED COMPONENTS Core Widgets)
-    
-    # Enable Qt 6 MOC (Meta-Object Compiler) globally
-    set(CMAKE_AUTOMOC ON)
-    set(CMAKE_AUTOUIC ON)
-    set(CMAKE_AUTORCC ON)
-    
-    message(STATUS "Qt6 found: Building with GUI support")
-    
-    # Add GUI sources and headers for AUTOMOC discovery
+    # Add GUI sources (excluding the Slint-generated code for now)
     set(GUI_SOURCES
         src/gui/gui.cpp
         src/gui/mainwindow.cpp
@@ -82,16 +72,50 @@ if(BUILD_GUI)
         src/gui/widgets/servicemanager.cpp
         src/gui/widgets/common/secureinput.cpp
         src/gui/widgets/common/dialogs.cpp
-        include/gui/mainwindow.hpp
-        include/gui/widgets/keymanager.hpp
-        include/gui/widgets/servicetester.hpp
-        include/gui/widgets/profilemanager.hpp
-        include/gui/widgets/servicemanager.hpp
-        include/gui/widgets/common/secureinput.hpp
-        include/gui/widgets/common/dialogs.hpp
     )
+    
+    # Find required dependencies
+    if(UNIX AND NOT APPLE)
+        find_package(Fontconfig REQUIRED)
+        find_package(X11 REQUIRED)
+        find_package(OpenGL REQUIRED)
+        find_package(Threads REQUIRED)
+    endif()
+    
+    # Find Slint compiler
+    find_program(SLINT_COMPILER slint-compiler)
+    
+    if(NOT SLINT_COMPILER)
+        message(STATUS "Slint compiler not found in PATH")
+        message(STATUS "Run the provided install-slint.sh script to install the Slint compiler")
+        message(FATAL_ERROR "Slint compiler is required for GUI build. Install with ./install-slint.sh")
+    endif()
+    
+    message(STATUS "Found Slint compiler: ${SLINT_COMPILER}")
+    
+    # Compile the Slint UI file directly into the build
+    set(SLINT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/ui/main.slint")
+    set(SLINT_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/slint_generated.cpp")
+    
+    # Add a custom command to compile the Slint file
+    add_custom_command(
+        OUTPUT ${SLINT_GENERATED}
+        COMMAND ${SLINT_COMPILER} ${SLINT_FILE} -o ${SLINT_GENERATED}
+        DEPENDS ${SLINT_FILE}
+        COMMENT "Compiling Slint UI file"
+        VERBATIM
+    )
+    
+    # Add the generated file to sources
+    list(APPEND GUI_SOURCES ${SLINT_GENERATED})
+    
+    # Create Slint assets directory
+    set(SLINT_ASSETS_DIR "${CMAKE_CURRENT_BINARY_DIR}/slint-assets")
+    file(MAKE_DIRECTORY ${SLINT_ASSETS_DIR})
+    
+    message(STATUS "Slint compiler found: Building with GUI support")
 else()
-    message(STATUS "Qt6 not enabled: Building CLI-only version")
+    message(STATUS "Slint not enabled: Building CLI-only version")
     set(GUI_SOURCES "")
 endif()
 
@@ -102,11 +126,40 @@ add_executable(ak
     ${GUI_SOURCES}
 )
 
-# Link Qt6 libraries if GUI is enabled
+# Link dependencies if GUI is enabled
 if(BUILD_GUI)
-    target_link_libraries(ak Qt6::Core Qt6::Widgets)
+    # Include directories
     target_include_directories(ak PRIVATE include/gui)
-    target_compile_definitions(ak PRIVATE BUILD_GUI)
+    target_include_directories(ak PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+    
+    # Define BUILD_GUI and set Slint assets path
+    target_compile_definitions(ak PRIVATE
+        BUILD_GUI
+        SLINT_ASSET_PATH="${SLINT_ASSETS_DIR}"
+    )
+    
+    # Link system libraries based on platform
+    if(UNIX AND NOT APPLE)
+        target_link_libraries(ak PRIVATE
+            Fontconfig::Fontconfig
+            ${X11_LIBRARIES}
+            ${OPENGL_LIBRARIES}
+            Threads::Threads
+            dl
+        )
+    elseif(APPLE)
+        target_link_libraries(ak PRIVATE
+            "-framework Cocoa"
+            "-framework QuartzCore"
+            "-framework Metal"
+        )
+    elseif(WIN32)
+        target_link_libraries(ak PRIVATE
+            user32
+            gdi32
+            opengl32
+        )
+    endif()
 endif()
 
 # Pass version to C++ code
@@ -129,7 +182,7 @@ endif()
 
 # Linux-specific settings
 if(UNIX AND NOT APPLE)
-    target_link_libraries(ak pthread)
+    # Already handled in the GUI section
 endif()
 
 # ============================================================================
@@ -168,27 +221,42 @@ if(BUILD_TESTS)
         ${GUI_SOURCES}
     )
     
-    # Link Qt6 to tests if GUI enabled
+    # Link dependencies if GUI enabled
     if(BUILD_GUI)
-        target_link_libraries(ak_tests Qt6::Core Qt6::Widgets)
-        target_compile_definitions(ak_tests PRIVATE BUILD_GUI)
+        target_compile_definitions(ak_tests PRIVATE
+            BUILD_GUI
+            SLINT_ASSET_PATH="${SLINT_ASSETS_DIR}"
+        )
+        
+        # Link system libraries based on platform
+        if(UNIX AND NOT APPLE)
+            target_link_libraries(ak_tests PRIVATE
+                Fontconfig::Fontconfig
+                ${X11_LIBRARIES}
+                ${OPENGL_LIBRARIES}
+                Threads::Threads
+                dl
+            )
+        elseif(APPLE)
+            target_link_libraries(ak_tests PRIVATE
+                "-framework Cocoa"
+                "-framework QuartzCore"
+                "-framework Metal"
+            )
+        elseif(WIN32)
+            target_link_libraries(ak_tests PRIVATE
+                user32
+                gdi32
+                opengl32
+            )
+        endif()
     endif()
     
     # Pass version to test target
     target_compile_definitions(ak_tests PRIVATE AK_VERSION_STRING="${AK_VERSION}")
     
     target_include_directories(ak_tests PRIVATE tests)
-    target_link_libraries(ak_tests
-        gtest
-        gtest_main
-    )
-    
-    # Windows threading
-    if(WIN32)
-        target_link_libraries(ak_tests)
-    else()
-        target_link_libraries(ak_tests pthread)
-    endif()
+    target_link_libraries(ak_tests PRIVATE gtest gtest_main)
     
     # Register tests with CTest
     include(GoogleTest)
@@ -335,6 +403,28 @@ if(UNIX AND NOT APPLE AND BUILD_GUI)
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps
         RENAME ak.png
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+    )
+    
+    # Install Slint assets
+    install(DIRECTORY ${SLINT_ASSETS_DIR}/
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/ak/slint-assets
+        PATTERN "*" PERMISSIONS OWNER_READ GROUP_READ WORLD_READ
+    )
+endif()
+
+# For macOS, include Slint assets in the app bundle
+if(APPLE AND BUILD_GUI)
+    install(DIRECTORY ${SLINT_ASSETS_DIR}/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/Applications/AK.app/Contents/Resources/slint-assets
+        PATTERN "*" PERMISSIONS OWNER_READ GROUP_READ WORLD_READ
+    )
+endif()
+
+# For Windows, install Slint assets alongside the executable
+if(WIN32 AND BUILD_GUI)
+    install(DIRECTORY ${SLINT_ASSETS_DIR}/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/slint-assets
+        PATTERN "*" PERMISSIONS OWNER_READ GROUP_READ WORLD_READ
     )
 endif()
 
