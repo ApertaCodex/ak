@@ -1,241 +1,209 @@
 #ifdef BUILD_GUI
 
 #include "gui/mainwindow.hpp"
-#include <QApplication>
-#include <QMessageBox>
-#include <QLabel>
-#include <QHBoxLayout>
-#include <QMenuBar>
-#include <QStatusBar>
-#include <QGroupBox>
-#include <QFormLayout>
+#include <memory>
+#include <iostream>
+#include <functional>
+#include <string>
+#include <slint.h>
+#include "slint_generated.h"
 
 namespace ak {
 namespace gui {
 
-MainWindow::MainWindow(const core::Config& cfg, QWidget *parent)
-    : QMainWindow(parent), config(cfg), tabWidget(nullptr),
-      keyManagerWidget(nullptr), profileManagerWidget(nullptr),
-      serviceManagerWidget(nullptr), settingsTab(nullptr), exitAction(nullptr), aboutAction(nullptr),
-      helpAction(nullptr)
+// MainWindow implementation using Slint
+MainWindow::MainWindow(const core::Config& cfg)
+    : config(cfg)
 {
-    setupUi();
-    setupMenuBar();
-    setupStatusBar();
-    setupTabs();
-
-    // Set window properties
-    setWindowTitle("AK - API Key Manager");
-    setMinimumSize(800, 600);
-    resize(1000, 700);
-
-    // Center window on screen
-    QRect screenGeometry = QApplication::primaryScreen()->geometry();
-    int x = (screenGeometry.width() - width()) / 2;
-    int y = (screenGeometry.height() - height()) / 2;
-    move(x, y);
+    // Load the Slint UI from the compiled .slint file
+    ui = std::make_unique<slint::MainWindow>();
+    
+    // Set up properties
+    ui->set_gpg_available(config.gpgAvailable);
+    ui->set_version(std::string(AK_VERSION_STRING));
+    ui->set_status_message("Ready");
+    
+    // Connect callbacks from Slint UI to C++ implementation
+    setupCallbacks();
 }
 
 MainWindow::~MainWindow()
 {
-    // Qt handles cleanup automatically for child widgets
+    // Slint handles cleanup through smart pointers
 }
 
-void MainWindow::setupUi()
+void MainWindow::setupCallbacks()
 {
-    // Create central widget and main layout
-    QWidget *centralWidget = new QWidget(this);
-    setCentralWidget(centralWidget);
+    // Connect main window callbacks
+    ui->on_exit_application([this]() {
+        exitApplication();
+    });
     
-    QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
+    ui->on_show_help([this]() {
+        showHelp();
+    });
     
-    // Create tab widget
-    tabWidget = new QTabWidget(this);
-    mainLayout->addWidget(tabWidget);
-}
-
-void MainWindow::setupMenuBar()
-{
-    // File menu
-    QMenu *fileMenu = menuBar()->addMenu("&File");
+    ui->on_show_about([this]() {
+        showAbout();
+    });
     
-    exitAction = new QAction("E&xit", this);
-    exitAction->setShortcut(QKeySequence::Quit);
-    exitAction->setStatusTip("Exit the application");
-    connect(exitAction, &QAction::triggered, this, &MainWindow::exitApplication);
-    fileMenu->addAction(exitAction);
+    // Connect KeyManagerWidget callbacks
+    auto keyManager = ui->get_key_manager();
+    keyManager.on_add_key([this]() {
+        // Implementation for adding a key
+        ui->set_status_message("Adding new key...");
+    });
     
-    // Help menu
-    QMenu *helpMenu = menuBar()->addMenu("&Help");
+    keyManager.on_edit_key([this]() {
+        // Implementation for editing a key
+        ui->set_status_message("Editing selected key...");
+    });
     
-    helpAction = new QAction("&Help", this);
-    helpAction->setShortcut(QKeySequence::HelpContents);
-    helpAction->setStatusTip("Show help documentation");
-    connect(helpAction, &QAction::triggered, this, &MainWindow::showHelp);
-    helpMenu->addAction(helpAction);
+    keyManager.on_delete_key([this]() {
+        // Implementation for deleting a key
+        ui->set_status_message("Deleting selected key...");
+    });
     
-    helpMenu->addSeparator();
+    keyManager.on_test_key([this]() {
+        // Implementation for testing a key
+        ui->set_status_message("Testing selected key...");
+    });
     
-    aboutAction = new QAction("&About AK", this);
-    aboutAction->setStatusTip("Show information about AK");
-    connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
-    helpMenu->addAction(aboutAction);
-}
-
-void MainWindow::setupStatusBar()
-{
-    // Create status bar with basic info
-    statusBar()->showMessage("Ready", 2000);
-    
-    // Add permanent widgets to status bar
-    QLabel *backendLabel = new QLabel(config.gpgAvailable ? "Backend: GPG" : "Backend: Plain");
-    statusBar()->addPermanentWidget(backendLabel);
-    
-    QLabel *versionLabel = new QLabel("v" AK_VERSION_STRING);
-    statusBar()->addPermanentWidget(versionLabel);
-}
-
-void MainWindow::setupTabs()
-{
-    // Key Manager Tab
-    keyManagerWidget = new widgets::KeyManagerWidget(config, this);
-    connect(keyManagerWidget, &widgets::KeyManagerWidget::statusMessage,
-            this, &MainWindow::onStatusMessage);
-    tabWidget->addTab(keyManagerWidget, "Key Manager");
-
-    // Profile Manager Tab
-    profileManagerWidget = new widgets::ProfileManagerWidget(config, this);
-    connect(profileManagerWidget, &widgets::ProfileManagerWidget::statusMessage,
-            this, &MainWindow::onStatusMessage);
-    tabWidget->addTab(profileManagerWidget, "Profile Manager");
-
-    // Service Manager Tab
-    serviceManagerWidget = new widgets::ServiceManagerWidget(config, this);
-    connect(serviceManagerWidget, &widgets::ServiceManagerWidget::statusMessage,
-            this, &MainWindow::onStatusMessage);
-    tabWidget->addTab(serviceManagerWidget, "Service Manager");
-
-    // Settings Tab - Full Implementation
-    settingsTab = new QWidget();
-    QVBoxLayout *settingsLayout = new QVBoxLayout(settingsTab);
-    settingsLayout->setContentsMargins(20, 20, 20, 20);
-    settingsLayout->setSpacing(15);
-    
-    // Backend Settings Group
-    QGroupBox *backendGroup = new QGroupBox("Security Backend", settingsTab);
-    QVBoxLayout *backendLayout = new QVBoxLayout(backendGroup);
-    
-    QLabel *backendStatus = new QLabel(QString("Current Backend: <b>%1</b>")
-        .arg(config.gpgAvailable && !config.forcePlain ? "GPG Encryption" : "Plain Text"));
-    backendLayout->addWidget(backendStatus);
-    
-    if (config.gpgAvailable) {
-        QLabel *gpgInfo = new QLabel("✅ GPG encryption is available and active");
-        gpgInfo->setStyleSheet("color: #00aa00;");
-        backendLayout->addWidget(gpgInfo);
-    } else {
-        QLabel *gpgWarning = new QLabel("⚠️ GPG not available - secrets stored as plain text");
-        gpgWarning->setStyleSheet("color: #ff6600;");
-        backendLayout->addWidget(gpgWarning);
-    }
-    
-    // File Paths Group
-    QGroupBox *pathsGroup = new QGroupBox("File Locations", settingsTab);
-    QFormLayout *pathsLayout = new QFormLayout(pathsGroup);
-    
-    QLabel *configDirLabel = new QLabel(QString::fromStdString(config.configDir));
-    configDirLabel->setStyleSheet("font-family: monospace;");
-    pathsLayout->addRow("Config Directory:", configDirLabel);
-    
-    QLabel *vaultPathLabel = new QLabel(QString::fromStdString(config.vaultPath));
-    vaultPathLabel->setStyleSheet("font-family: monospace;");
-    pathsLayout->addRow("Vault Path:", vaultPathLabel);
-    
-    QLabel *profilesDirLabel = new QLabel(QString::fromStdString(config.profilesDir));
-    profilesDirLabel->setStyleSheet("font-family: monospace;");
-    pathsLayout->addRow("Profiles Directory:", profilesDirLabel);
-    
-    QLabel *auditLogLabel = new QLabel(QString::fromStdString(config.auditLogPath));
-    auditLogLabel->setStyleSheet("font-family: monospace;");
-    pathsLayout->addRow("Audit Log:", auditLogLabel);
-    
-    // Application Info Group
-    QGroupBox *infoGroup = new QGroupBox("Application Information", settingsTab);
-    QFormLayout *infoLayout = new QFormLayout(infoGroup);
-    
-    QLabel *versionLabel = new QLabel("v" AK_VERSION_STRING);
-    versionLabel->setStyleSheet("font-weight: bold;");
-    infoLayout->addRow("Version:", versionLabel);
-    
-    QLabel *instanceLabel = new QLabel(QString::fromStdString(config.instanceId).left(8) + "...");
-    instanceLabel->setStyleSheet("font-family: monospace;");
-    infoLayout->addRow("Instance ID:", instanceLabel);
-    
-    // Clipboard Tools Detection
-    QGroupBox *toolsGroup = new QGroupBox("System Tools", settingsTab);
-    QVBoxLayout *toolsLayout = new QVBoxLayout(toolsGroup);
-    
-    // Check for clipboard tools
-    QStringList clipboardTools = {"pbcopy", "wl-copy", "xclip"};
-    bool foundClipboard = false;
-    for (const auto& tool : clipboardTools) {
-        if (core::commandExists(tool.toStdString())) {
-            QLabel *toolLabel = new QLabel(QString("✅ Clipboard: %1").arg(tool));
-            toolLabel->setStyleSheet("color: #00aa00;");
-            toolsLayout->addWidget(toolLabel);
-            foundClipboard = true;
-            break;
+    keyManager.on_copy_to_clipboard([this](const slint::SharedString& key_name) {
+        // Implementation for copying to clipboard
+        std::string key = key_name.to_std_string();
+        bool success = copyToClipboard(key);
+        if (success) {
+            ui->set_status_message("Copied " + key + " to clipboard");
+        } else {
+            ui->set_status_message("Failed to copy to clipboard");
         }
-    }
-    if (!foundClipboard) {
-        QLabel *noClipboard = new QLabel("⚠️ No clipboard tools found (install xclip, wl-clipboard, or pbcopy)");
-        noClipboard->setStyleSheet("color: #ff6600;");
-        toolsLayout->addWidget(noClipboard);
-    }
+    });
     
-    // Add all groups to layout
-    settingsLayout->addWidget(backendGroup);
-    settingsLayout->addWidget(pathsGroup);
-    settingsLayout->addWidget(infoGroup);
-    settingsLayout->addWidget(toolsGroup);
-    settingsLayout->addStretch(); // Push content to top
+    // Connect ProfileManagerWidget callbacks
+    auto profileManager = ui->get_profile_manager();
+    profileManager.on_add_profile([this]() {
+        ui->set_status_message("Adding new profile...");
+    });
     
-    tabWidget->addTab(settingsTab, "Settings");
+    profileManager.on_edit_profile([this]() {
+        ui->set_status_message("Editing selected profile...");
+    });
+    
+    profileManager.on_delete_profile([this]() {
+        ui->set_status_message("Deleting selected profile...");
+    });
+    
+    profileManager.on_export_profile([this]() {
+        ui->set_status_message("Exporting selected profile...");
+    });
+    
+    profileManager.on_import_profile([this]() {
+        ui->set_status_message("Importing profile...");
+    });
+    
+    // Connect ServiceManagerWidget callbacks
+    auto serviceManager = ui->get_service_manager();
+    serviceManager.on_add_service([this]() {
+        ui->set_status_message("Adding new service...");
+    });
+    
+    serviceManager.on_edit_service([this]() {
+        ui->set_status_message("Editing selected service...");
+    });
+    
+    serviceManager.on_delete_service([this]() {
+        ui->set_status_message("Deleting selected service...");
+    });
+    
+    serviceManager.on_test_service([this]() {
+        ui->set_status_message("Testing selected service...");
+    });
+    
+    // Configure settings widget with configuration values
+    auto settingsWidget = ui->get_settings();
+    settingsWidget.set_config_dir(std::string(config.configDir));
+    settingsWidget.set_vault_path(std::string(config.vaultPath));
+    settingsWidget.set_profiles_dir(std::string(config.profilesDir));
+    settingsWidget.set_audit_log_path(std::string(config.auditLogPath));
+    settingsWidget.set_instance_id(std::string(config.instanceId));
+    settingsWidget.set_gpg_available(config.gpgAvailable);
+    settingsWidget.set_version(std::string(AK_VERSION_STRING));
+}
 
-    // Set default tab
-    tabWidget->setCurrentIndex(0);
+void MainWindow::run()
+{
+    // Show and run the Slint UI
+    ui->run();
 }
 
 void MainWindow::showAbout()
 {
-    QMessageBox::about(this, "About AK",
-        "AK - API Key Manager v" AK_VERSION_STRING "\n\n"
-        "A secure tool for managing API keys and environment variables.\n\n"
-        "Backend: " + QString(config.gpgAvailable ? "GPG Encryption" : "Plain Text") + "\n"
-        "Config Directory: " + QString::fromStdString(config.configDir));
+    // Show about dialog using Slint
+    slint::MessageBox aboutBox;
+    aboutBox.set_title(slint::SharedString("About AK"));
+    
+    std::string aboutText = "AK - API Key Manager v";
+    aboutText += AK_VERSION_STRING;
+    aboutText += "\n\nA secure tool for managing API keys and environment variables.\n\n";
+    aboutText += "Backend: ";
+    aboutText += (config.gpgAvailable ? "GPG Encryption" : "Plain Text");
+    aboutText += "\nConfig Directory: ";
+    aboutText += config.configDir;
+    
+    aboutBox.set_text(slint::SharedString(aboutText));
+    aboutBox.set_buttons(slint::StandardButton::Ok);
+    aboutBox.run();
 }
 
 void MainWindow::showHelp()
 {
-    QMessageBox::information(this, "Help",
-        "AK GUI Help\n\n"
-        "Use the tabs to navigate between different features:\n\n"
-        "• Key Manager: Manage your API keys and test endpoints\n"
-        "• Profile Manager: Create and manage key profiles\n"
-        "• Service Manager: Add and manage custom API services\n"
-        "• Settings: Configure application preferences\n\n"
-        "For detailed documentation, visit the project repository.");
+    // Show help dialog using Slint
+    slint::MessageBox helpBox;
+    helpBox.set_title(slint::SharedString("Help"));
+    
+    std::string helpText = "AK GUI Help\n\n";
+    helpText += "Use the tabs to navigate between different features:\n\n";
+    helpText += "• Key Manager: Manage your API keys and test endpoints\n";
+    helpText += "• Profile Manager: Create and manage key profiles\n";
+    helpText += "• Service Manager: Add and manage custom API services\n";
+    helpText += "• Settings: Configure application preferences\n\n";
+    helpText += "For detailed documentation, visit the project repository.";
+    
+    helpBox.set_text(slint::SharedString(helpText));
+    helpBox.set_buttons(slint::StandardButton::Ok);
+    helpBox.run();
 }
 
 void MainWindow::exitApplication()
 {
-    QApplication::quit();
+    // Terminate the Slint UI and exit
+    ui->quit();
 }
 
-void MainWindow::onStatusMessage(const QString &message)
+bool MainWindow::copyToClipboard(const std::string& text)
 {
-    statusBar()->showMessage(message, 3000);
+    // Simplified clipboard handling - using system tools
+    std::vector<std::string> clipboardTools = {"pbcopy", "wl-copy", "xclip"};
+    
+    for (const auto& tool : clipboardTools) {
+        if (core::commandExists(tool)) {
+            std::string command;
+            
+            if (tool == "xclip") {
+                command = "echo -n '" + text + "' | xclip -selection clipboard";
+            } else if (tool == "wl-copy") {
+                command = "echo -n '" + text + "' | wl-copy";
+            } else if (tool == "pbcopy") {
+                command = "echo -n '" + text + "' | pbcopy";
+            }
+            
+            int result = system(command.c_str());
+            return (result == 0);
+        }
+    }
+    
+    return false; // No clipboard tool found
 }
 
 } // namespace gui
