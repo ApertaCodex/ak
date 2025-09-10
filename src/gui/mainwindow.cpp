@@ -1,23 +1,37 @@
 #ifdef BUILD_GUI
 
 #include "gui/mainwindow.hpp"
-#include <QApplication>
-#include <QMessageBox>
-#include <QLabel>
-#include <QHBoxLayout>
-#include <QMenuBar>
-#include <QStatusBar>
-#include <QGroupBox>
-#include <QFormLayout>
+#include "gui/widgets/servicetester.hpp"
+#include <wx/wx.h>
+#include <wx/aboutdlg.h>
+#include <wx/stattext.h>
+#include <wx/sizer.h>
+#include <wx/statbox.h>
+#include <wx/gbsizer.h>
+#include <wx/notebook.h>
+#include <wx/msgdlg.h>
+#include <wx/display.h>
+#include <wx/colour.h>
+#include <wx/font.h>
+#include <wx/fontenum.h>
 
 namespace ak {
 namespace gui {
 
-MainWindow::MainWindow(const core::Config& cfg, QWidget *parent)
-    : QMainWindow(parent), config(cfg), tabWidget(nullptr),
+// Event table implementation
+wxBEGIN_EVENT_TABLE(MainWindow, wxFrame)
+    EVT_MENU(ID_About, MainWindow::OnAbout)
+    EVT_MENU(ID_Help, MainWindow::OnHelp)
+    EVT_MENU(wxID_EXIT, MainWindow::OnExit)
+    EVT_COMMAND(ID_StatusMessage, wxEVT_COMMAND_TEXT_UPDATED, MainWindow::OnStatusMessage)
+wxEND_EVENT_TABLE()
+
+MainWindow::MainWindow(const core::Config& cfg, wxWindow *parent)
+    : wxFrame(parent, wxID_ANY, "AK - API Key Manager", wxDefaultPosition, wxSize(1000, 700)),
+      config(cfg), tabWidget(nullptr),
       keyManagerWidget(nullptr), profileManagerWidget(nullptr),
-      serviceManagerWidget(nullptr), settingsTab(nullptr), exitAction(nullptr), aboutAction(nullptr),
-      helpAction(nullptr)
+      serviceManagerWidget(nullptr), serviceTesterWidget(nullptr),
+      settingsTab(nullptr)
 {
     setupUi();
     setupMenuBar();
@@ -25,217 +39,243 @@ MainWindow::MainWindow(const core::Config& cfg, QWidget *parent)
     setupTabs();
 
     // Set window properties
-    setWindowTitle("AK - API Key Manager");
-    setMinimumSize(800, 600);
-    resize(1000, 700);
-
+    SetMinSize(wxSize(800, 600));
+    
     // Center window on screen
-    QRect screenGeometry = QApplication::primaryScreen()->geometry();
-    int x = (screenGeometry.width() - width()) / 2;
-    int y = (screenGeometry.height() - height()) / 2;
-    move(x, y);
+    CenterOnScreen();
 }
 
 MainWindow::~MainWindow()
 {
-    // Qt handles cleanup automatically for child widgets
+    // wxWidgets handles cleanup automatically for child widgets
 }
 
 void MainWindow::setupUi()
 {
-    // Create central widget and main layout
-    QWidget *centralWidget = new QWidget(this);
-    setCentralWidget(centralWidget);
+    // Create main panel and sizer
+    wxPanel *mainPanel = new wxPanel(this);
+    wxBoxSizer *mainSizer = new wxBoxSizer(wxVERTICAL);
+    mainPanel->SetSizer(mainSizer);
     
-    QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
+    // Create tab widget (notebook)
+    tabWidget = new wxNotebook(mainPanel, wxID_ANY);
+    mainSizer->Add(tabWidget, 1, wxEXPAND | wxALL, 10);
     
-    // Create tab widget
-    tabWidget = new QTabWidget(this);
-    mainLayout->addWidget(tabWidget);
+    // Set background color
+    SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 }
 
 void MainWindow::setupMenuBar()
 {
-    // File menu
-    QMenu *fileMenu = menuBar()->addMenu("&File");
+    // Create menu bar
+    wxMenuBar *menuBar = new wxMenuBar();
     
-    exitAction = new QAction("E&xit", this);
-    exitAction->setShortcut(QKeySequence::Quit);
-    exitAction->setStatusTip("Exit the application");
-    connect(exitAction, &QAction::triggered, this, &MainWindow::exitApplication);
-    fileMenu->addAction(exitAction);
+    // File menu
+    wxMenu *fileMenu = new wxMenu();
+    fileMenu->Append(wxID_EXIT, "E&xit\tAlt+F4", "Exit the application");
+    menuBar->Append(fileMenu, "&File");
     
     // Help menu
-    QMenu *helpMenu = menuBar()->addMenu("&Help");
+    wxMenu *helpMenu = new wxMenu();
+    helpMenu->Append(ID_Help, "&Help\tF1", "Show help documentation");
+    helpMenu->AppendSeparator();
+    helpMenu->Append(ID_About, "&About AK", "Show information about AK");
+    menuBar->Append(helpMenu, "&Help");
     
-    helpAction = new QAction("&Help", this);
-    helpAction->setShortcut(QKeySequence::HelpContents);
-    helpAction->setStatusTip("Show help documentation");
-    connect(helpAction, &QAction::triggered, this, &MainWindow::showHelp);
-    helpMenu->addAction(helpAction);
-    
-    helpMenu->addSeparator();
-    
-    aboutAction = new QAction("&About AK", this);
-    aboutAction->setStatusTip("Show information about AK");
-    connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
-    helpMenu->addAction(aboutAction);
+    // Set the menu bar
+    SetMenuBar(menuBar);
 }
 
 void MainWindow::setupStatusBar()
 {
-    // Create status bar with basic info
-    statusBar()->showMessage("Ready", 2000);
+    // Create status bar
+    CreateStatusBar(2);
+    SetStatusText("Ready");
     
     // Add permanent widgets to status bar
-    QLabel *backendLabel = new QLabel(config.gpgAvailable ? "Backend: GPG" : "Backend: Plain");
-    statusBar()->addPermanentWidget(backendLabel);
+    wxString backendText = config.gpgAvailable && !config.forcePlain ?
+                           "Backend: GPG" : "Backend: Plain";
+    SetStatusText(backendText, 1);
     
-    QLabel *versionLabel = new QLabel("v" AK_VERSION_STRING);
-    statusBar()->addPermanentWidget(versionLabel);
+    // Version info is added in the status bar's second section
+    SetStatusText("v" AK_VERSION_STRING, 1);
 }
 
 void MainWindow::setupTabs()
 {
     // Key Manager Tab
-    keyManagerWidget = new widgets::KeyManagerWidget(config, this);
-    connect(keyManagerWidget, &widgets::KeyManagerWidget::statusMessage,
-            this, &MainWindow::onStatusMessage);
-    tabWidget->addTab(keyManagerWidget, "Key Manager");
+    keyManagerWidget = new widgets::KeyManagerWidget(config, tabWidget);
+    // We'll connect the event handler in the KeyManagerWidget implementation
+    tabWidget->AddPage(keyManagerWidget, "Key Manager");
 
     // Profile Manager Tab
-    profileManagerWidget = new widgets::ProfileManagerWidget(config, this);
-    connect(profileManagerWidget, &widgets::ProfileManagerWidget::statusMessage,
-            this, &MainWindow::onStatusMessage);
-    tabWidget->addTab(profileManagerWidget, "Profile Manager");
+    profileManagerWidget = new widgets::ProfileManagerWidget(config, tabWidget);
+    // We'll connect the event handler in the ProfileManagerWidget implementation
+    tabWidget->AddPage(profileManagerWidget, "Profile Manager");
 
     // Service Manager Tab
-    serviceManagerWidget = new widgets::ServiceManagerWidget(config, this);
-    connect(serviceManagerWidget, &widgets::ServiceManagerWidget::statusMessage,
-            this, &MainWindow::onStatusMessage);
-    tabWidget->addTab(serviceManagerWidget, "Service Manager");
+    serviceManagerWidget = new widgets::ServiceManagerWidget(config, tabWidget);
+    tabWidget->AddPage(serviceManagerWidget, "Service Manager");
 
-    // Settings Tab - Full Implementation
-    settingsTab = new QWidget();
-    QVBoxLayout *settingsLayout = new QVBoxLayout(settingsTab);
-    settingsLayout->setContentsMargins(20, 20, 20, 20);
-    settingsLayout->setSpacing(15);
+    // Service Tester Tab
+    serviceTesterWidget = new widgets::ServiceTesterWidget(config, tabWidget);
+    tabWidget->AddPage(serviceTesterWidget, "Service Tester");
+
+    // Settings Tab
+    settingsTab = new wxPanel(tabWidget);
+    wxBoxSizer *settingsSizer = new wxBoxSizer(wxVERTICAL);
+    settingsTab->SetSizer(settingsSizer);
     
     // Backend Settings Group
-    QGroupBox *backendGroup = new QGroupBox("Security Backend", settingsTab);
-    QVBoxLayout *backendLayout = new QVBoxLayout(backendGroup);
+    wxStaticBoxSizer *backendGroup = new wxStaticBoxSizer(wxVERTICAL, settingsTab, "Security Backend");
     
-    QLabel *backendStatus = new QLabel(QString("Current Backend: <b>%1</b>")
-        .arg(config.gpgAvailable && !config.forcePlain ? "GPG Encryption" : "Plain Text"));
-    backendLayout->addWidget(backendStatus);
+    wxString backendStatusText = wxString::Format("Current Backend: %s",
+        config.gpgAvailable && !config.forcePlain ? "GPG Encryption" : "Plain Text");
+    wxStaticText *backendStatus = new wxStaticText(settingsTab, wxID_ANY, backendStatusText);
+    wxFont boldFont = backendStatus->GetFont();
+    boldFont.SetWeight(wxFONTWEIGHT_BOLD);
+    backendStatus->SetFont(boldFont);
+    backendGroup->Add(backendStatus, 0, wxALL, 5);
     
     if (config.gpgAvailable) {
-        QLabel *gpgInfo = new QLabel("✅ GPG encryption is available and active");
-        gpgInfo->setStyleSheet("color: #00aa00;");
-        backendLayout->addWidget(gpgInfo);
+        wxStaticText *gpgInfo = new wxStaticText(settingsTab, wxID_ANY,
+                                                "✅ GPG encryption is available and active");
+        gpgInfo->SetForegroundColour(wxColour(0, 170, 0)); // Green
+        backendGroup->Add(gpgInfo, 0, wxALL, 5);
     } else {
-        QLabel *gpgWarning = new QLabel("⚠️ GPG not available - secrets stored as plain text");
-        gpgWarning->setStyleSheet("color: #ff6600;");
-        backendLayout->addWidget(gpgWarning);
+        wxStaticText *gpgWarning = new wxStaticText(settingsTab, wxID_ANY,
+                                                   "⚠️ GPG not available - secrets stored as plain text");
+        gpgWarning->SetForegroundColour(wxColour(255, 102, 0)); // Orange
+        backendGroup->Add(gpgWarning, 0, wxALL, 5);
     }
     
     // File Paths Group
-    QGroupBox *pathsGroup = new QGroupBox("File Locations", settingsTab);
-    QFormLayout *pathsLayout = new QFormLayout(pathsGroup);
+    wxStaticBoxSizer *pathsGroup = new wxStaticBoxSizer(wxVERTICAL, settingsTab, "File Locations");
+    wxGridBagSizer *pathsGrid = new wxGridBagSizer(5, 5);
     
-    QLabel *configDirLabel = new QLabel(QString::fromStdString(config.configDir));
-    configDirLabel->setStyleSheet("font-family: monospace;");
-    pathsLayout->addRow("Config Directory:", configDirLabel);
+    // Helper to create path rows
+    auto addPathRow = [&](int row, const wxString& label, const std::string& path) {
+        wxStaticText *labelText = new wxStaticText(settingsTab, wxID_ANY, label);
+        wxStaticText *pathText = new wxStaticText(settingsTab, wxID_ANY, path);
+        
+        // Try to use monospace font for path
+        wxFont monoFont = wxFont(wxFontInfo().Family(wxFONTFAMILY_TELETYPE));
+        pathText->SetFont(monoFont);
+        
+        pathsGrid->Add(labelText, wxGBPosition(row, 0), wxGBSpan(1, 1), wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL);
+        pathsGrid->Add(pathText, wxGBPosition(row, 1), wxGBSpan(1, 1), wxEXPAND);
+    };
     
-    QLabel *vaultPathLabel = new QLabel(QString::fromStdString(config.vaultPath));
-    vaultPathLabel->setStyleSheet("font-family: monospace;");
-    pathsLayout->addRow("Vault Path:", vaultPathLabel);
+    addPathRow(0, "Config Directory:", config.configDir);
+    addPathRow(1, "Vault Path:", config.vaultPath);
+    addPathRow(2, "Profiles Directory:", config.profilesDir);
+    addPathRow(3, "Audit Log:", config.auditLogPath);
     
-    QLabel *profilesDirLabel = new QLabel(QString::fromStdString(config.profilesDir));
-    profilesDirLabel->setStyleSheet("font-family: monospace;");
-    pathsLayout->addRow("Profiles Directory:", profilesDirLabel);
-    
-    QLabel *auditLogLabel = new QLabel(QString::fromStdString(config.auditLogPath));
-    auditLogLabel->setStyleSheet("font-family: monospace;");
-    pathsLayout->addRow("Audit Log:", auditLogLabel);
+    pathsGroup->Add(pathsGrid, 1, wxEXPAND | wxALL, 5);
     
     // Application Info Group
-    QGroupBox *infoGroup = new QGroupBox("Application Information", settingsTab);
-    QFormLayout *infoLayout = new QFormLayout(infoGroup);
+    wxStaticBoxSizer *infoGroup = new wxStaticBoxSizer(wxVERTICAL, settingsTab, "Application Information");
+    wxGridBagSizer *infoGrid = new wxGridBagSizer(5, 5);
     
-    QLabel *versionLabel = new QLabel("v" AK_VERSION_STRING);
-    versionLabel->setStyleSheet("font-weight: bold;");
-    infoLayout->addRow("Version:", versionLabel);
+    wxStaticText *versionLabel = new wxStaticText(settingsTab, wxID_ANY, "Version:");
+    wxStaticText *versionText = new wxStaticText(settingsTab, wxID_ANY, "v" AK_VERSION_STRING);
+    versionText->SetFont(boldFont);
     
-    QLabel *instanceLabel = new QLabel(QString::fromStdString(config.instanceId).left(8) + "...");
-    instanceLabel->setStyleSheet("font-family: monospace;");
-    infoLayout->addRow("Instance ID:", instanceLabel);
+    wxStaticText *instanceLabel = new wxStaticText(settingsTab, wxID_ANY, "Instance ID:");
+    wxString instanceId = wxString(config.instanceId.substr(0, 8) + "...");
+    wxStaticText *instanceText = new wxStaticText(settingsTab, wxID_ANY, instanceId);
+    instanceText->SetFont(monoFont);
+    
+    infoGrid->Add(versionLabel, wxGBPosition(0, 0), wxGBSpan(1, 1), wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL);
+    infoGrid->Add(versionText, wxGBPosition(0, 1), wxGBSpan(1, 1), wxEXPAND);
+    infoGrid->Add(instanceLabel, wxGBPosition(1, 0), wxGBSpan(1, 1), wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL);
+    infoGrid->Add(instanceText, wxGBPosition(1, 1), wxGBSpan(1, 1), wxEXPAND);
+    
+    infoGroup->Add(infoGrid, 1, wxEXPAND | wxALL, 5);
     
     // Clipboard Tools Detection
-    QGroupBox *toolsGroup = new QGroupBox("System Tools", settingsTab);
-    QVBoxLayout *toolsLayout = new QVBoxLayout(toolsGroup);
+    wxStaticBoxSizer *toolsGroup = new wxStaticBoxSizer(wxVERTICAL, settingsTab, "System Tools");
     
     // Check for clipboard tools
-    QStringList clipboardTools = {"pbcopy", "wl-copy", "xclip"};
+    std::vector<std::string> clipboardTools = {"pbcopy", "wl-copy", "xclip"};
     bool foundClipboard = false;
+    
     for (const auto& tool : clipboardTools) {
-        if (core::commandExists(tool.toStdString())) {
-            QLabel *toolLabel = new QLabel(QString("✅ Clipboard: %1").arg(tool));
-            toolLabel->setStyleSheet("color: #00aa00;");
-            toolsLayout->addWidget(toolLabel);
+        if (core::commandExists(tool)) {
+            wxStaticText *toolLabel = new wxStaticText(settingsTab, wxID_ANY,
+                                                      wxString::Format("✅ Clipboard: %s", tool));
+            toolLabel->SetForegroundColour(wxColour(0, 170, 0)); // Green
+            toolsGroup->Add(toolLabel, 0, wxALL, 5);
             foundClipboard = true;
             break;
         }
     }
+    
     if (!foundClipboard) {
-        QLabel *noClipboard = new QLabel("⚠️ No clipboard tools found (install xclip, wl-clipboard, or pbcopy)");
-        noClipboard->setStyleSheet("color: #ff6600;");
-        toolsLayout->addWidget(noClipboard);
+        wxStaticText *noClipboard = new wxStaticText(settingsTab, wxID_ANY,
+                                                   "⚠️ No clipboard tools found (install xclip, wl-clipboard, or pbcopy)");
+        noClipboard->SetForegroundColour(wxColour(255, 102, 0)); // Orange
+        toolsGroup->Add(noClipboard, 0, wxALL, 5);
     }
     
     // Add all groups to layout
-    settingsLayout->addWidget(backendGroup);
-    settingsLayout->addWidget(pathsGroup);
-    settingsLayout->addWidget(infoGroup);
-    settingsLayout->addWidget(toolsGroup);
-    settingsLayout->addStretch(); // Push content to top
+    settingsSizer->Add(backendGroup, 0, wxEXPAND | wxALL, 10);
+    settingsSizer->Add(pathsGroup, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
+    settingsSizer->Add(infoGroup, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
+    settingsSizer->Add(toolsGroup, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
+    settingsSizer->AddStretch(1); // Push content to top
     
-    tabWidget->addTab(settingsTab, "Settings");
+    tabWidget->AddPage(settingsTab, "Settings");
 
     // Set default tab
-    tabWidget->setCurrentIndex(0);
+    tabWidget->SetSelection(0);
 }
 
-void MainWindow::showAbout()
+void MainWindow::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
-    QMessageBox::about(this, "About AK",
-        "AK - API Key Manager v" AK_VERSION_STRING "\n\n"
-        "A secure tool for managing API keys and environment variables.\n\n"
-        "Backend: " + QString(config.gpgAvailable ? "GPG Encryption" : "Plain Text") + "\n"
-        "Config Directory: " + QString::fromStdString(config.configDir));
+    wxAboutDialogInfo aboutInfo;
+    aboutInfo.SetName("AK - API Key Manager");
+    aboutInfo.SetVersion(AK_VERSION_STRING);
+    aboutInfo.SetDescription("A secure tool for managing API keys and environment variables.");
+    
+    wxString backendInfo = wxString::Format("Backend: %s\nConfig Directory: %s",
+        config.gpgAvailable ? "GPG Encryption" : "Plain Text",
+        config.configDir);
+    aboutInfo.SetDescription(aboutInfo.GetDescription() + "\n\n" + backendInfo);
+    
+    wxAboutBox(aboutInfo);
 }
 
-void MainWindow::showHelp()
+void MainWindow::OnHelp(wxCommandEvent& WXUNUSED(event))
 {
-    QMessageBox::information(this, "Help",
+    wxMessageBox(
         "AK GUI Help\n\n"
         "Use the tabs to navigate between different features:\n\n"
         "• Key Manager: Manage your API keys and test endpoints\n"
         "• Profile Manager: Create and manage key profiles\n"
         "• Service Manager: Add and manage custom API services\n"
+        "• Service Tester: Test API services and monitor connectivity\n"
         "• Settings: Configure application preferences\n\n"
-        "For detailed documentation, visit the project repository.");
+        "For detailed documentation, visit the project repository.",
+        "Help", wxICON_INFORMATION | wxOK, this);
 }
 
-void MainWindow::exitApplication()
+void MainWindow::OnExit(wxCommandEvent& WXUNUSED(event))
 {
-    QApplication::quit();
+    Close(true);
 }
 
-void MainWindow::onStatusMessage(const QString &message)
+void MainWindow::OnStatusMessage(wxCommandEvent& event)
 {
-    statusBar()->showMessage(message, 3000);
+    SetStatusText(event.GetString(), 0);
+    
+    // Reset status after 3 seconds
+    wxTimer* timer = new wxTimer(this);
+    timer->StartOnce(3000);
+    timer->Bind(wxEVT_TIMER, [this, timer](wxTimerEvent&) {
+        SetStatusText("Ready", 0);
+        timer->Destroy();
+    });
 }
 
 } // namespace gui
