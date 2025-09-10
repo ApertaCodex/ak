@@ -3,18 +3,20 @@
 #ifdef BUILD_GUI
 
 #include "core/config.hpp"
-#include <QWidget>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QListWidget>
-#include <QListWidgetItem>
-#include <QPushButton>
-#include <QLabel>
-#include <QTextEdit>
-#include <QProgressBar>
-#include <QGroupBox>
-#include <QString>
-#include <QStringList>
+#include <wx/wx.h>
+#include <wx/listbox.h>
+#include <wx/statbox.h>
+#include <wx/textctrl.h>
+#include <wx/sizer.h>
+#include <wx/stattext.h>
+#include <wx/button.h>
+#include <wx/filedlg.h>
+#include <wx/msgdlg.h>
+#include <wx/dirdlg.h>
+#include <wx/gauge.h>
+#include <wx/timer.h>
+#include <vector>
+#include <string>
 
 namespace ak {
 namespace gui {
@@ -23,88 +25,86 @@ namespace widgets {
 // Forward declarations
 class ProfileImportExportDialog;
 
-// Profile List Item
-class ProfileListItem : public QListWidgetItem
-{
-public:
-    explicit ProfileListItem(const QString &profileName, int keyCount, QListWidget *parent = nullptr);
-
-    QString getProfileName() const;
-    int getKeyCount() const;
-    void setKeyCount(int count);
-
-private:
-    void updateDisplay();
-
-    QString profileName;
-    int keyCount;
-};
-
 // Profile Manager Widget
-class ProfileManagerWidget : public QWidget
+class ProfileManagerWidget : public wxPanel
 {
-    Q_OBJECT
-
 public:
-    explicit ProfileManagerWidget(const core::Config& config, QWidget *parent = nullptr);
+    explicit ProfileManagerWidget(const core::Config& config, wxWindow *parent = nullptr);
+    virtual ~ProfileManagerWidget();
 
-    void refreshProfiles();
+    void RefreshProfiles();
 
-signals:
-    void statusMessage(const QString &message);
-
-private slots:
-    void createProfile();
-    void deleteProfile();
-    void renameProfile();
-    void duplicateProfile();
-    void importProfile();
-    void exportProfile();
-    void onProfileSelectionChanged();
-    void onProfileDoubleClicked(QListWidgetItem *item);
+    // Event handlers
+    void OnCreateProfile(wxCommandEvent& event);
+    void OnDeleteProfile(wxCommandEvent& event);
+    void OnRenameProfile(wxCommandEvent& event);
+    void OnDuplicateProfile(wxCommandEvent& event);
+    void OnImportProfile(wxCommandEvent& event);
+    void OnExportProfile(wxCommandEvent& event);
+    void OnProfileSelectionChanged(wxCommandEvent& event);
+    void OnProfileDoubleClicked(wxCommandEvent& event);
+    void OnRefresh(wxCommandEvent& event);
 
 private:
-    void setupUi();
-    void setupProfileList();
-    void setupControls();
-    void setupProfileDetails();
-    void loadProfiles();
-    void updateProfileDetails(const QString &profileName);
-    void showProfileKeys(const QString &profileName);
-    bool validateProfileName(const QString &name);
-    void showError(const QString &message);
-    void showSuccess(const QString &message);
+    void SetupUi();
+    void SetupProfileList();
+    void SetupControls();
+    void SetupProfileDetails();
+    void LoadProfiles();
+    void UpdateProfileDetails(const wxString &profileName);
+    void ShowProfileKeys(const wxString &profileName);
+    bool ValidateProfileName(const wxString &name);
+    void ShowError(const wxString &message);
+    void ShowSuccess(const wxString &message);
+    void SendStatusEvent(const wxString &message);
 
     // Configuration and data
     const core::Config& config;
-    QStringList availableProfiles;
-    QString currentProfile;
+    std::vector<wxString> availableProfiles;
+    wxString currentProfile;
+    std::map<wxString, int> profileKeyCounts;
 
     // UI components
-    QVBoxLayout *mainLayout;
-    QHBoxLayout *controlsLayout;
+    wxBoxSizer *mainSizer;
+    wxBoxSizer *controlsSizer;
 
     // Profile list
-    QListWidget *profileList;
-    QLabel *profileListLabel;
+    wxListBox *profileList;
+    wxStaticText *profileListLabel;
 
     // Controls
-    QPushButton *createButton;
-    QPushButton *deleteButton;
-    QPushButton *renameButton;
-    QPushButton *duplicateButton;
-    QPushButton *importButton;
-    QPushButton *exportButton;
-    QPushButton *refreshButton;
+    wxButton *createButton;
+    wxButton *deleteButton;
+    wxButton *renameButton;
+    wxButton *duplicateButton;
+    wxButton *importButton;
+    wxButton *exportButton;
+    wxButton *refreshButton;
 
     // Profile details
-    QGroupBox *detailsGroup;
-    QLabel *profileNameLabel;
-    QLabel *keyCountLabel;
-    QTextEdit *keysText;
+    wxStaticBoxSizer *detailsGroup;
+    wxStaticText *profileNameLabel;
+    wxStaticText *keyCountLabel;
+    wxTextCtrl *keysText;
 
     // Status
-    QLabel *statusLabel;
+    wxStaticText *statusLabel;
+
+    // Custom event IDs
+    enum {
+        ID_CREATE_PROFILE = wxID_HIGHEST + 200,
+        ID_DELETE_PROFILE,
+        ID_RENAME_PROFILE,
+        ID_DUPLICATE_PROFILE,
+        ID_IMPORT_PROFILE,
+        ID_EXPORT_PROFILE,
+        ID_PROFILE_LIST,
+        ID_REFRESH_PROFILES,
+        ID_STATUS_MESSAGE
+    };
+
+    // wxWidgets event table
+    wxDECLARE_EVENT_TABLE();
 };
 
 } // namespace widgets

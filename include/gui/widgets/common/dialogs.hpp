@@ -2,19 +2,16 @@
 
 #ifdef BUILD_GUI
 
-#include <QDialog>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QFormLayout>
-#include <QLabel>
-#include <QLineEdit>
-#include <QTextEdit>
-#include <QComboBox>
-#include <QPushButton>
-#include <QDialogButtonBox>
-#include <QProgressBar>
-#include <QString>
-#include <QStringList>
+#include <wx/wx.h>
+#include <wx/dialog.h>
+#include <wx/sizer.h>
+#include <wx/stattext.h>
+#include <wx/textctrl.h>
+#include <wx/choice.h>
+#include <wx/button.h>
+#include <wx/gauge.h>
+#include <wx/statline.h>
+#include <wx/filedlg.h>
 
 namespace ak {
 namespace gui {
@@ -24,139 +21,152 @@ namespace widgets {
 class SecureInputWidget;
 
 // Base dialog class with common functionality
-class BaseDialog : public QDialog
+class BaseDialog : public wxDialog
 {
-    Q_OBJECT
-
 public:
-    explicit BaseDialog(const QString &title, QWidget *parent = nullptr);
+    explicit BaseDialog(const wxString &title, wxWindow *parent = nullptr);
 
 protected:
-    void setupButtons(QDialogButtonBox::StandardButtons buttons);
-    void addFormRow(const QString &label, QWidget *widget);
-    void addWidget(QWidget *widget);
+    void setupButtons(int flags);
+    void addFormRow(const wxString &label, wxWindow *widget);
+    void addWidget(wxWindow *widget);
     void setValid(bool valid);
 
+    // Event handlers
+    void OnOK(wxCommandEvent &event);
+    void OnCancel(wxCommandEvent &event);
+
+    wxDECLARE_EVENT_TABLE();
+
 private:
-    QVBoxLayout *mainLayout;
-    QFormLayout *formLayout;
-    QDialogButtonBox *buttonBox;
+    wxBoxSizer *mainSizer;
+    wxFlexGridSizer *formSizer;
+    wxBoxSizer *buttonSizer;
+    wxButton *okButton;
+    wxButton *cancelButton;
 };
 
 // Key Add/Edit Dialog
 class KeyEditDialog : public BaseDialog
 {
-    Q_OBJECT
-
 public:
-    explicit KeyEditDialog(QWidget *parent = nullptr);
-    KeyEditDialog(const QString &keyName, const QString &keyValue, 
-                  const QString &service, QWidget *parent = nullptr);
+    explicit KeyEditDialog(wxWindow *parent = nullptr);
+    KeyEditDialog(const wxString &keyName, const wxString &keyValue, 
+                  const wxString &service, wxWindow *parent = nullptr);
 
-    QString getKeyName() const;
-    QString getKeyValue() const;
-    QString getService() const;
+    wxString getKeyName() const;
+    wxString getKeyValue() const;
+    wxString getService() const;
 
-private slots:
-    void validateInput();
+    // Event handlers
+    void OnInputChanged(wxCommandEvent &event);
+
+    wxDECLARE_EVENT_TABLE();
 
 private:
     void setupUi();
     void populateServices();
+    void validateInput();
 
-    QLineEdit *nameEdit;
+    wxTextCtrl *nameEdit;
     SecureInputWidget *valueEdit;
-    QComboBox *serviceCombo;
+    wxChoice *serviceChoice;
     bool editMode;
 };
 
 // Profile Create Dialog
 class ProfileCreateDialog : public BaseDialog
 {
-    Q_OBJECT
-
 public:
-    explicit ProfileCreateDialog(QWidget *parent = nullptr);
+    explicit ProfileCreateDialog(wxWindow *parent = nullptr);
 
-    QString getProfileName() const;
+    wxString getProfileName() const;
 
-private slots:
-    void validateInput();
+    // Event handlers
+    void OnNameChanged(wxCommandEvent &event);
+
+    wxDECLARE_EVENT_TABLE();
 
 private:
     void setupUi();
+    void validateInput();
 
-    QLineEdit *nameEdit;
+    wxTextCtrl *nameEdit;
 };
 
-// Confirmation Dialog
-class ConfirmationDialog : public QDialog
+// Confirmation Dialog helper class
+class ConfirmationDialog
 {
-    Q_OBJECT
-
 public:
-    static bool confirm(QWidget *parent, const QString &title, 
-                       const QString &message, const QString &details = QString());
+    static bool confirm(wxWindow *parent, const wxString &title, 
+                      const wxString &message, const wxString &details = wxEmptyString);
 
-    static void showInfo(QWidget *parent, const QString &title, const QString &message);
-    static void showError(QWidget *parent, const QString &title, const QString &message);
-    static void showWarning(QWidget *parent, const QString &title, const QString &message);
-
-private:
-    explicit ConfirmationDialog(const QString &title, const QString &message,
-                               const QString &details, QWidget *parent = nullptr);
+    static void showInfo(wxWindow *parent, const wxString &title, const wxString &message);
+    static void showError(wxWindow *parent, const wxString &title, const wxString &message);
+    static void showWarning(wxWindow *parent, const wxString &title, const wxString &message);
 };
 
 // Progress Dialog
-class ProgressDialog : public QDialog
+class ProgressDialog : public wxDialog
 {
-    Q_OBJECT
-
 public:
-    explicit ProgressDialog(const QString &title, QWidget *parent = nullptr);
+    explicit ProgressDialog(const wxString &title, wxWindow *parent = nullptr);
 
     void setProgress(int value);
     void setMaximum(int maximum);
-    void setLabelText(const QString &text);
-    void setDetailText(const QString &text);
+    void setLabelText(const wxString &text);
+    void setDetailText(const wxString &text);
 
 private:
     void setupUi();
 
-    QLabel *statusLabel;
-    QProgressBar *progressBar;
-    QTextEdit *detailsText;
+    wxStaticText *statusLabel;
+    wxGauge *progressBar;
+    wxTextCtrl *detailsText;
 };
 
 // Profile Import/Export Dialog
 class ProfileImportExportDialog : public BaseDialog
 {
-    Q_OBJECT
-
 public:
     enum Mode { Import, Export };
     
-    explicit ProfileImportExportDialog(Mode mode, QWidget *parent = nullptr);
-    explicit ProfileImportExportDialog(Mode mode, const QString &defaultProfileName, QWidget *parent = nullptr);
+    explicit ProfileImportExportDialog(Mode mode, wxWindow *parent = nullptr);
+    explicit ProfileImportExportDialog(Mode mode, const wxString &defaultProfileName, wxWindow *parent = nullptr);
 
-    QString getFilePath() const;
-    QString getFormat() const;
-    QString getProfileName() const;
+    wxString getFilePath() const;
+    wxString getFormat() const;
+    wxString getProfileName() const;
     
-    void setDefaultProfileName(const QString &profileName);
+    void setDefaultProfileName(const wxString &profileName);
 
-private slots:
-    void browseFile();
-    void validateInput();
+    // Event handlers
+    void OnBrowseFile(wxCommandEvent &event);
+    void OnInputChanged(wxCommandEvent &event);
+
+    wxDECLARE_EVENT_TABLE();
 
 private:
     void setupUi();
+    void validateInput();
 
     Mode mode;
-    QLineEdit *filePathEdit;
-    QPushButton *browseButton;
-    QComboBox *formatCombo;
-    QLineEdit *profileNameEdit;
+    wxTextCtrl *filePathEdit;
+    wxButton *browseButton;
+    wxChoice *formatChoice;
+    wxTextCtrl *profileNameEdit;
+};
+
+// Event IDs
+enum {
+    ID_KEY_NAME = wxID_HIGHEST + 2000,
+    ID_KEY_VALUE,
+    ID_KEY_SERVICE,
+    ID_PROFILE_NAME,
+    ID_BROWSE_BUTTON,
+    ID_FILE_PATH,
+    ID_FORMAT_CHOICE,
+    ID_PROFILE_NAME_EDIT
 };
 
 } // namespace widgets

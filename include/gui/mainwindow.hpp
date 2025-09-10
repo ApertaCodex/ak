@@ -6,32 +6,32 @@
 #include "gui/widgets/keymanager.hpp"
 #include "gui/widgets/profilemanager.hpp"
 #include "gui/widgets/servicemanager.hpp"
-#include <QMainWindow>
-#include <QTabWidget>
-#include <QVBoxLayout>
-#include <QWidget>
-#include <QMenuBar>
-#include <QStatusBar>
-#include <QAction>
+#include "gui/widgets/servicetester.hpp"
+#include <wx/wx.h>
+#include <wx/notebook.h>
+#include <wx/stattext.h>
+#include <wx/sizer.h>
+#include <wx/panel.h>
+#include <wx/menu.h>
+#include <wx/statusbr.h>
 
 namespace ak {
 namespace gui {
 
-class MainWindow : public QMainWindow
+class MainWindow : public wxFrame
 {
-    Q_OBJECT
-
 public:
-    explicit MainWindow(const core::Config& cfg, QWidget *parent = nullptr);
-    ~MainWindow();
-
-private slots:
-    void showAbout();
-    void showHelp();
-    void exitApplication();
-    void onStatusMessage(const QString &message);
+    explicit MainWindow(const core::Config& cfg, wxWindow *parent = nullptr);
+    virtual ~MainWindow();
 
 private:
+    // Event handlers
+    void OnAbout(wxCommandEvent& event);
+    void OnHelp(wxCommandEvent& event);
+    void OnExit(wxCommandEvent& event);
+    void OnStatusMessage(wxCommandEvent& event);
+
+    // Setup methods
     void setupUi();
     void setupMenuBar();
     void setupStatusBar();
@@ -40,16 +40,22 @@ private:
     const core::Config& config;
 
     // UI Components
-    QTabWidget *tabWidget;
+    wxNotebook *tabWidget;
     widgets::KeyManagerWidget *keyManagerWidget;
     widgets::ProfileManagerWidget *profileManagerWidget;
     widgets::ServiceManagerWidget *serviceManagerWidget;
-    QWidget *settingsTab;
+    widgets::ServiceTesterWidget *serviceTesterWidget;
+    wxPanel *settingsTab;
 
-    // Menu actions
-    QAction *exitAction;
-    QAction *aboutAction;
-    QAction *helpAction;
+    // wxWidgets DECLARE_EVENT_TABLE() alternative
+    wxDECLARE_EVENT_TABLE();
+    
+    // Custom event ID
+    enum {
+        ID_About = wxID_HIGHEST + 1,
+        ID_Help,
+        ID_StatusMessage
+    };
 };
 
 } // namespace gui

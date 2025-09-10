@@ -2,57 +2,59 @@
 
 #ifdef BUILD_GUI
 
-#include <QWidget>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QHBoxLayout>
-#include <QString>
+#include <wx/wx.h>
+#include <wx/textctrl.h>
+#include <wx/button.h>
+#include <wx/sizer.h>
 
 namespace ak {
 namespace gui {
 namespace widgets {
 
-class SecureInputWidget : public QWidget
+class SecureInputWidget : public wxPanel
 {
-    Q_OBJECT
-
 public:
-    explicit SecureInputWidget(QWidget *parent = nullptr);
+    explicit SecureInputWidget(wxWindow *parent = nullptr);
     
-    void setText(const QString &text);
-    QString text() const;
-    void setPlaceholderText(const QString &text);
-    void setReadOnly(bool readOnly);
-    bool isReadOnly() const;
+    void SetText(const wxString &text);
+    wxString GetText() const;
+    void SetPlaceholderText(const wxString &text);
+    void SetReadOnly(bool readOnly);
+    bool IsReadOnly() const;
     
     // Show/hide functionality
-    void setMasked(bool masked);
-    bool isMasked() const;
+    void SetMasked(bool masked);
+    bool IsMasked() const;
     
     // Validation
-    void setValid(bool valid);
-    bool isValid() const;
+    void SetValid(bool valid);
+    bool IsValid() const;
 
-signals:
-    void textChanged(const QString &text);
-    void editingFinished();
+    // Event handlers
+    void OnToggleVisibility(wxCommandEvent &event);
+    void OnTextChanged(wxCommandEvent &event);
 
-private slots:
-    void toggleVisibility();
-    void onTextChanged(const QString &text);
+    // Events
+    wxDECLARE_EVENT_TABLE();
 
 private:
     void setupUi();
     void updateVisibility();
     void updateStyleSheet();
     
-    QLineEdit *lineEdit;
-    QPushButton *toggleButton;
-    QHBoxLayout *layout;
+    wxTextCtrl *lineEdit;
+    wxButton *toggleButton;
+    wxBoxSizer *layout;
     
     bool masked;
     bool valid;
-    QString originalText;
+    wxString originalText;
+};
+
+// Event IDs
+enum {
+    ID_SECURE_TEXT = wxID_HIGHEST + 1000,
+    ID_TOGGLE_VISIBILITY
 };
 
 } // namespace widgets
