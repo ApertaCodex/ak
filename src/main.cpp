@@ -123,6 +123,10 @@ int main(int argc, char** argv) {
         // Profile Management Extensions
         {"duplicate", commands::cmd_duplicate},
         
+        // Internal commands for shell integration auto-loading
+        {"_internal_get_dir_profiles", commands::cmd_internal_get_dir_profiles},
+        {"_internal_get_bundle", commands::cmd_internal_get_bundle},
+        
         // GUI
         {"gui", commands::cmd_gui}
     };

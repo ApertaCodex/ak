@@ -317,7 +317,7 @@ endif()
 
 # Install desktop file and icons (Linux only)
 if(UNIX AND NOT APPLE AND BUILD_GUI)
-    # Install desktop file
+    # Install desktop file to user applications directory
     install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ak.desktop
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
@@ -336,6 +336,26 @@ if(UNIX AND NOT APPLE AND BUILD_GUI)
         RENAME ak.png
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
     )
+endif()
+
+# Post-install setup for automatic shell integration
+if(NOT WIN32)
+    install(CODE "
+        # Set up shell integration automatically after installation
+        message(STATUS \"Setting up AK shell integration...\")
+        execute_process(
+            COMMAND \${CMAKE_INSTALL_PREFIX}/${INSTALL_BIN_DIR}/ak install-shell
+            RESULT_VARIABLE SHELL_SETUP_RESULT
+            OUTPUT_QUIET
+            ERROR_QUIET
+        )
+        
+        if(SHELL_SETUP_RESULT EQUAL 0)
+            message(STATUS \"Shell integration configured successfully\")
+        else()
+            message(STATUS \"Shell integration will be configured on first run\")
+        endif()
+    ")
 endif()
 
 # ============================================================================
