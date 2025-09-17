@@ -1,0 +1,434 @@
+Package: ak
+Version: 4.1.10
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.1.10_amd64.deb
+Size: 153408
+MD5sum: f64779ac5e8faa549d9694befab4ba36
+SHA1: d0758970ed109c93d77bed15bdbf8d37a69b3647
+SHA256: 7fb6a6509bd51e9780f205ef1a762a0c924583f1a8a2df2d08ffcf9f2ccfded0
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.1.11
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.1.11_amd64.deb
+Size: 153416
+MD5sum: 33a1c80474b263810366f6081d47f425
+SHA1: ef6278acd548ce8ed8b80fd9184aefe19b69c162
+SHA256: 30927140a76fe66f5744f2095c1bceb92896b14897b2589b8121fbfe414a3de0
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.1.12
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.1.12_amd64.deb
+Size: 153422
+MD5sum: 7ca6fd60867a82487b8be341ef4794c9
+SHA1: 35a1bbde6a54ca7197f4a85ca097d4c893bf0b4d
+SHA256: 40f647c55950fdbde322fdb36226829acf1096445313c533f380c8e5face6c91
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.1.13
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.1.13_amd64.deb
+Size: 153408
+MD5sum: e0b12718027ab7e64955353a8681cbae
+SHA1: 9d96cf81697f0a3fa2cbb3f84c880fb4193c4556
+SHA256: fff63444fdd14b560fa4044b97d793ae370c35f367dc316e93f328ac4827f61c
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.1.14
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.1.14_amd64.deb
+Size: 153410
+MD5sum: 39d55dcd4966c44c77aeb5557ebb7285
+SHA1: c4edf0775811907ef07a06c361e728df82a1a9af
+SHA256: 98f825da200f9a708e360a0fe59b91229e677db8118097cb84d87ddd0cc7442d
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.1.6
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.1.6_amd64.deb
+Size: 153370
+MD5sum: c9d9720bbea5647164caac14490aa593
+SHA1: e8bb4d2af095e3b3b69bea0c3633dde0223840b8
+SHA256: c21acc5ec667acac784f04a1a58f6835a52729d5440b1c8097cc8d54a95d654b
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.1.7
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.1.7_amd64.deb
+Size: 153406
+MD5sum: 0fccb548977f67be8eb773332414eed4
+SHA1: 4988cde3a1f64e23d62f366441be933e4209ec4a
+SHA256: 48bd3fdd27757e8f8284ef9838da2c88c87f550388bed73113c3a7b6675ce151
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.1.8
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.1.8_amd64.deb
+Size: 153396
+MD5sum: f056f828d85e5c3be6798e49edffb33e
+SHA1: 8540604f55eade349c0d0bff0155d9d5744dd3e6
+SHA256: 96374ce4519ae4f16efa67ffd082586f2b7d877f668d59cf7ce24c85de94b981
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.1.9
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.1.9_amd64.deb
+Size: 153436
+MD5sum: 1eb827f4a478ae2b3ad4a7957fec4603
+SHA1: e8fe8f3a4ad8b5ffb77157aafcd5e55e26c0492a
+SHA256: 5a4b21366c09cf2002614939baa36c94f54391244e85b973b4c8e4d65313dff3
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.0
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.0_amd64.deb
+Size: 153410
+MD5sum: f4165881933b39046c1dabdf0a19967b
+SHA1: 3439f0f7b781a7d4bf062f65c70f9f5651e8333c
+SHA256: ba8eb0a071d1e9317660c45ff4a3aaac8ecac36e21faae24361642b6936583af
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.1
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.1_amd64.deb
+Size: 153402
+MD5sum: b5e892c5af181edfb43add63454a8739
+SHA1: 1bfee3adfe3f7157914c47f5d0fb6e1cc0c8a71c
+SHA256: ea352735d8047980c6b0aa54ed838cb46a87cc2a3b206791ce05c8b189306546
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.10
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.10_amd64.deb
+Size: 153384
+MD5sum: 4c26698f32fcb1333e48ff90f8c7a627
+SHA1: ee56bfda110c925c4eabce900f0aa062bf69337a
+SHA256: 3499bbec5d913059b570572aa1ca7ce6057deffd2f181adefda3f0afab7e2364
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.11
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.11_amd64.deb
+Size: 153412
+MD5sum: 8da90f38a796fd9aa3ffa46b8d099c85
+SHA1: 4fabf86cb6b8063fa1041771080422b8016ada60
+SHA256: a4756b851800571283e3c5e69d4c5c411e96f840ad4b0de1f8df2388837564a2
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.13
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.13_amd64.deb
+Size: 153428
+MD5sum: c3f988f591091399ac727124a0efb53d
+SHA1: 0fa301bad2bd8329620d442823c831d3d03fac91
+SHA256: 05a9510c73463576a70ecf09de2a0471dc91281fab9ccc2ed0c396b3d4cce46e
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.14
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.14_amd64.deb
+Size: 153422
+MD5sum: 36245a0d1f32464a1249ef2cde382e44
+SHA1: e0143a1926b4495f054b6324392f30d0990c053d
+SHA256: 73c5d78780a9ffff05f342c6788a4f094eed13f75c86e454f8ac8ea2d91cad5c
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.15
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.15_amd64.deb
+Size: 153420
+MD5sum: dd2a9ab8e8d91411a223f090710253db
+SHA1: 4edc284c8568f7db0b044a096a0602c4c81d3529
+SHA256: 5416c348719af475cddacdef2d62028410390abf58faebe66f40c78e5cecb2ef
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.16
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.16_amd64.deb
+Size: 153424
+MD5sum: b01bba3f33981053c0c9c9ef731f9b93
+SHA1: 397b5708484b4bbc07dea5b3029b363c15ff9f3c
+SHA256: 3c14699d3bba94534b117957c1ca0410807f0ad157f66fd21da8a1f534a2b781
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.17
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.17_amd64.deb
+Size: 153430
+MD5sum: b2dd493d65762a4325fc0b7be8b0dc3d
+SHA1: 9c681b1d8ea26a8394fd3a5e3422540c10893c12
+SHA256: b8865ffbcda47d2f891d5e41af3f02a0caacd55aa1a2a99c0ca2ae42f28548e7
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.18
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.18_amd64.deb
+Size: 153432
+MD5sum: d9e349d28c6a0561f58f1157ecc3a584
+SHA1: 68170efede5261bca1cf332e68281efece94ae35
+SHA256: 154aa24fef6f64e2c818765142a3e4110245ae83b5b130e586d18442c500d87f
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.19
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.19_amd64.deb
+Size: 153426
+MD5sum: 5a27bb0040a9747d44f6e17163cb15a7
+SHA1: b94dcb72a50dee99df81b250401957fe44c904b1
+SHA256: 294baab88030a6d1f17ec9d957ab6524b6d0a983d92dc6a064e6e97b2e22efbf
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.2
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.2_amd64.deb
+Size: 153400
+MD5sum: 6f22ed288e2da370dfb488f6cd260092
+SHA1: 268ef2e50e37e577f89dbf7fb022b1e85ebc1630
+SHA256: 7bba9a554054e92877dded5957fefb491717ec70e256264c3a2783c3c495ab2a
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.20
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.20_amd64.deb
+Size: 153430
+MD5sum: 59c8af42e85be17ad018e7ea8d741cba
+SHA1: 7b22baabc1d0c3a8e22acedffad72df9dbe42b55
+SHA256: 04bde06731e91d47a3ebf555d1c644062f9a2a829db7b247f9c585388ed17210
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.21
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.21_amd64.deb
+Size: 153420
+MD5sum: 6c3f92d34a0bdc7b081a722cb977028f
+SHA1: a5126526964e41089949d3136f12820b11b93db4
+SHA256: 5d12ee4b398b8a7dbe408e3a60647405a9fe2b5e9da3df28fa663cdf92750474
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.22
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.22_amd64.deb
+Size: 155264
+MD5sum: c57eefd77604753cfa0c7cefb27bb6c0
+SHA1: 6bed491d9b2ad58bb736e412f09f1d2b4acddcea
+SHA256: 8b47bdf0d42107d8ee027b11cc09e3ee09426fc35d8225ef1c7e4590d48d977a
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.3
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.3_amd64.deb
+Size: 153396
+MD5sum: 681159f355c125d5b13a8df3a35089e2
+SHA1: e5d370373d6acfe4bcf46ea60f14ffa33bf49ff0
+SHA256: 067b2c1f6213eb53590c3cabf78e8f7fa5b47d193b04b9e900a3db909d9a106f
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.4
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.4_amd64.deb
+Size: 153408
+MD5sum: a09381bdde25f842a9a8e8926b8bec3f
+SHA1: dd03ba6b1336da3012e94696ebe2059ed103524e
+SHA256: 90e6f4c20a58e2041d2e469ff8b06373fc3ff30602d8f3f7cadecc4f005fc96c
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.5
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.5_amd64.deb
+Size: 153396
+MD5sum: 1376cda64e74607db9e18cb429d79dca
+SHA1: 690bd65da78a9bfd995dbb5022ecae5454efa1ba
+SHA256: 748ea3f7c263550810822ac6610f3b53e4243b742b2207dadf8591f8beff2c2e
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.6
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.6_amd64.deb
+Size: 153430
+MD5sum: 9d4866356e37b9479830ba18e1000a71
+SHA1: 6a22143adb987a11e24c40ab22689d22b86dafa8
+SHA256: cdbf551fa07e9fd7fdd77af388c224f634942279b428bd75768b43ec683f9960
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.7
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.7_amd64.deb
+Size: 153434
+MD5sum: 24fe4eea6082da3ed1dd40e9eaa0f5fa
+SHA1: b474e3225c8b86c243dce15dcb3e619cf95e7f34
+SHA256: bb4c1a67af3894b2a1e6e4d2e5ee1169b92e44a346e97680ebf18d533b4f215d
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.8
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.8_amd64.deb
+Size: 153392
+MD5sum: f29d2a1241d7d5725f2476d49f82b9df
+SHA1: e31d80c42aa21ce677b55aee43791e50252ecf3c
+SHA256: f196e6e885258bc2eaea3b65445b30cb663b340b106d0e581b8646aecac5b6f1
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.2.9
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.2.9_amd64.deb
+Size: 153396
+MD5sum: d086e6cd3d74897121a507717f8803ec
+SHA1: 09f4b899cdf602049595e36c6335df9522f558c3
+SHA256: 5ae5ed58d548a05477539786967d1678a0c2ce6ccb4a1edac2969fd165b904f6
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
