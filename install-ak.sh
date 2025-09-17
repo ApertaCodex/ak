@@ -308,10 +308,13 @@ get_qt6_version() {
 # Check if GUI is enabled in AK
 check_gui_support() {
     if command -v ak >/dev/null 2>&1; then
-        if ak gui 2>&1 | grep -q "GUI support not compiled"; then
+        # Run ak gui --help with a short timeout to avoid GUI launch
+        local output
+        output=$(timeout 5s ak gui --help 2>&1 || true)
+        if echo "$output" | grep -q "GUI support not compiled"; then
             return 1
         fi
-        # If the command didn't error with that message, GUI might be supported
+        # If we got help text or other output (even with GTK warnings), GUI is supported
         return 0
     fi
     # ak command not found
@@ -334,41 +337,34 @@ ak_supports_gui_at() {
 
 # Build AK from source with GUI enabled (installs to /usr/local by default)
 build_ak_gui_from_source() {
-    log_message "🛠️ Building AK from source with GUI enabled..."
+    log_message "🛠️ Building AK from current source with GUI enabled..."
     # Ensure build tools and Qt6 dev packages
     apt_update
     apt_operation apt install -y build-essential cmake git qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libqt6svg6-dev || {
         log_warning "Failed to install some build dependencies; continuing..."
     }
 
-    local tmpdir
-    tmpdir=$(mktemp -d 2>/dev/null || echo "/tmp/ak-build-$$")
-    if [ ! -d "$tmpdir" ]; then
-        log_error "Could not create temporary build directory"
-        return 1
-    fi
-
-    if ! command -v git >/dev/null 2>&1; then
-        apt_operation apt install -y git || true
-    fi
-
-    if git clone --depth 1 https://github.com/apertacodex/ak "$tmpdir/ak" >/dev/null 2>&1; then
-        :
-    else
-        log_error "Failed to clone AK repository"
+    # Get current directory (should be AK project root)
+    local current_dir
+    current_dir=$(pwd)
+    
+    # Check if we're in AK project directory
+    if [ ! -f "$current_dir/CMakeLists.txt" ]; then
+        log_error "Not in AK project directory. CMakeLists.txt not found."
         return 1
     fi
 
     # Build in a subshell to avoid changing cwd of the installer
     (
         set -e
-        cd "$tmpdir/ak"
+        cd "$current_dir"
+        rm -rf build
         mkdir -p build
         cd build
-        cmake .. -DBUILD_GUI=ON
+        cmake .. -DBUILD_GUI=ON -DCMAKE_BUILD_TYPE=Release
         make -j"$(nproc 2>/dev/null || echo 2)"
         sudo make install
-    ) >/dev/null 2>&1 || {
+    ) || {
         log_error "Building or installing AK with GUI failed"
         return 1
     }
@@ -461,8 +457,8 @@ ensure_ak_links() {
 
 # Main installation function
 install_ak() {
-    log_message "🚀 Installing AK API Key Manager..."
-    log_message "📍 Using GitHub Pages repository (recommended)"
+    log_message "🚀 Installing AK API Key Manager from source..."
+    log_message "📍 Building with GUI support enabled"
     log_message ""
     
     # Check if running on supported system
@@ -472,20 +468,7 @@ install_ak() {
         return 1
     fi
     
-    # Add GPG key
-    log_message "🔐 Adding GPG key..."
-    safe_mkdir "/usr/share/keyrings"
-    safe_download "https://apertacodex.github.io/ak/ak-repository-key.gpg" "/usr/share/keyrings/ak-archive-keyring.gpg" || {
-        log_warning "Failed to download GPG key, but will try to continue anyway..."
-    }
-    
-    # Add repository
-    log_message "📦 Adding AK repository..."
-    echo "deb [signed-by=/usr/share/keyrings/ak-archive-keyring.gpg] https://apertacodex.github.io/ak/ak-apt-repo stable main" | sudo tee /etc/apt/sources.list.d/ak.list >/dev/null || {
-        log_warning "Failed to add repository, but will try to continue anyway..."
-    }
-    
-    # Update package list
+    # Update package list first
     apt_update
     
     # Check Qt6 version compatibility
@@ -496,58 +479,35 @@ install_ak() {
     
     # Define version requirements
     REQUIRED_QT_VERSION="6.8.0"  # Minimum for building from source
-    BINARY_REQUIRES_QT_VERSION="6.9.0"  # Published binary requirement
     
     # Log detected Qt version
     if [ -n "$QT6_VERSION" ]; then
         log_message "📍 Qt6 runtime version detected: $QT6_VERSION"
-        log_message "📍 Binary requires Qt6 version: $BINARY_REQUIRES_QT_VERSION"
         log_message "📍 Source build minimum: $REQUIRED_QT_VERSION"
         
         # Compare with minimum required version
-        if compare_versions "$QT6_VERSION" "$BINARY_REQUIRES_QT_VERSION"; then
-            log_success "Qt6 $QT6_VERSION detected - compatible with published AK binary"
+        if compare_versions "$QT6_VERSION" "$REQUIRED_QT_VERSION"; then
+            log_success "Qt6 $QT6_VERSION detected - compatible for source build"
         else
-            log_warning "Qt6 $QT6_VERSION detected - INCOMPATIBLE with published binary (needs $BINARY_REQUIRES_QT_VERSION+)"
-            log_message ""
-            log_message "🔧 Your options:"
-            log_message "   1. Build AK from source (GUI required; works with Qt6 $QT6_VERSION):"
-            log_message "      git clone https://github.com/apertacodex/ak && cd ak"
-            log_message "      mkdir build && cd build && cmake .. && make"
-            log_message ""
-            log_message "   2. Upgrade to Qt6 6.9+ (if available):"
-            log_message "      sudo apt update && sudo apt install qt6-base-dev=6.9*"
-            log_message ""
-            log_message "   3. Continue anyway (may have limited functionality)"
-            log_message ""
-            log_message "❓ Auto-continuing with installation (non-interactive mode)"
+            log_warning "Qt6 $QT6_VERSION detected - may be too old for optimal build"
+            log_message "Proceeding anyway, but consider upgrading Qt6 if build fails"
         fi
     else
         log_warning "Could not detect Qt6 version, proceeding with installation..."
     fi
     
-    # Install ak
-    log_message "⬇️  Installing AK..."
-    apt_operation apt install -y ak || {
-        log_error "Failed to install AK package"
-        log_message "📖 See https://github.com/apertacodex/ak/issues for troubleshooting"
+    # Build AK from source with GUI enabled
+    log_message "🛠️ Building AK from source with GUI enabled..."
+    if build_ak_gui_from_source; then
+        log_success "Built and installed AK with GUI support."
+    else
+        log_error "Building AK with GUI failed."
         return 1
-    }
+    fi
     
     # Ensure AK is accessible from common bin locations
     log_message "🔗 Ensuring AK is linked in common bin locations..."
     ensure_ak_links
-
-    # Enforce GUI-enabled binary: build from source if current ak lacks GUI
-    if ! check_gui_support; then
-        log_warning "Installed AK binary lacks GUI support. Building GUI-enabled AK from source..."
-        if build_ak_gui_from_source; then
-            log_success "Built and installed AK with GUI support."
-            ensure_ak_links
-        else
-            log_error "Building AK with GUI failed. AK GUI will not be available."
-        fi
-    fi
     
     # Install desktop integration
     log_message "🖥️  Installing desktop integration..."
@@ -691,7 +651,9 @@ install_ak() {
             log_success "AK API Key Manager is now installed and working!"
             
             # Check for GUI support
-            if ! check_gui_support; then
+            if check_gui_support; then
+                log_success "GUI support is enabled and working!"
+            else
                 log_warning "AK was installed successfully but GUI support is not enabled"
                 log_message "This means the 'ak gui' command will not work"
                 log_message ""
