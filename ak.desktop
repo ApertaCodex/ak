@@ -1,10 +1,18 @@
 [Desktop Entry]
 Name=AK API Key Manager
 Comment=Secure API Key and Environment Variable Manager
-Exec=/usr/local/bin/ak
-Icon=/usr/share/icons/hicolor/scalable/apps/ak.svg
+Exec=ak gui
+Icon=ak
 Terminal=false
 Type=Application
-Categories=Utility;Development;
-Keywords=API;Key;Secret;Manager;
+Categories=Utility;Development;Security;
+Keywords=API;Key;Secret;Manager;Environment;Variables;
 StartupNotify=true
+StartupWMClass=AK
+MimeType=text/x-env;
+Actions=CLI;
+
+[Desktop Action CLI]
+Name=Open CLI
+Exec=ak
+Icon=ak
