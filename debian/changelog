@@ -1,4 +1,4 @@
-ak (4.2.23) noble; urgency=medium
+ak (4.2.25) noble; urgency=medium
 
   * Fixed Qt6 compatibility to work with Ubuntu Noble (24.04) repositories
   * Reduced Qt6 version requirement from 6.8.0 to 6.4.0
@@ -6,7 +6,7 @@ ak (4.2.23) noble; urgency=medium
 
  -- ApertaCodex <developers@apertacodex.ai>  Tue, 09 Sep 2025 04:00:00 +0300
 
-ak (4.2.23) noble; urgency=medium
+ak (4.2.25) noble; urgency=medium
 
   * Fixed ak load default --persist not persisting variables in current directory
   * Implemented proper auto-loading of persisted profiles when changing directories
@@ -15,7 +15,7 @@ ak (4.2.23) noble; urgency=medium
 
  -- ApertaCodex <developers@apertacodex.ai>  Mon, 08 Sep 2025 22:30:00 +0300
 
-ak (4.2.23) noble; urgency=medium
+ak (4.2.25) noble; urgency=medium
 
   * Multi-distribution build for Ubuntu noble
   * Updated copyright to ApertaCodex with open source MIT license
@@ -27,7 +27,7 @@ ak (4.2.23) noble; urgency=medium
 
  -- ApertaCodex <developers@apertacodex.ai>  Sun, 07 Sep 2025 21:30:35 +0300
 
-ak (4.2.23) noble; urgency=medium
+ak (4.2.25) noble; urgency=medium
 
   * Updated copyright to ApertaCodex with open source MIT license
   * Restored beautiful homepage design with TailwindCSS
@@ -38,7 +38,7 @@ ak (4.2.23) noble; urgency=medium
 
  -- ApertaCodex <developers@apertacodex.ai>  Wed, 03 Sep 2025 06:37:00 +0000
 
-ak (4.2.23) noble; urgency=medium
+ak (4.2.25) noble; urgency=medium
 
   * Updated GoogleTest to v1.15.2 to fix CMake deprecation warnings
   * Resolved CMake compatibility warnings for modern builds
@@ -47,7 +47,7 @@ ak (4.2.23) noble; urgency=medium
 
  -- AK Maintainer <developers@apertacodex.ai>  Tue, 03 Sep 2025 00:29:00 +0000
 
-ak (4.2.23) noble; urgency=medium
+ak (4.2.25) noble; urgency=medium
 
   * Major version 2.0.0 release
   * Cross-platform API Key Manager with secure storage
