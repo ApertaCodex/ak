@@ -1662,5 +1662,68 @@ int cmd_duplicate(const core::Config& cfg, const std::vector<std::string>& args)
     return 0;
 }
 
+// Internal commands for shell integration auto-loading
+int cmd_internal_get_dir_profiles(const core::Config& cfg, const std::vector<std::string>& args) {
+    if (args.size() < 2) {
+        return 1; // Silent failure for internal commands
+    }
+    
+    std::string dir = args[1];
+    auto profiles = storage::readDirProfiles(cfg, dir);
+    
+    for (const auto& profile : profiles) {
+        std::cout << profile << "\n";
+    }
+    
+    return 0;
+}
+
+int cmd_internal_get_bundle(const core::Config& cfg, const std::vector<std::string>& args) {
+    if (args.size() < 2) {
+        return 1; // Silent failure for internal commands
+    }
+    
+    std::string profileName = args[1];
+    
+    // Try to read from bundle first (for persisted data)
+    std::string exports = storage::readEncryptedBundle(cfg, profileName);
+    
+    if (exports.empty()) {
+        // If no bundle, generate exports from profile (fallback)
+        auto profiles = storage::listProfiles(cfg);
+        bool isProfile = std::find(profiles.begin(), profiles.end(), profileName) != profiles.end();
+        
+        if (isProfile) {
+            exports = makeExportsForProfile(cfg, profileName);
+        } else if (profileName.substr(0, 5) == "_key_") {
+            // Handle temporary key profiles
+            std::string keyName = profileName.substr(5);
+            core::KeyStore ks = storage::loadVault(cfg);
+            auto it = ks.kv.find(keyName);
+            if (it != ks.kv.end()) {
+                std::string value = it->second;
+                std::string escaped;
+                escaped.reserve(value.size() * 2);
+                
+                for (char c : value) {
+                    if (c == '\\' || c == '"') {
+                        escaped.push_back('\\');
+                    }
+                    if (c == '\n') {
+                        escaped += "\\n";
+                        continue;
+                    }
+                    escaped.push_back(c);
+                }
+                
+                exports = "export " + keyName + "=\"" + escaped + "\"\n";
+            }
+        }
+    }
+    
+    std::cout << exports;
+    return 0;
+}
+
 } // namespace commands
 } // namespace ak
