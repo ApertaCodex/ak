@@ -228,6 +228,147 @@ check_gui_support() {
     return 1
 }
 
+# Helper: determine if a specific ak binary has GUI support
+ak_supports_gui_at() {
+    local bin="$1"
+    if [ ! -x "$bin" ]; then
+        return 1
+    fi
+    local out
+    out=$("$bin" gui 2>&1 || true)
+    if echo "$out" | grep -q "GUI support not compiled"; then
+        return 1
+    fi
+    return 0
+}
+
+# Build AK from source with GUI enabled (installs to /usr/local by default)
+build_ak_gui_from_source() {
+    log_message "🛠️ Building AK from source with GUI enabled..."
+    # Ensure build tools and Qt6 dev packages
+    apt_update
+    apt_operation apt install -y build-essential cmake git qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libqt6svg6-dev || {
+        log_warning "Failed to install some build dependencies; continuing..."
+    }
+
+    local tmpdir
+    tmpdir=$(mktemp -d 2>/dev/null || echo "/tmp/ak-build-$$")
+    if [ ! -d "$tmpdir" ]; then
+        log_error "Could not create temporary build directory"
+        return 1
+    fi
+
+    if ! command -v git >/dev/null 2>&1; then
+        apt_operation apt install -y git || true
+    fi
+
+    if git clone --depth 1 https://github.com/apertacodex/ak "$tmpdir/ak" >/dev/null 2>&1; then
+        :
+    else
+        log_error "Failed to clone AK repository"
+        return 1
+    fi
+
+    # Build in a subshell to avoid changing cwd of the installer
+    (
+        set -e
+        cd "$tmpdir/ak"
+        mkdir -p build
+        cd build
+        cmake .. -DBUILD_GUI=ON
+        make -j"$(nproc 2>/dev/null || echo 2)"
+        sudo make install
+    ) >/dev/null 2>&1 || {
+        log_error "Building or installing AK with GUI failed"
+        return 1
+    }
+
+    # Verify installed ak now supports GUI
+    if ak_supports_gui_at "/usr/local/bin/ak" || ak_supports_gui_at "/usr/bin/ak"; then
+        return 0
+    fi
+
+    log_warning "AK built, but GUI support could not be verified"
+    return 1
+}
+
+# Symlink AK into common bin locations so all invocations update with the package
+ensure_ak_links() {
+    local target=""
+
+    # Build candidate list (prefer GUI-enabled binary)
+    local candidates=()
+    if [ -x "/usr/local/bin/ak" ]; then candidates+=("/usr/local/bin/ak"); fi
+    if [ -x "/usr/bin/ak" ]; then candidates+=("/usr/bin/ak"); fi
+    local cmd_path
+    cmd_path=$(command -v ak 2>/dev/null || true)
+    if [ -n "$cmd_path" ]; then candidates+=("$cmd_path"); fi
+
+    # Prefer a candidate with GUI support
+    for c in "${candidates[@]}"; do
+        if ak_supports_gui_at "$c"; then
+            target="$c"
+            break
+        fi
+    done
+
+    # Fallback to first existing candidate
+    if [ -z "$target" ]; then
+        for c in "${candidates[@]}"; do
+            if [ -x "$c" ]; then
+                target="$c"
+                break
+            fi
+        done
+    fi
+
+    if [ -z "$target" ]; then
+        log_warning "AK binary not found after install; skipping link setup"
+        return 1
+    fi
+
+    # Ensure /usr/local/bin/ak points to target
+    safe_mkdir "/usr/local/bin"
+    if [ -e "/usr/local/bin/ak" ] && [ ! -L "/usr/local/bin/ak" ]; then
+        sudo mv "/usr/local/bin/ak" "/usr/local/bin/ak.bak.$(date +%s)" 2>/dev/null || sudo rm -f "/usr/local/bin/ak"
+    fi
+    sudo ln -sfn "$target" "/usr/local/bin/ak" 2>/dev/null || {
+        log_warning "Failed to link /usr/local/bin/ak -> $target"
+    }
+
+    # Ensure ~/.local/bin/ak points to target
+    local USER_HOME
+    USER_HOME=$(eval echo ~${SUDO_USER:-$USER})
+    if [ -n "$USER_HOME" ] && [ "$USER_HOME" != "/" ]; then
+        local user_bin="$USER_HOME/.local/bin"
+        sudo -u "${SUDO_USER:-$USER}" mkdir -p "$user_bin" 2>/dev/null || mkdir -p "$user_bin" 2>/dev/null
+        if [ -e "$user_bin/ak" ] && [ ! -L "$user_bin/ak" ]; then
+            mv "$user_bin/ak" "$user_bin/ak.bak.$(date +%s)" 2>/dev/null || rm -f "$user_bin/ak"
+        fi
+        sudo -u "${SUDO_USER:-$USER}" ln -sfn "$target" "$user_bin/ak" 2>/dev/null || ln -sfn "$target" "$user_bin/ak" 2>/dev/null || {
+            log_warning "Failed to link $user_bin/ak -> $target"
+        }
+        chown -h "${SUDO_USER:-$USER}:${SUDO_USER:-$USER}" "$user_bin/ak" 2>/dev/null || true
+    fi
+
+    # Ensure /usr/bin/ak also points to target (override non-GUI package binary)
+    safe_mkdir "/usr/bin"
+    if [ -e "/usr/bin/ak" ] && [ ! -L "/usr/bin/ak" ]; then
+        sudo mv "/usr/bin/ak" "/usr/bin/ak.bak.$(date +%s)" 2>/dev/null || sudo rm -f "/usr/bin/ak"
+    fi
+    sudo ln -sfn "$target" "/usr/bin/ak" 2>/dev/null || {
+        log_warning "Failed to link /usr/bin/ak -> $target"
+    }
+
+    # Report
+    log_message "🔗 AK linked at:"
+    for p in "/usr/bin/ak" "/usr/local/bin/ak" "${USER_HOME:-}/.local/bin/ak"; do
+        if [ -e "$p" ] || [ -L "$p" ]; then
+            log_message "   • $p -> $(readlink -f "$p" 2>/dev/null || echo "$p")"
+        fi
+    done
+}
+
 # Main installation function
 install_ak() {
     log_message "🚀 Installing AK API Key Manager..."
@@ -280,9 +421,9 @@ install_ak() {
             log_warning "Qt6 $QT6_VERSION detected - INCOMPATIBLE with published binary (needs $BINARY_REQUIRES_QT_VERSION+)"
             log_message ""
             log_message "🔧 Your options:"
-            log_message "   1. Build AK from source (works with Qt6 $QT6_VERSION):"
+            log_message "   1. Build AK from source (GUI required; works with Qt6 $QT6_VERSION):"
             log_message "      git clone https://github.com/apertacodex/ak && cd ak"
-            log_message "      mkdir build && cd build && cmake .. -DBUILD_GUI=ON && make"
+            log_message "      mkdir build && cd build && cmake .. && make"
             log_message ""
             log_message "   2. Upgrade to Qt6 6.9+ (if available):"
             log_message "      sudo apt update && sudo apt install qt6-base-dev=6.9*"
@@ -302,6 +443,21 @@ install_ak() {
         log_message "📖 See https://github.com/apertacodex/ak/issues for troubleshooting"
         return 1
     }
+    
+    # Ensure AK is accessible from common bin locations
+    log_message "🔗 Ensuring AK is linked in common bin locations..."
+    ensure_ak_links
+
+    # Enforce GUI-enabled binary: build from source if current ak lacks GUI
+    if ! check_gui_support; then
+        log_warning "Installed AK binary lacks GUI support. Building GUI-enabled AK from source..."
+        if build_ak_gui_from_source; then
+            log_success "Built and installed AK with GUI support."
+            ensure_ak_links
+        else
+            log_error "Building AK with GUI failed. AK GUI will not be available."
+        fi
+    fi
     
     # Install desktop integration
     log_message "🖥️  Installing desktop integration..."
@@ -449,11 +605,11 @@ install_ak() {
                 log_warning "AK was installed successfully but GUI support is not enabled"
                 log_message "This means the 'ak gui' command will not work"
                 log_message ""
-                log_message "To enable GUI support, you need to build from source with:"
+                log_message "AK requires GUI support. Please build from source with GUI enabled:"
                 log_message "   git clone https://github.com/apertacodex/ak && cd ak"
-                log_message "   mkdir build && cd build && cmake .. -DBUILD_GUI=ON && make"
+                log_message "   mkdir build && cd build && cmake .. && make"
                 log_message ""
-                log_message "CLI mode is still fully functional"
+                log_message "Note: CLI-only builds are not supported."
             fi
         else
             # Check if it's a Qt6 version mismatch
@@ -469,14 +625,12 @@ install_ak() {
                 log_message "   1. Build from source (recommended - works with your Qt6 version):"
                 log_message "      git clone https://github.com/apertacodex/ak && cd ak"
                 log_message "      mkdir build && cd build"
-                log_message "      cmake .. -DBUILD_GUI=ON && make"
+                log_message "      cmake .. && make"
                 log_message "      sudo make install"
                 log_message ""
                 log_message "   2. Try upgrading Qt6 runtime libraries:"
                 log_message "      sudo apt update && sudo apt upgrade libqt6core6*"
                 log_message ""
-                log_message "   3. Use CLI-only version (if available):"
-                log_message "      Build from source without GUI: cmake .. && make"
                 log_message ""
                 log_message "📍 The package installed correctly, it just can't run due to library version mismatch."
             else
@@ -593,7 +747,7 @@ install_ak() {
         log_message "      sudo apt install -y ak"
         log_message "   4. Build from source as alternative:"
         log_message "      git clone https://github.com/apertacodex/ak && cd ak"
-        log_message "      mkdir build && cd build && cmake .. -DBUILD_GUI=ON && make"
+        log_message "      mkdir build && cd build && cmake .. && make"
         log_message ""
         log_message "For more help, visit: https://github.com/apertacodex/ak/issues"
         return 1
