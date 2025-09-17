@@ -228,6 +228,59 @@ check_gui_support() {
     return 1
 }
 
+# Symlink AK into common bin locations so all invocations update with the package
+ensure_ak_links() {
+    local target=""
+
+    # Prefer the packaged path
+    if [ -x "/usr/bin/ak" ]; then
+        target="/usr/bin/ak"
+    fi
+    if [ -z "$target" ]; then
+        target=$(dpkg -L ak 2>/dev/null | grep -E '/bin/ak$' | head -n1 || true)
+    fi
+    if [ -z "$target" ]; then
+        target=$(command -v ak 2>/dev/null || true)
+    fi
+    if [ -z "$target" ]; then
+        log_warning "AK binary not found after install; skipping link setup"
+        return 1
+    fi
+
+    # System-wide /usr/local/bin
+    safe_mkdir "/usr/local/bin"
+    if [ -e "/usr/local/bin/ak" ] && [ ! -L "/usr/local/bin/ak" ]; then
+        # Backup conflicting file
+        sudo mv "/usr/local/bin/ak" "/usr/local/bin/ak.bak.$(date +%s)" 2>/dev/null || sudo rm -f "/usr/local/bin/ak"
+    fi
+    sudo ln -sfn "$target" "/usr/local/bin/ak" 2>/dev/null || {
+        log_warning "Failed to link /usr/local/bin/ak -> $target"
+    }
+
+    # User-level ~/.local/bin
+    local USER_HOME
+    USER_HOME=$(eval echo ~${SUDO_USER:-$USER})
+    if [ -n "$USER_HOME" ] && [ "$USER_HOME" != "/" ]; then
+        local user_bin="$USER_HOME/.local/bin"
+        sudo -u "${SUDO_USER:-$USER}" mkdir -p "$user_bin" 2>/dev/null || mkdir -p "$user_bin" 2>/dev/null
+        if [ -e "$user_bin/ak" ] && [ ! -L "$user_bin/ak" ]; then
+            mv "$user_bin/ak" "$user_bin/ak.bak.$(date +%s)" 2>/dev/null || rm -f "$user_bin/ak"
+        fi
+        sudo -u "${SUDO_USER:-$USER}" ln -sfn "$target" "$user_bin/ak" 2>/dev/null || ln -sfn "$target" "$user_bin/ak" 2>/dev/null || {
+            log_warning "Failed to link $user_bin/ak -> $target"
+        }
+        chown -h "${SUDO_USER:-$USER}:${SUDO_USER:-$USER}" "$user_bin/ak" 2>/dev/null || true
+    fi
+
+    # Report
+    log_message "🔗 AK linked at:"
+    for p in "/usr/bin/ak" "/usr/local/bin/ak" "${USER_HOME:-}/.local/bin/ak"; do
+        if [ -e "$p" ] || [ -L "$p" ]; then
+            log_message "   • $p"
+        fi
+    done
+}
+
 # Main installation function
 install_ak() {
     log_message "🚀 Installing AK API Key Manager..."
@@ -302,6 +355,10 @@ install_ak() {
         log_message "📖 See https://github.com/apertacodex/ak/issues for troubleshooting"
         return 1
     }
+    
+    # Ensure AK is accessible from common bin locations
+    log_message "🔗 Ensuring AK is linked in common bin locations..."
+    ensure_ak_links
     
     # Install desktop integration
     log_message "🖥️  Installing desktop integration..."
