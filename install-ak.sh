@@ -22,40 +22,130 @@ log_success() {
     echo "✅ SUCCESS: $1"
 }
 
-# Function to handle apt operations safely with reduced error output
+# Function to handle apt operations safely with reduced error output and timeouts
 apt_operation() {
-    # Try up to 3 times (reduced from 5)
-    for attempt in {1..3}; do
+    local max_attempts=2
+    local timeout=120
+    
+    # For update operations, be more lenient
+    if [[ "$*" == *"update"* ]]; then
+        max_attempts=1
+        timeout=60
+    fi
+    
+    for attempt in $(seq 1 $max_attempts); do
         if [ $attempt -gt 1 ]; then
-            log_warning "Retrying apt operation (attempt $attempt of 3)..."
-            sleep $((attempt * 2))
+            log_warning "Retrying apt operation (attempt $attempt of $max_attempts)..."
+            sleep 3
         fi
         
-        # Check if apt is locked
-        if sudo lsof /var/lib/dpkg/lock-frontend > /dev/null 2>&1 || sudo lsof /var/lib/apt/lists/lock > /dev/null 2>&1 || sudo lsof /var/lib/dpkg/lock > /dev/null 2>&1; then
-            log_warning "APT is locked. Waiting for other package managers to finish..."
-            sleep 5
-            continue
-        fi
+        # Check if apt is locked with timeout
+        local lock_wait=0
+        while [ $lock_wait -lt 30 ] && (sudo lsof /var/lib/dpkg/lock-frontend > /dev/null 2>&1 || sudo lsof /var/lib/apt/lists/lock > /dev/null 2>&1 || sudo lsof /var/lib/dpkg/lock > /dev/null 2>&1); do
+            if [ $lock_wait -eq 0 ]; then
+                log_warning "APT is locked. Waiting for other package managers to finish..."
+            fi
+            sleep 2
+            lock_wait=$((lock_wait + 2))
+        done
         
-        # Run the apt command with filtered output to reduce noise
-        if sudo "$@" 2> >(grep -v "W: " >&2) > >(grep -v "Skipping " || true); then
+        # Run the apt command with timeout and better error filtering
+        if timeout $timeout sudo "$@" \
+            -o Acquire::Retries=1 \
+            -o Acquire::http::Timeout=30 \
+            -o Acquire::https::Timeout=30 \
+            -o APT::Get::Fix-Missing=true \
+            -o APT::Get::AllowUnauthenticated=false \
+            2> >(grep -v -E "(W:|WARNING:|Ign:|Hit:|Get:.*InRelease|Reading package lists|Building dependency tree|Reading state information)" >&2) \
+            > >(grep -v -E "(Hit:|Get:.*InRelease|Reading package lists|Building dependency tree|Reading state information)" || true); then
             return 0
         else
-            log_warning "APT operation failed. Will retry in a moment..."
+            if [ $attempt -lt $max_attempts ]; then
+                log_warning "APT operation failed. Retrying..."
+            fi
         fi
     done
     
-    log_warning "APT operation failed after 3 attempts, but continuing with installation..."
-    return 1
+    # For critical operations, still return failure
+    if [[ "$*" == *"install"* ]]; then
+        log_warning "APT install operation failed after $max_attempts attempts"
+        return 1
+    else
+        log_warning "APT operation failed after $max_attempts attempts, but continuing..."
+        return 0
+    fi
+}
+
+# Function to temporarily disable problematic repositories
+disable_problematic_repos() {
+    local backup_dir="/tmp/ak-install-repo-backup"
+    mkdir -p "$backup_dir"
+    
+    # More specific patterns for problematic repos
+    local problematic_patterns=(
+        "deadsnakes/ppa.*plucky"
+        "ppa.launchpadcontent.net.*plucky"
+    )
+    
+    for pattern in "${problematic_patterns[@]}"; do
+        for repo_file in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+            if [ -f "$repo_file" ] && grep -E "$pattern" "$repo_file" >/dev/null 2>&1; then
+                local backup_name="$(basename "$repo_file").backup"
+                sudo cp "$repo_file" "$backup_dir/$backup_name" 2>/dev/null || true
+                sudo sed -i -E "s/^(deb.*$pattern)/#\1/g; s/^(URIs:.*$pattern)/#\1/g" "$repo_file" 2>/dev/null || true
+                log_message "📦 Temporarily disabled problematic repository: $(basename "$repo_file")"
+            fi
+        done
+    done
+    
+    # Also disable any repository containing "plucky" that's causing 404 errors
+    for repo_file in /etc/apt/sources.list.d/*.list; do
+        if [ -f "$repo_file" ] && grep -q "plucky" "$repo_file" 2>/dev/null; then
+            local backup_name="$(basename "$repo_file").backup"
+            if [ ! -f "$backup_dir/$backup_name" ]; then
+                sudo cp "$repo_file" "$backup_dir/$backup_name" 2>/dev/null || true
+                sudo sed -i 's/^deb/#deb/g' "$repo_file" 2>/dev/null || true
+                log_message "📦 Temporarily disabled Ubuntu plucky repository: $(basename "$repo_file")"
+            fi
+        fi
+    done
+}
+
+# Function to restore disabled repositories
+restore_problematic_repos() {
+    local backup_dir="/tmp/ak-install-repo-backup"
+    
+    if [ -d "$backup_dir" ]; then
+        for backup_file in "$backup_dir"/*.backup; do
+            if [ -f "$backup_file" ]; then
+                local original_file="/etc/apt/sources.list.d/$(basename "$backup_file" .backup)"
+                sudo cp "$backup_file" "$original_file" 2>/dev/null || true
+                log_message "📦 Restored repository: $(basename "$original_file")"
+            fi
+        done
+        rm -rf "$backup_dir" 2>/dev/null || true
+    fi
 }
 
 # Function to handle apt update safely
 apt_update() {
     log_message "🔄 Updating package list..."
-    # Ignore common harmless errors like missing Release files for PPAs
-    apt_operation apt update -o Acquire::AllowInsecureRepositories=true || true
-    # Always return success even if apt update fails
+    
+    # First attempt with all repositories
+    if apt_operation apt update; then
+        return 0
+    fi
+    
+    log_message "🔧 APT update failed, temporarily disabling problematic repositories..."
+    disable_problematic_repos
+    
+    # Second attempt with problematic repos disabled
+    if apt_operation apt update; then
+        log_message "✅ Package list updated successfully (some repositories temporarily disabled)"
+        return 0
+    fi
+    
+    log_warning "APT update still failing, continuing with cached package lists..."
     return 0
 }
 
@@ -228,6 +318,147 @@ check_gui_support() {
     return 1
 }
 
+# Helper: determine if a specific ak binary has GUI support
+ak_supports_gui_at() {
+    local bin="$1"
+    if [ ! -x "$bin" ]; then
+        return 1
+    fi
+    local out
+    out=$("$bin" gui 2>&1 || true)
+    if echo "$out" | grep -q "GUI support not compiled"; then
+        return 1
+    fi
+    return 0
+}
+
+# Build AK from source with GUI enabled (installs to /usr/local by default)
+build_ak_gui_from_source() {
+    log_message "🛠️ Building AK from source with GUI enabled..."
+    # Ensure build tools and Qt6 dev packages
+    apt_update
+    apt_operation apt install -y build-essential cmake git qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libqt6svg6-dev || {
+        log_warning "Failed to install some build dependencies; continuing..."
+    }
+
+    local tmpdir
+    tmpdir=$(mktemp -d 2>/dev/null || echo "/tmp/ak-build-$$")
+    if [ ! -d "$tmpdir" ]; then
+        log_error "Could not create temporary build directory"
+        return 1
+    fi
+
+    if ! command -v git >/dev/null 2>&1; then
+        apt_operation apt install -y git || true
+    fi
+
+    if git clone --depth 1 https://github.com/apertacodex/ak "$tmpdir/ak" >/dev/null 2>&1; then
+        :
+    else
+        log_error "Failed to clone AK repository"
+        return 1
+    fi
+
+    # Build in a subshell to avoid changing cwd of the installer
+    (
+        set -e
+        cd "$tmpdir/ak"
+        mkdir -p build
+        cd build
+        cmake .. -DBUILD_GUI=ON
+        make -j"$(nproc 2>/dev/null || echo 2)"
+        sudo make install
+    ) >/dev/null 2>&1 || {
+        log_error "Building or installing AK with GUI failed"
+        return 1
+    }
+
+    # Verify installed ak now supports GUI
+    if ak_supports_gui_at "/usr/local/bin/ak" || ak_supports_gui_at "/usr/bin/ak"; then
+        return 0
+    fi
+
+    log_warning "AK built, but GUI support could not be verified"
+    return 1
+}
+
+# Symlink AK into common bin locations so all invocations update with the package
+ensure_ak_links() {
+    local target=""
+
+    # Build candidate list (prefer GUI-enabled binary)
+    local candidates=()
+    if [ -x "/usr/local/bin/ak" ]; then candidates+=("/usr/local/bin/ak"); fi
+    if [ -x "/usr/bin/ak" ]; then candidates+=("/usr/bin/ak"); fi
+    local cmd_path
+    cmd_path=$(command -v ak 2>/dev/null || true)
+    if [ -n "$cmd_path" ]; then candidates+=("$cmd_path"); fi
+
+    # Prefer a candidate with GUI support
+    for c in "${candidates[@]}"; do
+        if ak_supports_gui_at "$c"; then
+            target="$c"
+            break
+        fi
+    done
+
+    # Fallback to first existing candidate
+    if [ -z "$target" ]; then
+        for c in "${candidates[@]}"; do
+            if [ -x "$c" ]; then
+                target="$c"
+                break
+            fi
+        done
+    fi
+
+    if [ -z "$target" ]; then
+        log_warning "AK binary not found after install; skipping link setup"
+        return 1
+    fi
+
+    # Ensure /usr/local/bin/ak points to target
+    safe_mkdir "/usr/local/bin"
+    if [ -e "/usr/local/bin/ak" ] && [ ! -L "/usr/local/bin/ak" ]; then
+        sudo mv "/usr/local/bin/ak" "/usr/local/bin/ak.bak.$(date +%s)" 2>/dev/null || sudo rm -f "/usr/local/bin/ak"
+    fi
+    sudo ln -sfn "$target" "/usr/local/bin/ak" 2>/dev/null || {
+        log_warning "Failed to link /usr/local/bin/ak -> $target"
+    }
+
+    # Ensure ~/.local/bin/ak points to target
+    local USER_HOME
+    USER_HOME=$(eval echo ~${SUDO_USER:-$USER})
+    if [ -n "$USER_HOME" ] && [ "$USER_HOME" != "/" ]; then
+        local user_bin="$USER_HOME/.local/bin"
+        sudo -u "${SUDO_USER:-$USER}" mkdir -p "$user_bin" 2>/dev/null || mkdir -p "$user_bin" 2>/dev/null
+        if [ -e "$user_bin/ak" ] && [ ! -L "$user_bin/ak" ]; then
+            mv "$user_bin/ak" "$user_bin/ak.bak.$(date +%s)" 2>/dev/null || rm -f "$user_bin/ak"
+        fi
+        sudo -u "${SUDO_USER:-$USER}" ln -sfn "$target" "$user_bin/ak" 2>/dev/null || ln -sfn "$target" "$user_bin/ak" 2>/dev/null || {
+            log_warning "Failed to link $user_bin/ak -> $target"
+        }
+        chown -h "${SUDO_USER:-$USER}:${SUDO_USER:-$USER}" "$user_bin/ak" 2>/dev/null || true
+    fi
+
+    # Ensure /usr/bin/ak also points to target (override non-GUI package binary)
+    safe_mkdir "/usr/bin"
+    if [ -e "/usr/bin/ak" ] && [ ! -L "/usr/bin/ak" ]; then
+        sudo mv "/usr/bin/ak" "/usr/bin/ak.bak.$(date +%s)" 2>/dev/null || sudo rm -f "/usr/bin/ak"
+    fi
+    sudo ln -sfn "$target" "/usr/bin/ak" 2>/dev/null || {
+        log_warning "Failed to link /usr/bin/ak -> $target"
+    }
+
+    # Report
+    log_message "🔗 AK linked at:"
+    for p in "/usr/bin/ak" "/usr/local/bin/ak" "${USER_HOME:-}/.local/bin/ak"; do
+        if [ -e "$p" ] || [ -L "$p" ]; then
+            log_message "   • $p -> $(readlink -f "$p" 2>/dev/null || echo "$p")"
+        fi
+    done
+}
+
 # Main installation function
 install_ak() {
     log_message "🚀 Installing AK API Key Manager..."
@@ -280,9 +511,9 @@ install_ak() {
             log_warning "Qt6 $QT6_VERSION detected - INCOMPATIBLE with published binary (needs $BINARY_REQUIRES_QT_VERSION+)"
             log_message ""
             log_message "🔧 Your options:"
-            log_message "   1. Build AK from source (works with Qt6 $QT6_VERSION):"
+            log_message "   1. Build AK from source (GUI required; works with Qt6 $QT6_VERSION):"
             log_message "      git clone https://github.com/apertacodex/ak && cd ak"
-            log_message "      mkdir build && cd build && cmake .. -DBUILD_GUI=ON && make"
+            log_message "      mkdir build && cd build && cmake .. && make"
             log_message ""
             log_message "   2. Upgrade to Qt6 6.9+ (if available):"
             log_message "      sudo apt update && sudo apt install qt6-base-dev=6.9*"
@@ -302,6 +533,21 @@ install_ak() {
         log_message "📖 See https://github.com/apertacodex/ak/issues for troubleshooting"
         return 1
     }
+    
+    # Ensure AK is accessible from common bin locations
+    log_message "🔗 Ensuring AK is linked in common bin locations..."
+    ensure_ak_links
+
+    # Enforce GUI-enabled binary: build from source if current ak lacks GUI
+    if ! check_gui_support; then
+        log_warning "Installed AK binary lacks GUI support. Building GUI-enabled AK from source..."
+        if build_ak_gui_from_source; then
+            log_success "Built and installed AK with GUI support."
+            ensure_ak_links
+        else
+            log_error "Building AK with GUI failed. AK GUI will not be available."
+        fi
+    fi
     
     # Install desktop integration
     log_message "🖥️  Installing desktop integration..."
@@ -434,7 +680,7 @@ install_ak() {
     log_message ""
     log_message "🔍 Verifying installation..."
     
-    # Check if ak command is available (package installed)
+    # Check if ak command is available and working
     if command -v ak >/dev/null 2>&1; then
         # Try to run ak --version and capture any Qt6 version errors
         AK_VERSION_OUTPUT=$(ak --version 2>&1)
@@ -449,11 +695,11 @@ install_ak() {
                 log_warning "AK was installed successfully but GUI support is not enabled"
                 log_message "This means the 'ak gui' command will not work"
                 log_message ""
-                log_message "To enable GUI support, you need to build from source with:"
+                log_message "AK requires GUI support. Please build from source with GUI enabled:"
                 log_message "   git clone https://github.com/apertacodex/ak && cd ak"
-                log_message "   mkdir build && cd build && cmake .. -DBUILD_GUI=ON && make"
+                log_message "   mkdir build && cd build && cmake .. && make"
                 log_message ""
-                log_message "CLI mode is still fully functional"
+                log_message "Note: CLI-only builds are not supported."
             fi
         else
             # Check if it's a Qt6 version mismatch
@@ -469,14 +715,12 @@ install_ak() {
                 log_message "   1. Build from source (recommended - works with your Qt6 version):"
                 log_message "      git clone https://github.com/apertacodex/ak && cd ak"
                 log_message "      mkdir build && cd build"
-                log_message "      cmake .. -DBUILD_GUI=ON && make"
+                log_message "      cmake .. && make"
                 log_message "      sudo make install"
                 log_message ""
                 log_message "   2. Try upgrading Qt6 runtime libraries:"
                 log_message "      sudo apt update && sudo apt upgrade libqt6core6*"
                 log_message ""
-                log_message "   3. Use CLI-only version (if available):"
-                log_message "      Build from source without GUI: cmake .. && make"
                 log_message ""
                 log_message "📍 The package installed correctly, it just can't run due to library version mismatch."
             else
@@ -582,27 +826,49 @@ install_ak() {
         log_message "📚 Once AK is working, run 'ak --help' to get started"
         return 0
     else
-        log_error "AK package installation failed!"
-        log_message ""
-        log_message "🔧 Troubleshooting steps:"
-        log_message "   1. Check if the repository is accessible:"
-        log_message "      curl -I https://apertacodex.github.io/ak/ak-apt-repo/dists/stable/Release"
-        log_message "   2. Try refreshing package lists:"
-        log_message "      sudo apt update --fix-missing"
-        log_message "   3. Try installing directly:"
-        log_message "      sudo apt install -y ak"
-        log_message "   4. Build from source as alternative:"
-        log_message "      git clone https://github.com/apertacodex/ak && cd ak"
-        log_message "      mkdir build && cd build && cmake .. -DBUILD_GUI=ON && make"
-        log_message ""
-        log_message "For more help, visit: https://github.com/apertacodex/ak/issues"
-        return 1
+        # Check if ak was built from source but not in PATH
+        if [ -x "/usr/local/bin/ak" ] || [ -x "/usr/bin/ak" ]; then
+            log_success "AK was built from source and installed successfully!"
+            log_message ""
+            log_message "🔧 AK was installed but may not be in your current PATH"
+            log_message "Try running: /usr/local/bin/ak --version"
+            log_message "Or start a new shell session to pick up the updated PATH"
+            return 0
+        else
+            log_error "AK installation failed completely!"
+            log_message ""
+            log_message "🔧 Troubleshooting steps:"
+            log_message "   1. Check if the repository is accessible:"
+            log_message "      curl -I https://apertacodex.github.io/ak/ak-apt-repo/dists/stable/Release"
+            log_message "   2. Try refreshing package lists:"
+            log_message "      sudo apt update --fix-missing"
+            log_message "   3. Try installing directly:"
+            log_message "      sudo apt install -y ak"
+            log_message "   4. Build from source as alternative:"
+            log_message "      git clone https://github.com/apertacodex/ak && cd ak"
+            log_message "      mkdir build && cd build && cmake .. && make"
+            log_message ""
+            log_message "For more help, visit: https://github.com/apertacodex/ak/issues"
+            return 1
+        fi
     fi
 }
+
+# Cleanup function
+cleanup_installation() {
+    log_message "🧹 Cleaning up..."
+    restore_problematic_repos
+}
+
+# Set up cleanup trap
+trap cleanup_installation EXIT INT TERM
 
 # Run the main installation function
 install_ak
 INSTALL_RESULT=$?
+
+# Manual cleanup call (trap will also call it)
+cleanup_installation
 
 # Final exit message
 if [ $INSTALL_RESULT -eq 0 ]; then
