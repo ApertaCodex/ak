@@ -52,6 +52,10 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args);
 // Profile duplication
 int cmd_duplicate(const core::Config& cfg, const std::vector<std::string>& args);
 
+// Internal commands for shell integration auto-loading
+int cmd_internal_get_dir_profiles(const core::Config& cfg, const std::vector<std::string>& args);
+int cmd_internal_get_bundle(const core::Config& cfg, const std::vector<std::string>& args);
+
 // Utility functions
 std::string makeExportsForProfile(const core::Config& cfg, const std::string& name);
 void printExportsForProfile(const core::Config& cfg, const std::string& name);

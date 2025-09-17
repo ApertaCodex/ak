@@ -56,6 +56,45 @@ class Ak < Formula
     # Run ak install-shell to set up shell integration
     # This enables ak_load functions that automatically handle eval
     system "#{bin}/ak", "install-shell"
+    
+    # Also set up automatic sourcing in user's shell RC files
+    user_home = ENV["HOME"]
+    return unless user_home
+    
+    user_shell = ENV["SHELL"] || "/bin/bash"
+    shell_name = File.basename(user_shell)
+    
+    case shell_name
+    when "bash"
+      shell_rc = File.join(user_home, ".bashrc")
+      shell_rc = File.join(user_home, ".bash_profile") unless File.exist?(shell_rc)
+    when "zsh"
+      shell_rc = File.join(user_home, ".zshrc")
+    else
+      shell_rc = File.join(user_home, ".profile")
+    end
+    
+    ak_config_dir = File.join(user_home, ".config", "ak")
+    source_line = "source \"#{ak_config_dir}/shell-init.sh\""
+    
+    if File.exist?(shell_rc)
+      content = File.read(shell_rc)
+      unless content.include?("shell-init.sh")
+        File.open(shell_rc, "a") do |f|
+          f.puts ""
+          f.puts "# AK Shell Integration - Auto-loading profiles"
+          f.puts source_line
+        end
+        puts "✅ Added AK auto-loading to #{shell_rc}"
+      end
+    else
+      File.open(shell_rc, "w") do |f|
+        f.puts "# AK Shell Integration - Auto-loading profiles"
+        f.puts source_line
+      end
+      puts "✅ Created #{shell_rc} with AK auto-loading"
+    end
+    
   rescue StandardError => e
     # If setup fails, just warn but don't fail the installation
     opoo "Shell integration setup failed: #{e.message}"

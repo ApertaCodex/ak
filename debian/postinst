@@ -1,0 +1,82 @@
+#!/bin/bash
+
+set -e
+
+# Debian postinst script for ak package
+# This script runs after the package is installed
+
+case "$1" in
+    configure)
+        # Set up shell integration for all users
+        echo "Setting up AK shell integration..."
+        
+        # Run ak install-shell as root to generate the shell integration script
+        if [ -x /usr/bin/ak ]; then
+            # Generate shell integration for system-wide availability
+            /usr/bin/ak install-shell 2>/dev/null || true
+        fi
+        
+        # Create a system-wide script to auto-setup for new users
+        cat > /etc/profile.d/ak-autosetup.sh << 'EOF'
+# AK Auto-setup script
+# Automatically sets up shell integration for new users
+
+ak_auto_setup() {
+    # Skip if already set up or if ak not available
+    if [ ! -x /usr/bin/ak ] || [ -f "$HOME/.config/ak/shell-init.sh" ]; then
+        return 0
+    fi
+    
+    # Run ak install-shell for this user
+    /usr/bin/ak install-shell 2>/dev/null || true
+    
+    # Add to user's shell RC file
+    USER_SHELL=$(basename "${SHELL:-/bin/bash}")
+    
+    if [ "$USER_SHELL" = "bash" ]; then
+        SHELL_RC="$HOME/.bashrc"
+    elif [ "$USER_SHELL" = "zsh" ]; then
+        SHELL_RC="$HOME/.zshrc"
+    else
+        SHELL_RC="$HOME/.profile"
+    fi
+    
+    # Add source line if not already present
+    AK_CONFIG_DIR="$HOME/.config/ak"
+    SOURCE_LINE="source \"$AK_CONFIG_DIR/shell-init.sh\""
+    
+    if [ -f "$SHELL_RC" ] && ! grep -q "shell-init.sh" "$SHELL_RC" 2>/dev/null; then
+        echo "" >> "$SHELL_RC"
+        echo "# AK Shell Integration - Auto-loading profiles" >> "$SHELL_RC"
+        echo "$SOURCE_LINE" >> "$SHELL_RC"
+    elif [ ! -f "$SHELL_RC" ]; then
+        mkdir -p "$(dirname "$SHELL_RC")"
+        echo "# AK Shell Integration - Auto-loading profiles" > "$SHELL_RC"
+        echo "$SOURCE_LINE" >> "$SHELL_RC"
+    fi
+}
+
+# Run auto-setup on login for interactive shells
+if [ -n "$PS1" ] && [ -n "$HOME" ]; then
+    ak_auto_setup 2>/dev/null &
+fi
+EOF
+        
+        chmod 644 /etc/profile.d/ak-autosetup.sh
+        
+        echo "AK shell integration set up successfully!"
+        echo "Users can run 'ak load default --persist' to enable auto-loading in directories"
+        ;;
+    
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

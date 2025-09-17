@@ -282,9 +282,42 @@ void writeShellInitFile(const core::Config& cfg) {
     
     out << "# Auto-load persisted profiles for current directory\n";
     out << "ak_auto_load() {\n";
-    out << "    # This function can be called on directory change to auto-load persisted profiles\n";
-    out << "    # Implementation would read directory mappings and load appropriate profiles\n";
-    out << "    return 0\n";
+    out << "    local current_dir=\"$(pwd)\"\n";
+    out << "    local ak_binary=\"" << akBinary << "\"\n";
+    out << "    \n";
+    out << "    # Skip auto-loading if we're already in the middle of loading\n";
+    out << "    if [ -n \"$AK_LOADING\" ]; then\n";
+    out << "        return 0\n";
+    out << "    fi\n";
+    out << "    \n";
+    out << "    # Get persisted profiles for this directory\n";
+    out << "    local persisted_profiles\n";
+    out << "    persisted_profiles=$(\"$ak_binary\" _internal_get_dir_profiles \"$current_dir\" 2>/dev/null)\n";
+    out << "    \n";
+    out << "    if [ -z \"$persisted_profiles\" ]; then\n";
+    out << "        return 0\n";
+    out << "    fi\n";
+    out << "    \n";
+    out << "    # Set loading flag to prevent recursion\n";
+    out << "    export AK_LOADING=1\n";
+    out << "    \n";
+    out << "    # Load each persisted profile\n";
+    out << "    echo \"$persisted_profiles\" | while read -r profile_name; do\n";
+    out << "        if [ -n \"$profile_name\" ]; then\n";
+    out << "            # Check if it's a default profile or if we should auto-load it\n";
+    out << "            if [ \"$profile_name\" = \"default\" ] || [ \"$AK_AUTO_LOAD_ALL\" = \"1\" ]; then\n";
+    out << "                local exports\n";
+    out << "                exports=$(\"$ak_binary\" _internal_get_bundle \"$profile_name\" 2>/dev/null)\n";
+    out << "                if [ -n \"$exports\" ]; then\n";
+    out << "                    eval \"$exports\"\n";
+    out << "                    echo \"🔄 Auto-loaded profile '$profile_name' for $current_dir\" >&2\n";
+    out << "                fi\n";
+    out << "            fi\n";
+    out << "        fi\n";
+    out << "    done\n";
+    out << "    \n";
+    out << "    # Clear loading flag\n";
+    out << "    unset AK_LOADING\n";
     out << "}\n\n";
     
     out << "# Completion functions (basic)\n";
@@ -327,8 +360,27 @@ void writeShellInitFile(const core::Config& cfg) {
     out << "    \"$ak_binary\" \"$@\"\n";
     out << "}\n\n";
     
+    out << "# Directory change detection for auto-loading\n";
+    out << "ak_setup_cd_hook() {\n";
+    out << "    if [ -n \"$BASH_VERSION\" ]; then\n";
+    out << "        # Bash: override cd with a function\n";
+    out << "        cd() {\n";
+    out << "            builtin cd \"$@\" && ak_auto_load\n";
+    out << "        }\n";
+    out << "    elif [ -n \"$ZSH_VERSION\" ]; then\n";
+    out << "        # Zsh: use chpwd hook\n";
+    out << "        chpwd() {\n";
+    out << "            ak_auto_load\n";
+    out << "        }\n";
+    out << "    fi\n";
+    out << "}\n\n";
+    
+    out << "# Setup hooks and run initial auto-load\n";
+    out << "ak_setup_cd_hook\n";
+    out << "ak_auto_load\n\n";
+    
     out << "# Export functions for availability in subshells\n";
-    out << "export -f ak ak_load ak_unload ak_auto_load 2>/dev/null || true\n";
+    out << "export -f ak ak_load ak_unload ak_auto_load ak_setup_cd_hook 2>/dev/null || true\n";
 }
 
 void ensureSourcedInRc(const core::Config& cfg) {

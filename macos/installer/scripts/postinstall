@@ -79,8 +79,80 @@ EOF
     chmod 644 "$TEMPLATE_DIR/config-sample.conf"
 fi
 
+# Set up shell integration automatically
+log "Setting up shell integration..."
+if [[ -x /usr/local/bin/ak ]]; then
+    # Run as the actual user (not root) if possible
+    if [[ -n "$USER" && "$USER" != "root" ]]; then
+        su "$USER" -c '/usr/local/bin/ak install-shell' 2>/dev/null || {
+            log "Shell integration setup will be done on first run"
+        }
+    else
+        # System-wide setup for all users
+        /usr/local/bin/ak install-shell 2>/dev/null || {
+            log "Shell integration setup will be done on first run"
+        }
+    fi
+    
+    # Create auto-setup script for user profiles
+    mkdir -p /usr/local/etc/profile.d
+    cat > /usr/local/etc/profile.d/ak-autosetup.sh << 'SCRIPT_EOF'
+# AK Auto-setup for macOS
+# Automatically sets up shell integration for users
+
+ak_auto_setup() {
+    # Skip if already set up or if ak not available
+    if [ ! -x /usr/local/bin/ak ] || [ -f "$HOME/.config/ak/shell-init.sh" ]; then
+        return 0
+    fi
+    
+    # Run ak install-shell for this user
+    /usr/local/bin/ak install-shell 2>/dev/null || return 0
+    
+    # Add to user's shell RC file
+    USER_SHELL=$(basename "${SHELL:-/bin/bash}")
+    
+    if [ "$USER_SHELL" = "bash" ]; then
+        SHELL_RC="$HOME/.bashrc"
+        [ ! -f "$SHELL_RC" ] && SHELL_RC="$HOME/.bash_profile"
+    elif [ "$USER_SHELL" = "zsh" ]; then
+        SHELL_RC="$HOME/.zshrc"
+    else
+        SHELL_RC="$HOME/.profile"
+    fi
+    
+    # Add source line if not already present
+    AK_CONFIG_DIR="$HOME/.config/ak"
+    SOURCE_LINE="source \"$AK_CONFIG_DIR/shell-init.sh\""
+    
+    if [ -f "$SHELL_RC" ] && ! grep -q "shell-init.sh" "$SHELL_RC" 2>/dev/null; then
+        echo "" >> "$SHELL_RC"
+        echo "# AK Shell Integration - Auto-loading profiles" >> "$SHELL_RC"
+        echo "$SOURCE_LINE" >> "$SHELL_RC"
+    elif [ ! -f "$SHELL_RC" ]; then
+        mkdir -p "$(dirname "$SHELL_RC")"
+        echo "# AK Shell Integration - Auto-loading profiles" > "$SHELL_RC"
+        echo "$SOURCE_LINE" >> "$SHELL_RC"
+    fi
+}
+
+# Run auto-setup on login for interactive shells
+if [ -n "$PS1" ] && [ -n "$HOME" ]; then
+    ak_auto_setup 2>/dev/null &
+fi
+SCRIPT_EOF
+    
+    chmod 644 /usr/local/etc/profile.d/ak-autosetup.sh
+    log "Shell integration auto-setup configured"
+fi
+
 # Display success message
 log "Installation completed successfully!"
+log "🎉 AK Shell Auto-loading Features:"
+log "   • Automatic profile loading when entering directories"
+log "   • 'ak load default --persist' will auto-load in directories"
+log "   • Directory change detection for seamless environment switching"
+log ""
 log "To get started:"
 log "  - Run 'ak --help' for CLI usage"
 if [[ -f /usr/local/bin/ak-gui ]]; then
@@ -88,6 +160,7 @@ if [[ -f /usr/local/bin/ak-gui ]]; then
 fi
 log "  - Configuration directory: ~/.config/ak"
 log "  - Manual page: man ak"
+log "  - Shell integration is automatically configured"
 
 # Clean up old log files (keep only last 5)
 LOG_DIR="/tmp"
