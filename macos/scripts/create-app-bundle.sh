@@ -14,7 +14,7 @@ APP_BUNDLE_DIR="$MACOS_DIR/app-bundle"
 OUTPUT_DIR="$BUILD_DIR/macos-packages"
 
 # Default values
-VERSION="${AK_VERSION:-4.2.22}"
+VERSION="${AK_VERSION:-4.2.23}"
 BUNDLE_ID="${AK_BUNDLE_ID:-dev.ak.ak}"
 BUILD_NUMBER="${AK_BUILD_NUMBER:-1}"
 BUILD_DATE="$(date '+%Y-%m-%d %H:%M:%S')"
