@@ -51,13 +51,13 @@ apt_operation() {
         
         # Run the apt command with timeout and better error filtering
         if timeout $timeout sudo "$@" \
-            -o Acquire::Retries=1 \
-            -o Acquire::http::Timeout=30 \
-            -o Acquire::https::Timeout=30 \
-            -o APT::Get::Fix-Missing=true \
-            -o APT::Get::AllowUnauthenticated=false \
-            2> >(grep -v -E "(W:|WARNING:|Ign:|Hit:|Get:.*InRelease|Reading package lists|Building dependency tree|Reading state information)" >&2) \
-            > >(grep -v -E "(Hit:|Get:.*InRelease|Reading package lists|Building dependency tree|Reading state information)" || true); then
+        -o Acquire::Retries=1 \
+        -o Acquire::http::Timeout=30 \
+        -o Acquire::https::Timeout=30 \
+        -o APT::Get::Fix-Missing=true \
+        -o APT::Get::AllowUnauthenticated=false \
+        2> >(grep -v -E "(W:|WARNING:|Ign:|Hit:|Get:.*InRelease|Reading package lists|Building dependency tree|Reading state information)" >&2) \
+        > >(grep -v -E "(Hit:|Get:.*InRelease|Reading package lists|Building dependency tree|Reading state information)" || true); then
             return 0
         else
             if [ $attempt -lt $max_attempts ]; then
@@ -177,7 +177,7 @@ safe_download() {
                 return 1
             fi
         }
-    elif command -v wget >/dev/null 2>&1; then
+        elif command -v wget >/dev/null 2>&1; then
         wget -q "$url" -O - | sudo tee "$output" > /dev/null || {
             log_warning "Failed to download $url with wget, continuing..."
             return 1
@@ -229,7 +229,7 @@ safe_icon_convert() {
                 rm -f "$tempfile" 2>/dev/null
                 return 1
             }
-        } || {
+            } || {
             log_warning "Failed to convert icon to size ${size}, but continuing..."
             rm -f "$tempfile" 2>/dev/null
             return 1
@@ -260,14 +260,14 @@ compare_versions() {
     # Compare major version
     if [ "${v1_parts[0]:-0}" -gt "${v2_parts[0]:-0}" ]; then
         return 0
-    elif [ "${v1_parts[0]:-0}" -lt "${v2_parts[0]:-0}" ]; then
+        elif [ "${v1_parts[0]:-0}" -lt "${v2_parts[0]:-0}" ]; then
         return 1
     fi
     
     # Major versions equal, compare minor version
     if [ "${v1_parts[1]:-0}" -gt "${v2_parts[1]:-0}" ]; then
         return 0
-    elif [ "${v1_parts[1]:-0}" -lt "${v2_parts[1]:-0}" ]; then
+        elif [ "${v1_parts[1]:-0}" -lt "${v2_parts[1]:-0}" ]; then
         return 1
     fi
     
@@ -295,9 +295,9 @@ get_qt6_version() {
     if [ -z "$qt_version" ]; then
         if dpkg-query -W -f='${Version}' libqt6core6t64 >/dev/null 2>&1; then
             qt_version=$(dpkg-query -W -f='${Version}' libqt6core6t64 | cut -d'+' -f1 | cut -d'-' -f1 2>/dev/null || echo "")
-        elif dpkg-query -W -f='${Version}' libqt6core6 >/dev/null 2>&1; then
+            elif dpkg-query -W -f='${Version}' libqt6core6 >/dev/null 2>&1; then
             qt_version=$(dpkg-query -W -f='${Version}' libqt6core6 | cut -d'+' -f1 | cut -d'-' -f1 2>/dev/null || echo "")
-        elif dpkg-query -W -f='${Version}' qt6-base-dev >/dev/null 2>&1; then
+            elif dpkg-query -W -f='${Version}' qt6-base-dev >/dev/null 2>&1; then
             qt_version=$(dpkg-query -W -f='${Version}' qt6-base-dev | cut -d'+' -f1 | cut -d'-' -f1 2>/dev/null || echo "")
         fi
     fi
@@ -314,7 +314,7 @@ build_ak_gui_from_source() {
     apt_operation apt install -y build-essential cmake git qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libqt6svg6-dev || {
         log_warning "Failed to install some build dependencies; continuing..."
     }
-
+    
     # Get current directory (should be AK project root)
     local current_dir
     current_dir=$(pwd)
@@ -324,7 +324,7 @@ build_ak_gui_from_source() {
         log_error "Not in AK project directory. CMakeLists.txt not found."
         return 1
     fi
-
+    
     # Build in a subshell to avoid changing cwd of the installer
     (
         set -e
@@ -335,11 +335,11 @@ build_ak_gui_from_source() {
         cmake .. -DBUILD_GUI=ON -DCMAKE_BUILD_TYPE=Release
         make -j"$(nproc 2>/dev/null || echo 2)"
         sudo make install
-    ) || {
+        ) || {
         log_error "Building or installing AK with GUI failed"
         return 1
     }
-
+    
     # Build completed successfully
     return 0
 }
@@ -354,7 +354,7 @@ ensure_ak_links() {
         log_warning "AK binary not found at /usr/local/bin/ak or is a broken symlink"
         return 1
     fi
-
+    
     # Only create symlinks to other locations, don't touch the main binary
     local USER_HOME
     USER_HOME=$(eval echo ~${SUDO_USER:-$USER})
@@ -371,7 +371,7 @@ ensure_ak_links() {
         }
         chown -h "${SUDO_USER:-$USER}:${SUDO_USER:-$USER}" "$user_bin/ak" 2>/dev/null || true
     fi
-
+    
     # Create /usr/bin symlink
     safe_mkdir "/usr/bin"
     if [ -e "/usr/bin/ak" ] && [ ! -L "/usr/bin/ak" ]; then
@@ -380,7 +380,7 @@ ensure_ak_links() {
     sudo ln -sfn "$target" "/usr/bin/ak" 2>/dev/null || {
         log_warning "Failed to link /usr/bin/ak -> $target"
     }
-
+    
     # Report
     log_message "🔗 AK linked at:"
     log_message "   • /usr/local/bin/ak (main binary)"
@@ -620,7 +620,7 @@ install_ak() {
             
             if [ "$USER_SHELL" = "bash" ]; then
                 SHELL_RC="$USER_HOME/.bashrc"
-            elif [ "$USER_SHELL" = "zsh" ]; then
+                elif [ "$USER_SHELL" = "zsh" ]; then
                 SHELL_RC="$USER_HOME/.zshrc"
             else
                 SHELL_RC="$USER_HOME/.profile"
@@ -635,7 +635,7 @@ install_ak() {
                 echo "# AK Shell Integration - Auto-loading profiles" >> "$SHELL_RC"
                 echo "$SOURCE_LINE" >> "$SHELL_RC"
                 log_success "Added AK auto-loading to $SHELL_RC"
-            elif [ ! -f "$SHELL_RC" ]; then
+                elif [ ! -f "$SHELL_RC" ]; then
                 # Create the RC file if it doesn't exist
                 echo "# AK Shell Integration - Auto-loading profiles" > "$SHELL_RC"
                 echo "$SOURCE_LINE" >> "$SHELL_RC"
@@ -668,7 +668,7 @@ install_ak() {
         
         if [ "$USER_SHELL" = "bash" ]; then
             SHELL_RC="$USER_HOME/.bashrc"
-        elif [ "$USER_SHELL" = "zsh" ]; then
+            elif [ "$USER_SHELL" = "zsh" ]; then
             SHELL_RC="$USER_HOME/.zshrc"
         else
             SHELL_RC="$USER_HOME/.profile"
@@ -683,7 +683,7 @@ install_ak() {
             echo "# AK Shell Integration - Auto-loading profiles" >> "$SHELL_RC"
             echo "$SOURCE_LINE" >> "$SHELL_RC"
             log_success "Added AK auto-loading to $SHELL_RC for future use"
-        elif [ ! -f "$SHELL_RC" ]; then
+            elif [ ! -f "$SHELL_RC" ]; then
             # Create the RC file if it doesn't exist
             echo "# AK Shell Integration - Auto-loading profiles" > "$SHELL_RC"
             echo "$SOURCE_LINE" >> "$SHELL_RC"
