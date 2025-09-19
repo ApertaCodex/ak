@@ -13,56 +13,56 @@
 namespace ak {
 namespace services {
 
-// Service definitions with full information
-const std::map<std::string, BuiltinService> BUILTIN_SERVICES = {
-    {"anthropic", {"anthropic", "ANTHROPIC_API_KEY", "Anthropic Claude AI", "https://api.anthropic.com/v1/messages", "Bearer", true}},
-    {"azure_openai", {"azure_openai", "AZURE_OPENAI_API_KEY", "Azure OpenAI Service", "", "Bearer", true}},
-    {"brave", {"brave", "BRAVE_API_KEY", "Brave Search API", "https://api.search.brave.com/res/v1/web/search", "Bearer", true}},
-    {"cohere", {"cohere", "COHERE_API_KEY", "Cohere AI", "https://api.cohere.ai/v1/models", "Bearer", true}},
-    {"deepseek", {"deepseek", "DEEPSEEK_API_KEY", "DeepSeek AI", "https://api.deepseek.com/v1/models", "Bearer", true}},
-    {"exa", {"exa", "EXA_API_KEY", "Exa Search", "https://api.exa.ai/search", "Bearer", true}},
-    {"fireworks", {"fireworks", "FIREWORKS_API_KEY", "Fireworks AI", "https://api.fireworks.ai/inference/v1/models", "Bearer", true}},
-    {"gemini", {"gemini", "GEMINI_API_KEY", "Google Gemini", "https://generativelanguage.googleapis.com/v1/models", "Bearer", true}},
-    {"groq", {"groq", "GROQ_API_KEY", "Groq AI", "https://api.groq.com/openai/v1/models", "Bearer", true}},
-    {"huggingface", {"huggingface", "HUGGINGFACE_TOKEN", "Hugging Face", "https://huggingface.co/api/whoami", "Bearer", true}},
-    {"inference", {"inference", "INFERENCE_API_KEY", "Hugging Face Inference API", "https://api-inference.huggingface.co/models", "Bearer", true}},
-    {"langchain", {"langchain", "LANGCHAIN_API_KEY", "LangChain", "https://api.smith.langchain.com/info", "Bearer", true}},
-    {"continue", {"continue", "CONTINUE_API_KEY", "Continue.dev", "https://api.continue.dev/v1/health", "Bearer", true}},
-    {"composio", {"composio", "COMPOSIO_API_KEY", "Composio", "https://backend.composio.dev/api/v1/actions", "Bearer", true}},
-    {"hyperbolic", {"hyperbolic", "HYPERBOLIC_API_KEY", "Hyperbolic AI", "https://api.hyperbolic.xyz/v1/models", "Bearer", true}},
-    {"logfire", {"logfire", "LOGFIRE_TOKEN", "Pydantic Logfire", "https://logfire-api.pydantic.dev/v1/info", "Bearer", true}},
-    {"mistral", {"mistral", "MISTRAL_API_KEY", "Mistral AI", "https://api.mistral.ai/v1/models", "Bearer", true}},
-    {"openai", {"openai", "OPENAI_API_KEY", "OpenAI", "https://api.openai.com/v1/models", "Bearer", true}},
-    {"openrouter", {"openrouter", "OPENROUTER_API_KEY", "OpenRouter", "https://openrouter.ai/api/v1/models", "Bearer", true}},
-    {"perplexity", {"perplexity", "PERPLEXITY_API_KEY", "Perplexity AI", "https://api.perplexity.ai/models", "Bearer", true}},
-    {"sambanova", {"sambanova", "SAMBANOVA_API_KEY", "SambaNova AI", "https://api.sambanova.ai/v1/models", "Bearer", true}},
-    {"tavily", {"tavily", "TAVILY_API_KEY", "Tavily Search", "https://api.tavily.com/search", "Bearer", true}},
-    {"together", {"together", "TOGETHER_API_KEY", "Together AI", "https://api.together.xyz/v1/models", "Bearer", true}},
-    {"xai", {"xai", "XAI_API_KEY", "xAI Grok", "https://api.x.ai/v1/models", "Bearer", true}},
+// Default service definitions with full information
+const std::map<std::string, Service> DEFAULT_SERVICES = {
+    {"anthropic", {"anthropic", "ANTHROPIC_API_KEY", "Anthropic Claude AI", "https://api.anthropic.com/v1/messages", "POST", "", "Bearer", true, true}},
+    {"azure_openai", {"azure_openai", "AZURE_OPENAI_API_KEY", "Azure OpenAI Service", "", "GET", "", "Bearer", true, true}},
+    {"brave", {"brave", "BRAVE_API_KEY", "Brave Search API", "https://api.search.brave.com/res/v1/web/search", "GET", "", "Bearer", true, true}},
+    {"cohere", {"cohere", "COHERE_API_KEY", "Cohere AI", "https://api.cohere.ai/v1/models", "GET", "", "Bearer", true, true}},
+    {"deepseek", {"deepseek", "DEEPSEEK_API_KEY", "DeepSeek AI", "https://api.deepseek.com/v1/models", "GET", "", "Bearer", true, true}},
+    {"exa", {"exa", "EXA_API_KEY", "Exa Search", "https://api.exa.ai/search", "POST", "", "Bearer", true, true}},
+    {"fireworks", {"fireworks", "FIREWORKS_API_KEY", "Fireworks AI", "https://api.fireworks.ai/inference/v1/models", "GET", "", "Bearer", true, true}},
+    {"gemini", {"gemini", "GEMINI_API_KEY", "Google Gemini", "https://generativelanguage.googleapis.com/v1/models", "GET", "", "Bearer", true, true}},
+    {"groq", {"groq", "GROQ_API_KEY", "Groq AI", "https://api.groq.com/openai/v1/models", "GET", "", "Bearer", true, true}},
+    {"huggingface", {"huggingface", "HUGGINGFACE_TOKEN", "Hugging Face", "https://huggingface.co/api/whoami", "GET", "", "Bearer", true, true}},
+    {"inference", {"inference", "INFERENCE_API_KEY", "Hugging Face Inference API", "https://api-inference.huggingface.co/models", "GET", "", "Bearer", true, true}},
+    {"langchain", {"langchain", "LANGCHAIN_API_KEY", "LangChain", "https://api.smith.langchain.com/info", "GET", "", "Bearer", true, true}},
+    {"continue", {"continue", "CONTINUE_API_KEY", "Continue.dev", "https://api.continue.dev/v1/health", "GET", "", "Bearer", true, true}},
+    {"composio", {"composio", "COMPOSIO_API_KEY", "Composio", "https://backend.composio.dev/api/v1/actions", "GET", "", "Bearer", true, true}},
+    {"hyperbolic", {"hyperbolic", "HYPERBOLIC_API_KEY", "Hyperbolic AI", "https://api.hyperbolic.xyz/v1/models", "GET", "", "Bearer", true, true}},
+    {"logfire", {"logfire", "LOGFIRE_TOKEN", "Pydantic Logfire", "https://logfire-api.pydantic.dev/v1/info", "GET", "", "Bearer", true, true}},
+    {"mistral", {"mistral", "MISTRAL_API_KEY", "Mistral AI", "https://api.mistral.ai/v1/models", "GET", "", "Bearer", true, true}},
+    {"openai", {"openai", "OPENAI_API_KEY", "OpenAI", "https://api.openai.com/v1/models", "GET", "", "Bearer", true, true}},
+    {"openrouter", {"openrouter", "OPENROUTER_API_KEY", "OpenRouter", "https://openrouter.ai/api/v1/models", "GET", "", "Bearer", true, true}},
+    {"perplexity", {"perplexity", "PERPLEXITY_API_KEY", "Perplexity AI", "https://api.perplexity.ai/models", "GET", "", "Bearer", true, true}},
+    {"sambanova", {"sambanova", "SAMBANOVA_API_KEY", "SambaNova AI", "https://api.sambanova.ai/v1/models", "GET", "", "Bearer", true, true}},
+    {"tavily", {"tavily", "TAVILY_API_KEY", "Tavily Search", "https://api.tavily.com/search", "POST", "", "Bearer", true, true}},
+    {"together", {"together", "TOGETHER_API_KEY", "Together AI", "https://api.together.xyz/v1/models", "GET", "", "Bearer", true, true}},
+    {"xai", {"xai", "XAI_API_KEY", "xAI Grok", "https://api.x.ai/v1/models", "GET", "", "Bearer", true, true}},
     // Cloud providers
-    {"aws", {"aws", "AWS_ACCESS_KEY_ID", "Amazon Web Services", "", "AWS Signature", false}},
-    {"gcp", {"gcp", "GOOGLE_APPLICATION_CREDENTIALS", "Google Cloud Platform", "", "OAuth2", false}},
-    {"azure", {"azure", "AZURE_CLIENT_ID", "Microsoft Azure", "", "OAuth2", false}},
-    {"github", {"github", "GITHUB_TOKEN", "GitHub", "https://api.github.com/user", "Bearer", false}},
-    {"docker", {"docker", "DOCKER_AUTH_TOKEN", "Docker Hub", "", "Bearer", false}},
+    {"aws", {"aws", "AWS_ACCESS_KEY_ID", "Amazon Web Services", "", "GET", "", "AWS Signature", false, true}},
+    {"gcp", {"gcp", "GOOGLE_APPLICATION_CREDENTIALS", "Google Cloud Platform", "", "GET", "", "OAuth2", false, true}},
+    {"azure", {"azure", "AZURE_CLIENT_ID", "Microsoft Azure", "", "GET", "", "OAuth2", false, true}},
+    {"github", {"github", "GITHUB_TOKEN", "GitHub", "https://api.github.com/user", "GET", "", "Bearer", false, true}},
+    {"docker", {"docker", "DOCKER_AUTH_TOKEN", "Docker Hub", "", "GET", "", "Bearer", false, true}},
     // Database providers
-    {"mongodb", {"mongodb", "MONGODB_URI", "MongoDB", "", "Connection String", false}},
-    {"postgres", {"postgres", "DATABASE_URL", "PostgreSQL", "", "Connection String", false}},
-    {"redis", {"redis", "REDIS_URL", "Redis", "", "Connection String", false}},
+    {"mongodb", {"mongodb", "MONGODB_URI", "MongoDB", "", "GET", "", "Connection String", false, true}},
+    {"postgres", {"postgres", "DATABASE_URL", "PostgreSQL", "", "GET", "", "Connection String", false, true}},
+    {"redis", {"redis", "REDIS_URL", "Redis", "", "GET", "", "Connection String", false, true}},
     // Other common services
-    {"stripe", {"stripe", "STRIPE_SECRET_KEY", "Stripe Payment", "https://api.stripe.com/v1/account", "Bearer", false}},
-    {"sendgrid", {"sendgrid", "SENDGRID_API_KEY", "SendGrid Email", "https://api.sendgrid.com/v3/user/profile", "Bearer", false}},
-    {"twilio", {"twilio", "TWILIO_AUTH_TOKEN", "Twilio", "https://api.twilio.com/2010-04-01/Accounts.json", "Basic Auth", false}},
-    {"slack", {"slack", "SLACK_API_TOKEN", "Slack", "https://slack.com/api/auth.test", "Bearer", false}},
-    {"discord", {"discord", "DISCORD_TOKEN", "Discord Bot", "https://discord.com/api/v10/users/@me", "Bot", false}},
-    {"vercel", {"vercel", "VERCEL_TOKEN", "Vercel", "https://api.vercel.com/v2/user", "Bearer", false}},
-    {"netlify", {"netlify", "NETLIFY_AUTH_TOKEN", "Netlify", "https://api.netlify.com/api/v1/user", "Bearer", false}},
+    {"stripe", {"stripe", "STRIPE_SECRET_KEY", "Stripe Payment", "https://api.stripe.com/v1/account", "GET", "", "Bearer", false, true}},
+    {"sendgrid", {"sendgrid", "SENDGRID_API_KEY", "SendGrid Email", "https://api.sendgrid.com/v3/user/profile", "GET", "", "Bearer", false, true}},
+    {"twilio", {"twilio", "TWILIO_AUTH_TOKEN", "Twilio", "https://api.twilio.com/2010-04-01/Accounts.json", "GET", "", "Basic Auth", false, true}},
+    {"slack", {"slack", "SLACK_API_TOKEN", "Slack", "https://slack.com/api/auth.test", "GET", "", "Bearer", false, true}},
+    {"discord", {"discord", "DISCORD_TOKEN", "Discord Bot", "https://discord.com/api/v10/users/@me", "GET", "", "Bot", false, true}},
+    {"vercel", {"vercel", "VERCEL_TOKEN", "Vercel", "https://api.vercel.com/v2/user", "GET", "", "Bearer", false, true}},
+    {"netlify", {"netlify", "NETLIFY_AUTH_TOKEN", "Netlify", "https://api.netlify.com/api/v1/user", "GET", "", "Bearer", false, true}},
 };
 
 // Legacy SERVICE_KEYS for backwards compatibility
 const std::map<std::string, std::string> SERVICE_KEYS = []() {
     std::map<std::string, std::string> keys;
-    for (const auto& [name, service] : BUILTIN_SERVICES) {
+    for (const auto& [name, service] : DEFAULT_SERVICES) {
         keys[name] = service.keyName;
     }
     return keys;
@@ -71,7 +71,7 @@ const std::map<std::string, std::string> SERVICE_KEYS = []() {
 // Legacy TESTABLE_SERVICES for backwards compatibility
 const std::unordered_set<std::string> TESTABLE_SERVICES = []() {
     std::unordered_set<std::string> testable;
-    for (const auto& [name, service] : BUILTIN_SERVICES) {
+    for (const auto& [name, service] : DEFAULT_SERVICES) {
         if (service.testable) {
             testable.insert(name);
         }
@@ -129,17 +129,19 @@ std::unordered_set<std::string> getKnownServiceKeys() {
     return keys;
 }
 
-std::unordered_set<std::string> getKnownServiceKeysWithCustom(const core::Config& cfg) {
+std::unordered_set<std::string> getKnownServiceKeys(const core::Config& cfg) {
     auto keys = getKnownServiceKeys();
     
-    // Add custom service keys
+    // Add user-defined service keys
     try {
-        auto customServices = loadCustomServices(cfg);
-        for (const auto& service : customServices) {
-            keys.insert(service.keyName);
+        auto allServices = loadAllServices(cfg);
+        for (const auto& [name, service] : allServices) {
+            if (!service.isBuiltIn) {
+                keys.insert(service.keyName);
+            }
         }
     } catch (const std::exception&) {
-        // Ignore errors loading custom services
+        // Ignore errors loading services
     }
     
     return keys;
@@ -147,80 +149,59 @@ std::unordered_set<std::string> getKnownServiceKeysWithCustom(const core::Config
 
 // Detect configured providers from vault and environment.
 // Returns services that are TESTABLE and have sufficient configuration (both built-in and custom).
-std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
+std::vector<std::string> detectConfiguredServices(const core::Config& cfg, const std::string& profileName) {
     std::vector<std::string> services;
     std::unordered_set<std::string> allAvailableKeys;
     
     // Collect all available keys from multiple sources
     try {
-        // 1. Load vault keys
-        auto vault = ak::storage::loadVault(cfg);
-        for (const auto& [key, value] : vault.kv) {
-            if (!value.empty()) {
-                allAvailableKeys.insert(key);
+        // 1. Load profile keys if profile specified
+        if (!profileName.empty()) {
+            auto profileKeys = ak::storage::loadProfileKeys(cfg, profileName);
+            for (const auto& [key, value] : profileKeys) {
+                if (!value.empty()) {
+                    allAvailableKeys.insert(key);
+                }
+            }
+        } else {
+            // Load default profile keys
+            auto defaultProfile = ak::storage::getDefaultProfileName();
+            auto profileKeys = ak::storage::loadProfileKeys(cfg, defaultProfile);
+            for (const auto& [key, value] : profileKeys) {
+                if (!value.empty()) {
+                    allAvailableKeys.insert(key);
+                }
             }
         }
         
-        // 2. Check environment variables for built-in services
-        for (const auto& pair : SERVICE_KEYS) {
-            const char* envValue = getenv(pair.second.c_str());
+        // 2. Check environment variables as fallback
+        auto allServices = loadAllServices(cfg);
+        for (const auto& [name, service] : allServices) {
+            const char* envValue = getenv(service.keyName.c_str());
             if (envValue && *envValue) {
-                allAvailableKeys.insert(pair.second);
-            }
-        }
-        
-        // 2b. Check environment variables for custom services
-        auto customServices = loadCustomServices(cfg);
-        for (const auto& customService : customServices) {
-            const char* envValue = getenv(customService.keyName.c_str());
-            if (envValue && *envValue) {
-                allAvailableKeys.insert(customService.keyName);
-            }
-        }
-        
-        // 3. Check all profiles for additional keys
-        auto profiles = ak::storage::listProfiles(cfg);
-        for (const auto& profileName : profiles) {
-            auto profileKeys = ak::storage::readProfile(cfg, profileName);
-            for (const auto& key : profileKeys) {
-                allAvailableKeys.insert(key);
+                allAvailableKeys.insert(service.keyName);
             }
         }
         
     } catch (const std::exception& e) {
-        // If we can't load vault or profiles, fall back to environment only
-        for (const auto& pair : SERVICE_KEYS) {
-            const char* envValue = getenv(pair.second.c_str());
+        // Fall back to environment only
+        auto allServices = loadAllServices(cfg);
+        for (const auto& [name, service] : allServices) {
+            const char* envValue = getenv(service.keyName.c_str());
             if (envValue && *envValue) {
-                allAvailableKeys.insert(pair.second);
+                allAvailableKeys.insert(service.keyName);
             }
-        }
-        
-        // Also check custom services in fallback
-        try {
-            auto customServices = loadCustomServices(cfg);
-            for (const auto& customService : customServices) {
-                const char* envValue = getenv(customService.keyName.c_str());
-                if (envValue && *envValue) {
-                    allAvailableKeys.insert(customService.keyName);
-                }
-            }
-        } catch (const std::exception&) {
-            // Ignore custom services if they can't be loaded
         }
     }
     
-    // Check which built-in services have their required keys available
-    for (const auto& pair : SERVICE_KEYS) {
-        const std::string& service = pair.first;
-        const std::string& requiredKey = pair.second;
-        
-        if (TESTABLE_SERVICES.find(service) != TESTABLE_SERVICES.end()) {
+    // Check which services have their required keys available
+    auto allServices = loadAllServices(cfg);
+    for (const auto& [name, service] : allServices) {
+        if (service.testable) {
             bool isConfigured = false;
             
             // Special handling for gemini service to check Google aliases
-            if (service == "gemini") {
-                // Check for any Google API key variation
+            if (name == "gemini") {
                 const std::vector<std::string> googleKeys = {
                     "GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY",
                     "GOOGLE_AI_API_KEY", "GOOGLE_CLOUD_API_KEY"
@@ -232,33 +213,18 @@ std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
                     }
                 }
                 
-                // Also check environment directly
                 if (!isConfigured) {
                     std::string googleKey = getGoogleApiKey();
                     isConfigured = !googleKey.empty();
                 }
             } else {
-                // Check if the required key is available
-                isConfigured = allAvailableKeys.find(requiredKey) != allAvailableKeys.end();
+                isConfigured = allAvailableKeys.find(service.keyName) != allAvailableKeys.end();
             }
             
             if (isConfigured) {
-                services.push_back(service);
+                services.push_back(name);
             }
         }
-    }
-    
-    // Check custom services
-    try {
-        auto customServices = loadCustomServices(cfg);
-        for (const auto& customService : customServices) {
-            if (customService.testable &&
-                allAvailableKeys.find(customService.keyName) != allAvailableKeys.end()) {
-                services.push_back(customService.name);
-            }
-        }
-    } catch (const std::exception&) {
-        // Ignore custom services if they can't be loaded
     }
     
     std::sort(services.begin(), services.end());
