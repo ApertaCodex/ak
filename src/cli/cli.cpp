@@ -132,6 +132,7 @@ void cmd_help() {
     std::cout << "  " << ui::colorize("ak help", ui::Colors::BRIGHT_CYAN) << "                         Show this help message\n";
     std::cout << "  " << ui::colorize("ak version", ui::Colors::BRIGHT_CYAN) << "                      Show version information\n";
     std::cout << "  " << ui::colorize("ak backend", ui::Colors::BRIGHT_CYAN) << "                      Show backend information (GPG status, vault location)\n";
+    std::cout << "  " << ui::colorize("ak serve [--host HOST] [--port PORT]", ui::Colors::BRIGHT_CYAN) << "  Start HTTP server for web interface\n";
     std::cout << "  " << ui::colorize("ak install-shell", ui::Colors::BRIGHT_CYAN) << "                Install shell integration for auto-loading\n";
     std::cout << "  " << ui::colorize("ak uninstall", ui::Colors::BRIGHT_CYAN) << "                    Remove shell integration\n";
     std::cout << "  " << ui::colorize("ak completion <shell>", ui::Colors::BRIGHT_CYAN) << "           Generate completion script for bash, zsh, or fish\n\n";
@@ -160,7 +161,7 @@ _ak_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Main commands
-    local commands="add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit service install-shell uninstall completion version backend help welcome"
+    local commands="add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit service serve install-shell uninstall completion version backend help welcome"
 
     case "${prev}" in
         ak)

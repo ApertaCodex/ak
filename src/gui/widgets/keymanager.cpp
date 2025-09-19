@@ -63,14 +63,18 @@ void MaskedTableItem::updateDisplayValue()
 
 // KeyManagerWidget Implementation
 KeyManagerWidget::KeyManagerWidget(const core::Config& config, QWidget *parent)
-    : QWidget(parent), config(config), mainLayout(nullptr), toolbarLayout(nullptr),
-      searchEdit(nullptr), addButton(nullptr), editButton(nullptr), deleteButton(nullptr),
+    : QWidget(parent), config(config), currentProfile("default"), mainLayout(nullptr), toolbarLayout(nullptr),
+      profileCombo(nullptr), searchEdit(nullptr), addButton(nullptr), editButton(nullptr), deleteButton(nullptr),
       toggleVisibilityButton(nullptr), refreshButton(nullptr), statusLabel(nullptr),
       table(nullptr), contextMenu(nullptr), addAction(nullptr), editAction(nullptr),
       deleteAction(nullptr), copyNameAction(nullptr), copyValueAction(nullptr),
       toggleVisibilityAction(nullptr), globalVisibilityState(true)
 {
+    // Ensure default profile exists
+    ak::storage::ensureDefaultProfile(config);
+    
     setupUi();
+    refreshProfileList();
     loadKeys();
     updateTable();
 }
@@ -94,6 +98,13 @@ void KeyManagerWidget::setupUi()
 void KeyManagerWidget::setupToolbar()
 {
     toolbarLayout = new QHBoxLayout();
+    
+    // Profile selector
+    profileCombo = new QComboBox(this);
+    profileCombo->setMaximumWidth(150);
+    profileCombo->setToolTip("Select profile to manage keys");
+    connect(profileCombo, QOverload<const QString&>::of(&QComboBox::currentTextChanged),
+            this, &KeyManagerWidget::onProfileChanged);
     
     // Search box
     searchEdit = new QLineEdit(this);
@@ -136,6 +147,8 @@ void KeyManagerWidget::setupToolbar()
     connect(testAllButton, &QPushButton::clicked, this, &KeyManagerWidget::testAllKeys);
     
     // Layout
+    toolbarLayout->addWidget(new QLabel("Profile:", this));
+    toolbarLayout->addWidget(profileCombo);
     toolbarLayout->addWidget(searchEdit);
     toolbarLayout->addStretch();
     toolbarLayout->addWidget(addButton);
@@ -250,23 +263,108 @@ void KeyManagerWidget::setupContextMenu()
 
 void KeyManagerWidget::loadKeys()
 {
-    try {
-        keyStore = ak::storage::loadVault(config);
-        emit statusMessage(QString("Loaded %1 keys").arg(keyStore.kv.size()));
-    } catch (const std::exception& e) {
-        showError(QString("Failed to load keys: %1").arg(e.what()));
-        keyStore = core::KeyStore(); // Empty keystore on error
-    }
+    loadProfileKeys(currentProfile);
 }
 
 void KeyManagerWidget::saveKeys()
 {
+    saveProfileKeys(currentProfile);
+}
+
+void KeyManagerWidget::loadProfileKeys(const QString &profileName)
+{
     try {
-        ak::storage::saveVault(config, keyStore);
-        emit statusMessage("Keys saved successfully");
+        profileKeys = ak::storage::loadProfileKeys(config, profileName.toStdString());
+        emit statusMessage(QString("Loaded %1 keys from profile '%2'").arg(profileKeys.size()).arg(profileName));
     } catch (const std::exception& e) {
-        showError(QString("Failed to save keys: %1").arg(e.what()));
+        showError(QString("Failed to load keys from profile '%1': %2").arg(profileName).arg(e.what()));
+        profileKeys.clear(); // Empty keys on error
     }
+}
+
+void KeyManagerWidget::saveProfileKeys(const QString &profileName)
+{
+    try {
+        // Save the key-value pairs
+        ak::storage::saveProfileKeys(config, profileName.toStdString(), profileKeys);
+        
+        // Also update the profile's key list (needed for ProfileManager synchronization)
+        std::vector<std::string> keyNames;
+        for (const auto& [key, value] : profileKeys) {
+            keyNames.push_back(key);
+        }
+        ak::storage::writeProfile(config, profileName.toStdString(), keyNames);
+        
+        emit statusMessage(QString("Keys saved to profile '%1'").arg(profileName));
+    } catch (const std::exception& e) {
+        showError(QString("Failed to save keys to profile '%1': %2").arg(profileName).arg(e.what()));
+    }
+}
+
+void KeyManagerWidget::refreshProfileList()
+{
+    try {
+        auto profiles = ak::storage::listProfiles(config);
+        
+        profileCombo->clear();
+        for (const auto& profile : profiles) {
+            profileCombo->addItem(QString::fromStdString(profile));
+        }
+        
+        // Set current profile or default
+        int index = profileCombo->findText(currentProfile);
+        if (index >= 0) {
+            profileCombo->setCurrentIndex(index);
+        } else if (profileCombo->count() > 0) {
+            currentProfile = profileCombo->itemText(0);
+            profileCombo->setCurrentIndex(0);
+        }
+        
+    } catch (const std::exception& e) {
+        showError(QString("Failed to load profiles: %1").arg(e.what()));
+    }
+}
+
+void KeyManagerWidget::onProfileChanged(const QString &profileName)
+{
+    if (profileName != currentProfile) {
+        // Save current profile keys before switching
+        if (!currentProfile.isEmpty()) {
+            saveProfileKeys(currentProfile);
+        }
+        
+        currentProfile = profileName;
+        loadProfileKeys(currentProfile);
+        updateTable();
+        
+        emit profileChanged(profileName);
+    }
+}
+
+void KeyManagerWidget::setCurrentProfile(const QString &profileName)
+{
+    // Skip if it's the same profile
+    if (profileName == currentProfile) {
+        return;
+    }
+    
+    int index = profileCombo->findText(profileName);
+    if (index >= 0) {
+        profileCombo->setCurrentIndex(index);
+        // The combo box change will trigger onProfileChanged automatically
+    } else if (!profileName.isEmpty()) {
+        // Profile not found in combo, refresh the list and try again
+        refreshProfileList();
+        index = profileCombo->findText(profileName);
+        if (index >= 0) {
+            profileCombo->setCurrentIndex(index);
+        }
+    }
+}
+
+QString KeyManagerWidget::getCurrentProfile() const
+{
+    return currentProfile;
 }
 
 void KeyManagerWidget::updateTable()
@@ -276,7 +374,7 @@ void KeyManagerWidget::updateTable()
     
     // Add keys to table
     int row = 0;
-    for (const auto& [name, value] : keyStore.kv) {
+    for (const auto& [name, value] : profileKeys) {
         QString qname = QString::fromStdString(name);
         QString qvalue = QString::fromStdString(value);
         
@@ -294,7 +392,7 @@ void KeyManagerWidget::updateTable()
     }
     
     // Update status
-    statusLabel->setText(QString("Showing %1 keys").arg(table->rowCount()));
+    statusLabel->setText(QString("Showing %1 keys from profile '%2'").arg(table->rowCount()).arg(currentProfile));
     
     // Update button states
     onSelectionChanged();
@@ -464,13 +562,13 @@ void KeyManagerWidget::addKey()
         QString value = dialog.getKeyValue();
         
         // Check if key already exists
-        if (keyStore.kv.find(name.toStdString()) != keyStore.kv.end()) {
+        if (profileKeys.find(name.toStdString()) != profileKeys.end()) {
             showError("Key with this name already exists!");
             return;
         }
         
-        // Add to keystore
-        keyStore.kv[name.toStdString()] = value.toStdString();
+        // Add to profile keys
+        profileKeys[name.toStdString()] = value.toStdString();
         saveKeys();
         updateTable();
         selectKey(name);
@@ -495,7 +593,7 @@ void KeyManagerWidget::editKey()
         QString newValue = dialog.getKeyValue();
         
         // Update keystore
-        keyStore.kv[name.toStdString()] = newValue.toStdString();
+        profileKeys[name.toStdString()] = newValue.toStdString();
         saveKeys();
         
         // Update table item
@@ -520,7 +618,7 @@ void KeyManagerWidget::deleteKey()
         "This action cannot be undone.")) {
         
         // Remove from keystore
-        keyStore.kv.erase(name.toStdString());
+        profileKeys.erase(name.toStdString());
         saveKeys();
         updateTable();
         
@@ -688,7 +786,7 @@ void KeyManagerWidget::updateTestStatus(const QString &keyName, bool success, co
 void KeyManagerWidget::testAllKeys()
 {
     // Get all configured services
-    auto configuredServices = ak::services::detectConfiguredServices(config);
+    auto configuredServices = ak::services::detectConfiguredServices(config, currentProfile.toStdString());
     if (configuredServices.empty()) {
         showError("No API keys configured for testing");
         return;

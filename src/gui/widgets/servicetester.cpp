@@ -352,7 +352,7 @@ void ServiceTesterWidget::loadAvailableServices()
     try {
         // Get configured services from the updated config detection
         configuredServices.clear();
-        auto detectedServices = ak::services::detectConfiguredServices(config);
+        auto detectedServices = ak::services::detectConfiguredServices(config, ak::storage::getDefaultProfileName());
         for (const auto& service : detectedServices) {
             configuredServices << QString::fromStdString(service);
         }
