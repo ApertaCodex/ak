@@ -16,6 +16,7 @@
 #include <QContextMenuEvent>
 #include <QString>
 #include <QStringList>
+#include <QComboBox>
 
 namespace ak {
 namespace gui {
@@ -52,9 +53,12 @@ public:
     // Public interface
     void refreshKeys();
     void selectKey(const QString &keyName);
+    void setCurrentProfile(const QString &profileName);
+    QString getCurrentProfile() const;
 
 signals:
     void statusMessage(const QString &message);
+    void profileChanged(const QString &profileName);
 
 private slots:
     void addKey();
@@ -67,6 +71,7 @@ private slots:
     void showContextMenu(const QPoint &pos);
     void onTableItemChanged(QTableWidgetItem *item);
     void onSelectionChanged();
+    void onProfileChanged(const QString &profileName);
 
 private:
     void setupUi();
@@ -77,6 +82,9 @@ private:
     void saveKeys();
     void updateTable();
     void filterTable(const QString &filter);
+    void loadProfileKeys(const QString &profileName);
+    void saveProfileKeys(const QString &profileName);
+    void refreshProfileList();
     
     // Utility methods
     void addKeyToTable(const QString &name, const QString &value, const QString &service, const QString &apiUrl);
@@ -90,13 +98,15 @@ private:
     
     // Configuration and data
     const core::Config& config;
-    core::KeyStore keyStore;
+    QString currentProfile;
+    std::map<std::string, std::string> profileKeys;
     
     // UI components
     QVBoxLayout *mainLayout;
     QHBoxLayout *toolbarLayout;
     
     // Toolbar components
+    QComboBox *profileCombo;
     QLineEdit *searchEdit;
     QPushButton *addButton;
     QPushButton *editButton;
