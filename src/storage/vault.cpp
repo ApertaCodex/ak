@@ -352,11 +352,193 @@ std::vector<std::pair<std::string, std::string>> parse_json_min(const std::strin
     return kvs;
 }
 
+// Profile-specific key storage functions
+std::filesystem::path profileKeysPath(const core::Config& cfg, const std::string& name) {
+    return fs::path(cfg.profilesDir) / (name + ".keys.gpg");
+}
+
+std::map<std::string, std::string> loadProfileKeys(const core::Config& cfg, const std::string& profileName) {
+    std::map<std::string, std::string> keys;
+    auto path = profileKeysPath(cfg, profileName);
+    
+    if (!fs::exists(path)) {
+        return keys;
+    }
+    
+    std::string data;
+    if (cfg.gpgAvailable && !cfg.forcePlain &&
+        path.extension() == ".gpg") {
+        
+        int rc = 0;
+        if (!cfg.presetPassphrase.empty()) {
+            auto pfile = fs::path(cfg.configDir) / ".pass.tmp";
+            {
+                std::ofstream pf(pfile, std::ios::trunc);
+                pf << cfg.presetPassphrase;
+                pf.close();
+            }
+#ifdef __unix__
+            ::chmod(pfile.c_str(), 0600);
+#endif
+            std::string cmd = "gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file '" +
+                             pfile.string() + "' --decrypt '" + path.string() + "' 2>/dev/null";
+            data = system::runCmdCapture(cmd, &rc);
+            fs::remove(pfile);
+        } else {
+            data = system::runCmdCapture("gpg --quiet --decrypt '" + path.string() + "' 2>/dev/null", &rc);
+        }
+        
+        if (rc != 0) {
+            std::cerr << "⚠️  Failed to decrypt profile keys for " << profileName << "\n";
+            return keys;
+        }
+    } else {
+        std::ifstream in(path);
+        std::ostringstream ss;
+        ss << in.rdbuf();
+        data = ss.str();
+    }
+    
+    std::istringstream lines(data);
+    std::string line;
+    while (std::getline(lines, line)) {
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+        auto eq = line.find('=');
+        if (eq == std::string::npos) {
+            continue;
+        }
+        std::string key = line.substr(0, eq);
+        std::string encoded = line.substr(eq + 1);
+        keys[key] = crypto::base64Decode(encoded);
+    }
+    
+    return keys;
+}
+
+void saveProfileKeys(const core::Config& cfg, const std::string& profileName, const std::map<std::string, std::string>& keys) {
+    fs::create_directories(cfg.profilesDir);
+    auto path = profileKeysPath(cfg, profileName);
+    auto tmp = fs::path(cfg.profilesDir) / (".tmp." + profileName + ".keys");
+    
+    {
+        std::ofstream out(tmp);
+        for (const auto& [key, value] : keys) {
+            out << key << "=" << crypto::base64Encode(value) << "\n";
+        }
+    }
+    
+    if (cfg.gpgAvailable && !cfg.forcePlain && path.extension() == ".gpg") {
+        std::string cmd;
+        std::string passFile;
+        
+        if (!cfg.presetPassphrase.empty()) {
+            passFile = (fs::path(cfg.configDir) / ".pass.tmp").string();
+            {
+                std::ofstream pf(passFile, std::ios::trunc);
+                pf << cfg.presetPassphrase;
+                pf.close();
+            }
+#ifdef __unix__
+            ::chmod(passFile.c_str(), 0600);
+#endif
+            cmd = "gpg --batch --yes -o '" + path.string() +
+                  "' --pinentry-mode loopback --passphrase-file '" + passFile +
+                  "' --symmetric --cipher-algo AES256 '" + tmp.string() + "'";
+        } else {
+            cmd = "gpg --yes -o '" + path.string() +
+                  "' --symmetric --cipher-algo AES256 '" + tmp.string() + "'";
+        }
+        
+        int rc = ::system(cmd.c_str());
+        if (!passFile.empty()) {
+            fs::remove(passFile);
+        }
+        
+        if (rc != 0) {
+            throw std::runtime_error("Failed to encrypt profile keys with gpg");
+        }
+        
+        fs::remove(tmp);
+    } else {
+        // For plain text storage, change extension
+        if (path.extension() == ".gpg") {
+            path = fs::path(cfg.profilesDir) / (profileName + ".keys");
+        }
+        fs::rename(tmp, path);
+    }
+}
+
+std::map<std::string, std::string> readProfileKeys(const core::Config& cfg, const std::string& name) {
+    return loadProfileKeys(cfg, name);
+}
+
+void writeProfileKeys(const core::Config& cfg, const std::string& name, const std::map<std::string, std::string>& keys) {
+    saveProfileKeys(cfg, name, keys);
+}
+
 // Default profile management
 void ensureDefaultProfile(const core::Config& cfg) {
     auto profiles = listProfiles(cfg);
     if (std::find(profiles.begin(), profiles.end(), "default") == profiles.end()) {
         writeProfile(cfg, "default", {});
+    }
+}
+
+std::string getDefaultProfileName() {
+    return "default";
+}
+
+void setDefaultProfile(const core::Config& cfg, const std::string& profileName) {
+    // For now, we'll use a simple file to store the default profile name
+    std::string defaultProfileFile = cfg.configDir + "/.default_profile";
+    fs::create_directories(cfg.configDir);
+    
+    std::ofstream out(defaultProfileFile);
+    out << profileName;
+}
+
+// Migration utilities
+bool hasGlobalVault(const core::Config& cfg) {
+    return fs::exists(cfg.vaultPath);
+}
+
+void migrateGlobalVaultToProfiles(const core::Config& cfg) {
+    if (!hasGlobalVault(cfg)) {
+        return; // Nothing to migrate
+    }
+    
+    try {
+        // Load global vault
+        auto globalVault = loadVault(cfg);
+        
+        // Ensure default profile exists
+        ensureDefaultProfile(cfg);
+        
+        // Migrate all keys to default profile
+        auto defaultProfileName = getDefaultProfileName();
+        auto existingKeys = loadProfileKeys(cfg, defaultProfileName);
+        
+        // Merge keys (existing profile keys take precedence)
+        for (const auto& [key, value] : globalVault.kv) {
+            if (existingKeys.find(key) == existingKeys.end()) {
+                existingKeys[key] = value;
+            }
+        }
+        
+        // Save to default profile
+        saveProfileKeys(cfg, defaultProfileName, existingKeys);
+        
+        // Optionally backup and remove global vault
+        std::string backupPath = cfg.vaultPath + ".backup";
+        fs::copy_file(cfg.vaultPath, backupPath);
+        
+        std::cout << "Global vault migrated to default profile. Backup saved to: " << backupPath << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Migration failed: " << e.what() << std::endl;
+        throw;
     }
 }
 

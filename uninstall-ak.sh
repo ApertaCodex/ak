@@ -46,6 +46,11 @@ if command -v gtk-update-icon-cache >/dev/null 2>&1; then
     apt_operation gtk-update-icon-cache -f -t /usr/share/icons/hicolor
 fi
 
+# Remove any remaining binaries
+echo "🗑️ Removing any remaining binaries..."
+apt_operation rm -f /usr/bin/ak
+apt_operation rm -f /usr/local/bin/ak
+
 # Clean up apt cache
 echo "🧹 Cleaning up apt cache..."
 apt_operation apt autoremove -y
@@ -53,10 +58,23 @@ apt_operation apt clean
 
 # Verify uninstallation
 echo "🔍 Verifying uninstallation..."
-if ! command -v ak >/dev/null 2>&1 || ! [ -f /usr/bin/ak ]; then
+ak_locations=()
+if [ -f /usr/bin/ak ]; then
+    ak_locations+=("/usr/bin/ak")
+fi
+if [ -f /usr/local/bin/ak ]; then
+    ak_locations+=("/usr/local/bin/ak")
+fi
+
+if [ ${#ak_locations[@]} -eq 0 ] && ! command -v ak >/dev/null 2>&1; then
     echo "✅ AK API Key Manager has been successfully uninstalled!"
 else
-    echo "⚠️ Warning: AK binary still detected at $(which ak 2>/dev/null || echo "unknown location")"
+    if [ ${#ak_locations[@]} -gt 0 ]; then
+        echo "⚠️ Warning: AK binary still detected at: ${ak_locations[*]}"
+    fi
+    if command -v ak >/dev/null 2>&1; then
+        echo "⚠️ Warning: AK command still available in PATH at: $(which ak 2>/dev/null || echo "unknown location")"
+    fi
     echo "💡 You may need to restart your shell or manually remove any remaining components."
 fi
 

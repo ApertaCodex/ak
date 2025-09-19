@@ -13,56 +13,56 @@
 namespace ak {
 namespace services {
 
-// Service definitions with full information
-const std::map<std::string, BuiltinService> BUILTIN_SERVICES = {
-    {"anthropic", {"anthropic", "ANTHROPIC_API_KEY", "Anthropic Claude AI", "https://api.anthropic.com/v1/messages", "Bearer", true}},
-    {"azure_openai", {"azure_openai", "AZURE_OPENAI_API_KEY", "Azure OpenAI Service", "", "Bearer", true}},
-    {"brave", {"brave", "BRAVE_API_KEY", "Brave Search API", "https://api.search.brave.com/res/v1/web/search", "Bearer", true}},
-    {"cohere", {"cohere", "COHERE_API_KEY", "Cohere AI", "https://api.cohere.ai/v1/models", "Bearer", true}},
-    {"deepseek", {"deepseek", "DEEPSEEK_API_KEY", "DeepSeek AI", "https://api.deepseek.com/v1/models", "Bearer", true}},
-    {"exa", {"exa", "EXA_API_KEY", "Exa Search", "https://api.exa.ai/search", "Bearer", true}},
-    {"fireworks", {"fireworks", "FIREWORKS_API_KEY", "Fireworks AI", "https://api.fireworks.ai/inference/v1/models", "Bearer", true}},
-    {"gemini", {"gemini", "GEMINI_API_KEY", "Google Gemini", "https://generativelanguage.googleapis.com/v1/models", "Bearer", true}},
-    {"groq", {"groq", "GROQ_API_KEY", "Groq AI", "https://api.groq.com/openai/v1/models", "Bearer", true}},
-    {"huggingface", {"huggingface", "HUGGINGFACE_TOKEN", "Hugging Face", "https://huggingface.co/api/whoami", "Bearer", true}},
-    {"inference", {"inference", "INFERENCE_API_KEY", "Hugging Face Inference API", "https://api-inference.huggingface.co/models", "Bearer", true}},
-    {"langchain", {"langchain", "LANGCHAIN_API_KEY", "LangChain", "https://api.smith.langchain.com/info", "Bearer", true}},
-    {"continue", {"continue", "CONTINUE_API_KEY", "Continue.dev", "https://api.continue.dev/v1/health", "Bearer", true}},
-    {"composio", {"composio", "COMPOSIO_API_KEY", "Composio", "https://backend.composio.dev/api/v1/actions", "Bearer", true}},
-    {"hyperbolic", {"hyperbolic", "HYPERBOLIC_API_KEY", "Hyperbolic AI", "https://api.hyperbolic.xyz/v1/models", "Bearer", true}},
-    {"logfire", {"logfire", "LOGFIRE_TOKEN", "Pydantic Logfire", "https://logfire-api.pydantic.dev/v1/info", "Bearer", true}},
-    {"mistral", {"mistral", "MISTRAL_API_KEY", "Mistral AI", "https://api.mistral.ai/v1/models", "Bearer", true}},
-    {"openai", {"openai", "OPENAI_API_KEY", "OpenAI", "https://api.openai.com/v1/models", "Bearer", true}},
-    {"openrouter", {"openrouter", "OPENROUTER_API_KEY", "OpenRouter", "https://openrouter.ai/api/v1/models", "Bearer", true}},
-    {"perplexity", {"perplexity", "PERPLEXITY_API_KEY", "Perplexity AI", "https://api.perplexity.ai/models", "Bearer", true}},
-    {"sambanova", {"sambanova", "SAMBANOVA_API_KEY", "SambaNova AI", "https://api.sambanova.ai/v1/models", "Bearer", true}},
-    {"tavily", {"tavily", "TAVILY_API_KEY", "Tavily Search", "https://api.tavily.com/search", "Bearer", true}},
-    {"together", {"together", "TOGETHER_API_KEY", "Together AI", "https://api.together.xyz/v1/models", "Bearer", true}},
-    {"xai", {"xai", "XAI_API_KEY", "xAI Grok", "https://api.x.ai/v1/models", "Bearer", true}},
+// Default service definitions with full information
+const std::map<std::string, Service> DEFAULT_SERVICES = {
+    {"anthropic", {"anthropic", "ANTHROPIC_API_KEY", "Anthropic Claude AI", "https://api.anthropic.com/v1/messages", "POST", "", "Bearer", true, true}},
+    {"azure_openai", {"azure_openai", "AZURE_OPENAI_API_KEY", "Azure OpenAI Service", "", "GET", "", "Bearer", true, true}},
+    {"brave", {"brave", "BRAVE_API_KEY", "Brave Search API", "https://api.search.brave.com/res/v1/web/search", "GET", "", "Bearer", true, true}},
+    {"cohere", {"cohere", "COHERE_API_KEY", "Cohere AI", "https://api.cohere.ai/v1/models", "GET", "", "Bearer", true, true}},
+    {"deepseek", {"deepseek", "DEEPSEEK_API_KEY", "DeepSeek AI", "https://api.deepseek.com/v1/models", "GET", "", "Bearer", true, true}},
+    {"exa", {"exa", "EXA_API_KEY", "Exa Search", "https://api.exa.ai/search", "POST", "", "Bearer", true, true}},
+    {"fireworks", {"fireworks", "FIREWORKS_API_KEY", "Fireworks AI", "https://api.fireworks.ai/inference/v1/models", "GET", "", "Bearer", true, true}},
+    {"gemini", {"gemini", "GEMINI_API_KEY", "Google Gemini", "https://generativelanguage.googleapis.com/v1/models", "GET", "", "Bearer", true, true}},
+    {"groq", {"groq", "GROQ_API_KEY", "Groq AI", "https://api.groq.com/openai/v1/models", "GET", "", "Bearer", true, true}},
+    {"huggingface", {"huggingface", "HUGGINGFACE_TOKEN", "Hugging Face", "https://huggingface.co/api/whoami", "GET", "", "Bearer", true, true}},
+    {"inference", {"inference", "INFERENCE_API_KEY", "Hugging Face Inference API", "https://api-inference.huggingface.co/models", "GET", "", "Bearer", true, true}},
+    {"langchain", {"langchain", "LANGCHAIN_API_KEY", "LangChain", "https://api.smith.langchain.com/info", "GET", "", "Bearer", true, true}},
+    {"continue", {"continue", "CONTINUE_API_KEY", "Continue.dev", "https://api.continue.dev/v1/health", "GET", "", "Bearer", true, true}},
+    {"composio", {"composio", "COMPOSIO_API_KEY", "Composio", "https://backend.composio.dev/api/v1/actions", "GET", "", "Bearer", true, true}},
+    {"hyperbolic", {"hyperbolic", "HYPERBOLIC_API_KEY", "Hyperbolic AI", "https://api.hyperbolic.xyz/v1/models", "GET", "", "Bearer", true, true}},
+    {"logfire", {"logfire", "LOGFIRE_TOKEN", "Pydantic Logfire", "https://logfire-api.pydantic.dev/v1/info", "GET", "", "Bearer", true, true}},
+    {"mistral", {"mistral", "MISTRAL_API_KEY", "Mistral AI", "https://api.mistral.ai/v1/models", "GET", "", "Bearer", true, true}},
+    {"openai", {"openai", "OPENAI_API_KEY", "OpenAI", "https://api.openai.com/v1/models", "GET", "", "Bearer", true, true}},
+    {"openrouter", {"openrouter", "OPENROUTER_API_KEY", "OpenRouter", "https://openrouter.ai/api/v1/models", "GET", "", "Bearer", true, true}},
+    {"perplexity", {"perplexity", "PERPLEXITY_API_KEY", "Perplexity AI", "https://api.perplexity.ai/models", "GET", "", "Bearer", true, true}},
+    {"sambanova", {"sambanova", "SAMBANOVA_API_KEY", "SambaNova AI", "https://api.sambanova.ai/v1/models", "GET", "", "Bearer", true, true}},
+    {"tavily", {"tavily", "TAVILY_API_KEY", "Tavily Search", "https://api.tavily.com/search", "POST", "", "Bearer", true, true}},
+    {"together", {"together", "TOGETHER_API_KEY", "Together AI", "https://api.together.xyz/v1/models", "GET", "", "Bearer", true, true}},
+    {"xai", {"xai", "XAI_API_KEY", "xAI Grok", "https://api.x.ai/v1/models", "GET", "", "Bearer", true, true}},
     // Cloud providers
-    {"aws", {"aws", "AWS_ACCESS_KEY_ID", "Amazon Web Services", "", "AWS Signature", false}},
-    {"gcp", {"gcp", "GOOGLE_APPLICATION_CREDENTIALS", "Google Cloud Platform", "", "OAuth2", false}},
-    {"azure", {"azure", "AZURE_CLIENT_ID", "Microsoft Azure", "", "OAuth2", false}},
-    {"github", {"github", "GITHUB_TOKEN", "GitHub", "https://api.github.com/user", "Bearer", false}},
-    {"docker", {"docker", "DOCKER_AUTH_TOKEN", "Docker Hub", "", "Bearer", false}},
+    {"aws", {"aws", "AWS_ACCESS_KEY_ID", "Amazon Web Services", "", "GET", "", "AWS Signature", false, true}},
+    {"gcp", {"gcp", "GOOGLE_APPLICATION_CREDENTIALS", "Google Cloud Platform", "", "GET", "", "OAuth2", false, true}},
+    {"azure", {"azure", "AZURE_CLIENT_ID", "Microsoft Azure", "", "GET", "", "OAuth2", false, true}},
+    {"github", {"github", "GITHUB_TOKEN", "GitHub", "https://api.github.com/user", "GET", "", "Bearer", false, true}},
+    {"docker", {"docker", "DOCKER_AUTH_TOKEN", "Docker Hub", "", "GET", "", "Bearer", false, true}},
     // Database providers
-    {"mongodb", {"mongodb", "MONGODB_URI", "MongoDB", "", "Connection String", false}},
-    {"postgres", {"postgres", "DATABASE_URL", "PostgreSQL", "", "Connection String", false}},
-    {"redis", {"redis", "REDIS_URL", "Redis", "", "Connection String", false}},
+    {"mongodb", {"mongodb", "MONGODB_URI", "MongoDB", "", "GET", "", "Connection String", false, true}},
+    {"postgres", {"postgres", "DATABASE_URL", "PostgreSQL", "", "GET", "", "Connection String", false, true}},
+    {"redis", {"redis", "REDIS_URL", "Redis", "", "GET", "", "Connection String", false, true}},
     // Other common services
-    {"stripe", {"stripe", "STRIPE_SECRET_KEY", "Stripe Payment", "https://api.stripe.com/v1/account", "Bearer", false}},
-    {"sendgrid", {"sendgrid", "SENDGRID_API_KEY", "SendGrid Email", "https://api.sendgrid.com/v3/user/profile", "Bearer", false}},
-    {"twilio", {"twilio", "TWILIO_AUTH_TOKEN", "Twilio", "https://api.twilio.com/2010-04-01/Accounts.json", "Basic Auth", false}},
-    {"slack", {"slack", "SLACK_API_TOKEN", "Slack", "https://slack.com/api/auth.test", "Bearer", false}},
-    {"discord", {"discord", "DISCORD_TOKEN", "Discord Bot", "https://discord.com/api/v10/users/@me", "Bot", false}},
-    {"vercel", {"vercel", "VERCEL_TOKEN", "Vercel", "https://api.vercel.com/v2/user", "Bearer", false}},
-    {"netlify", {"netlify", "NETLIFY_AUTH_TOKEN", "Netlify", "https://api.netlify.com/api/v1/user", "Bearer", false}},
+    {"stripe", {"stripe", "STRIPE_SECRET_KEY", "Stripe Payment", "https://api.stripe.com/v1/account", "GET", "", "Bearer", false, true}},
+    {"sendgrid", {"sendgrid", "SENDGRID_API_KEY", "SendGrid Email", "https://api.sendgrid.com/v3/user/profile", "GET", "", "Bearer", false, true}},
+    {"twilio", {"twilio", "TWILIO_AUTH_TOKEN", "Twilio", "https://api.twilio.com/2010-04-01/Accounts.json", "GET", "", "Basic Auth", false, true}},
+    {"slack", {"slack", "SLACK_API_TOKEN", "Slack", "https://slack.com/api/auth.test", "GET", "", "Bearer", false, true}},
+    {"discord", {"discord", "DISCORD_TOKEN", "Discord Bot", "https://discord.com/api/v10/users/@me", "GET", "", "Bot", false, true}},
+    {"vercel", {"vercel", "VERCEL_TOKEN", "Vercel", "https://api.vercel.com/v2/user", "GET", "", "Bearer", false, true}},
+    {"netlify", {"netlify", "NETLIFY_AUTH_TOKEN", "Netlify", "https://api.netlify.com/api/v1/user", "GET", "", "Bearer", false, true}},
 };
 
 // Legacy SERVICE_KEYS for backwards compatibility
 const std::map<std::string, std::string> SERVICE_KEYS = []() {
     std::map<std::string, std::string> keys;
-    for (const auto& [name, service] : BUILTIN_SERVICES) {
+    for (const auto& [name, service] : DEFAULT_SERVICES) {
         keys[name] = service.keyName;
     }
     return keys;
@@ -71,7 +71,7 @@ const std::map<std::string, std::string> SERVICE_KEYS = []() {
 // Legacy TESTABLE_SERVICES for backwards compatibility
 const std::unordered_set<std::string> TESTABLE_SERVICES = []() {
     std::unordered_set<std::string> testable;
-    for (const auto& [name, service] : BUILTIN_SERVICES) {
+    for (const auto& [name, service] : DEFAULT_SERVICES) {
         if (service.testable) {
             testable.insert(name);
         }
@@ -129,17 +129,19 @@ std::unordered_set<std::string> getKnownServiceKeys() {
     return keys;
 }
 
-std::unordered_set<std::string> getKnownServiceKeysWithCustom(const core::Config& cfg) {
+std::unordered_set<std::string> getKnownServiceKeys(const core::Config& cfg) {
     auto keys = getKnownServiceKeys();
     
-    // Add custom service keys
+    // Add user-defined service keys
     try {
-        auto customServices = loadCustomServices(cfg);
-        for (const auto& service : customServices) {
-            keys.insert(service.keyName);
+        auto allServices = loadAllServices(cfg);
+        for (const auto& [name, service] : allServices) {
+            if (!service.isBuiltIn) {
+                keys.insert(service.keyName);
+            }
         }
     } catch (const std::exception&) {
-        // Ignore errors loading custom services
+        // Ignore errors loading services
     }
     
     return keys;
@@ -147,80 +149,59 @@ std::unordered_set<std::string> getKnownServiceKeysWithCustom(const core::Config
 
 // Detect configured providers from vault and environment.
 // Returns services that are TESTABLE and have sufficient configuration (both built-in and custom).
-std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
+std::vector<std::string> detectConfiguredServices(const core::Config& cfg, const std::string& profileName) {
     std::vector<std::string> services;
     std::unordered_set<std::string> allAvailableKeys;
     
     // Collect all available keys from multiple sources
     try {
-        // 1. Load vault keys
-        auto vault = ak::storage::loadVault(cfg);
-        for (const auto& [key, value] : vault.kv) {
-            if (!value.empty()) {
-                allAvailableKeys.insert(key);
+        // 1. Load profile keys if profile specified
+        if (!profileName.empty()) {
+            auto profileKeys = ak::storage::loadProfileKeys(cfg, profileName);
+            for (const auto& [key, value] : profileKeys) {
+                if (!value.empty()) {
+                    allAvailableKeys.insert(key);
+                }
+            }
+        } else {
+            // Load default profile keys
+            auto defaultProfile = ak::storage::getDefaultProfileName();
+            auto profileKeys = ak::storage::loadProfileKeys(cfg, defaultProfile);
+            for (const auto& [key, value] : profileKeys) {
+                if (!value.empty()) {
+                    allAvailableKeys.insert(key);
+                }
             }
         }
         
-        // 2. Check environment variables for built-in services
-        for (const auto& pair : SERVICE_KEYS) {
-            const char* envValue = getenv(pair.second.c_str());
+        // 2. Check environment variables as fallback
+        auto allServices = loadAllServices(cfg);
+        for (const auto& [name, service] : allServices) {
+            const char* envValue = getenv(service.keyName.c_str());
             if (envValue && *envValue) {
-                allAvailableKeys.insert(pair.second);
-            }
-        }
-        
-        // 2b. Check environment variables for custom services
-        auto customServices = loadCustomServices(cfg);
-        for (const auto& customService : customServices) {
-            const char* envValue = getenv(customService.keyName.c_str());
-            if (envValue && *envValue) {
-                allAvailableKeys.insert(customService.keyName);
-            }
-        }
-        
-        // 3. Check all profiles for additional keys
-        auto profiles = ak::storage::listProfiles(cfg);
-        for (const auto& profileName : profiles) {
-            auto profileKeys = ak::storage::readProfile(cfg, profileName);
-            for (const auto& key : profileKeys) {
-                allAvailableKeys.insert(key);
+                allAvailableKeys.insert(service.keyName);
             }
         }
         
     } catch (const std::exception& e) {
-        // If we can't load vault or profiles, fall back to environment only
-        for (const auto& pair : SERVICE_KEYS) {
-            const char* envValue = getenv(pair.second.c_str());
+        // Fall back to environment only
+        auto allServices = loadAllServices(cfg);
+        for (const auto& [name, service] : allServices) {
+            const char* envValue = getenv(service.keyName.c_str());
             if (envValue && *envValue) {
-                allAvailableKeys.insert(pair.second);
+                allAvailableKeys.insert(service.keyName);
             }
-        }
-        
-        // Also check custom services in fallback
-        try {
-            auto customServices = loadCustomServices(cfg);
-            for (const auto& customService : customServices) {
-                const char* envValue = getenv(customService.keyName.c_str());
-                if (envValue && *envValue) {
-                    allAvailableKeys.insert(customService.keyName);
-                }
-            }
-        } catch (const std::exception&) {
-            // Ignore custom services if they can't be loaded
         }
     }
     
-    // Check which built-in services have their required keys available
-    for (const auto& pair : SERVICE_KEYS) {
-        const std::string& service = pair.first;
-        const std::string& requiredKey = pair.second;
-        
-        if (TESTABLE_SERVICES.find(service) != TESTABLE_SERVICES.end()) {
+    // Check which services have their required keys available
+    auto allServices = loadAllServices(cfg);
+    for (const auto& [name, service] : allServices) {
+        if (service.testable) {
             bool isConfigured = false;
             
             // Special handling for gemini service to check Google aliases
-            if (service == "gemini") {
-                // Check for any Google API key variation
+            if (name == "gemini") {
                 const std::vector<std::string> googleKeys = {
                     "GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY",
                     "GOOGLE_AI_API_KEY", "GOOGLE_CLOUD_API_KEY"
@@ -232,33 +213,18 @@ std::vector<std::string> detectConfiguredServices(const core::Config& cfg) {
                     }
                 }
                 
-                // Also check environment directly
                 if (!isConfigured) {
                     std::string googleKey = getGoogleApiKey();
                     isConfigured = !googleKey.empty();
                 }
             } else {
-                // Check if the required key is available
-                isConfigured = allAvailableKeys.find(requiredKey) != allAvailableKeys.end();
+                isConfigured = allAvailableKeys.find(service.keyName) != allAvailableKeys.end();
             }
             
             if (isConfigured) {
-                services.push_back(service);
+                services.push_back(name);
             }
         }
-    }
-    
-    // Check custom services
-    try {
-        auto customServices = loadCustomServices(cfg);
-        for (const auto& customService : customServices) {
-            if (customService.testable &&
-                allAvailableKeys.find(customService.keyName) != allAvailableKeys.end()) {
-                services.push_back(customService.name);
-            }
-        }
-    } catch (const std::exception&) {
-        // Ignore custom services if they can't be loaded
     }
     
     std::sort(services.begin(), services.end());
@@ -293,27 +259,41 @@ std::pair<bool, std::string> curl_ok(const std::string& args) {
     return {success, success ? "" : output};
 }
 
-TestResult test_one(const core::Config& cfg, const std::string& service) {
+TestResult test_one(const core::Config& cfg, const std::string& service, const std::string& profileName) {
     TestResult result;
     result.service = service;
     result.ok = false;
     
     auto start = std::chrono::steady_clock::now();
     
-    // Helper function to get API key from any source (vault, profiles, environment)
-    auto getServiceKey = [&cfg](const std::string& keyName) -> std::string {
-        // First check vault
-        try {
-            auto vault = ak::storage::loadVault(cfg);
-            auto it = vault.kv.find(keyName);
-            if (it != vault.kv.end() && !it->second.empty()) {
-                return it->second;
+    // Helper function to get API key from profile or environment
+    auto getServiceKey = [&cfg, &profileName](const std::string& keyName) -> std::string {
+        // First check profile keys if profile specified
+        if (!profileName.empty()) {
+            try {
+                auto profileKeys = ak::storage::loadProfileKeys(cfg, profileName);
+                auto it = profileKeys.find(keyName);
+                if (it != profileKeys.end() && !it->second.empty()) {
+                    return it->second;
+                }
+            } catch (const std::exception&) {
+                // Profile load failed, continue to other sources
             }
-        } catch (const std::exception&) {
-            // Vault load failed, continue to other sources
+        } else {
+            // Check default profile
+            try {
+                auto defaultProfile = ak::storage::getDefaultProfileName();
+                auto profileKeys = ak::storage::loadProfileKeys(cfg, defaultProfile);
+                auto it = profileKeys.find(keyName);
+                if (it != profileKeys.end() && !it->second.empty()) {
+                    return it->second;
+                }
+            } catch (const std::exception&) {
+                // Default profile load failed, continue to other sources
+            }
         }
         
-        // Check environment variables (profiles often reference env vars)
+        // Check environment variables as fallback
         const char* envValue = getenv(keyName.c_str());
         if (envValue && *envValue) {
             return std::string(envValue);
@@ -382,34 +362,35 @@ TestResult test_one(const core::Config& cfg, const std::string& service) {
                     result.ok = true; // Assume success if key is available
                 }
             } else {
-                // Check if it's a custom service
+                // Check if it's a user-defined service
                 try {
-                    auto customServices = loadCustomServices(cfg);
-                    CustomService* customService = nullptr;
-                    for (auto& cs : customServices) {
-                        if (cs.name == service) {
-                            customService = &cs;
-                            break;
-                        }
-                    }
+                    auto allServices = loadAllServices(cfg);
+                    auto serviceIt = allServices.find(service);
                     
-                    if (customService && customService->testable) {
-                        std::string apiKey = getServiceKey(customService->keyName);
+                    if (serviceIt != allServices.end() && serviceIt->second.testable) {
+                        const Service& serviceObj = serviceIt->second;
+                        std::string apiKey = getServiceKey(serviceObj.keyName);
                         if (!apiKey.empty()) {
-                            if (!customService->testEndpoint.empty()) {
+                            if (!serviceObj.testEndpoint.empty()) {
                                 // Perform actual HTTP test
-                                std::string curlArgs = "-X " + customService->testMethod;
+                                std::string curlArgs = "-X " + serviceObj.testMethod;
                                 
                                 // Add custom headers if specified
-                                if (!customService->testHeaders.empty()) {
-                                    curlArgs += " " + customService->testHeaders;
+                                if (!serviceObj.testHeaders.empty()) {
+                                    curlArgs += " " + serviceObj.testHeaders;
                                 }
                                 
-                                // Add authorization header (assume Bearer token by default)
-                                curlArgs += " -H 'Authorization: Bearer " + apiKey + "'";
+                                // Add authorization header based on auth method
+                                if (serviceObj.authMethod == "Bearer") {
+                                    curlArgs += " -H 'Authorization: Bearer " + apiKey + "'";
+                                } else if (serviceObj.authMethod == "Basic Auth") {
+                                    curlArgs += " -H 'Authorization: Basic " + apiKey + "'";
+                                } else {
+                                    curlArgs += " -H 'Authorization: " + serviceObj.authMethod + " " + apiKey + "'";
+                                }
                                 
                                 // Add the endpoint
-                                curlArgs += " " + customService->testEndpoint;
+                                curlArgs += " " + serviceObj.testEndpoint;
                                 
                                 auto curl_result = curl_ok(curlArgs);
                                 result.ok = curl_result.first;
@@ -424,13 +405,13 @@ TestResult test_one(const core::Config& cfg, const std::string& service) {
                                 result.ok = true;
                             }
                         } else {
-                            result.error_message = "No API key configured for custom service: " + customService->keyName;
+                            result.error_message = "No API key configured for service: " + serviceObj.keyName;
                         }
                     } else {
                         result.error_message = "Unknown or non-testable service";
                     }
                 } catch (const std::exception& e) {
-                    result.error_message = "Error loading custom services: " + std::string(e.what());
+                    result.error_message = "Error loading services: " + std::string(e.what());
                 }
             }
         }
@@ -446,9 +427,10 @@ TestResult test_one(const core::Config& cfg, const std::string& service) {
 }
 
 std::vector<TestResult> run_tests_parallel(
-    const core::Config& cfg, 
-    const std::vector<std::string>& services, 
-    bool fail_fast) {
+    const core::Config& cfg,
+    const std::vector<std::string>& services,
+    bool fail_fast,
+    const std::string& profileName) {
     
     std::vector<TestResult> results;
     std::vector<std::future<TestResult>> futures;
@@ -456,8 +438,8 @@ std::vector<TestResult> run_tests_parallel(
     // Launch tests in parallel
     for (const auto& service : services) {
         futures.push_back(
-            std::async(std::launch::async, [&cfg, service]() {
-                return test_one(cfg, service);
+            std::async(std::launch::async, [&cfg, service, profileName]() {
+                return test_one(cfg, service, profileName);
             })
         );
     }
@@ -475,18 +457,24 @@ std::vector<TestResult> run_tests_parallel(
     return results;
 }
 
-// Custom service management functions
-std::vector<CustomService> loadCustomServices(const core::Config& cfg) {
-    std::vector<CustomService> services;
-    std::string customServicesPath = cfg.configDir + "/custom_services.txt";
+// Unified service management functions
+std::map<std::string, Service> loadAllServices(const core::Config& cfg) {
+    std::map<std::string, Service> allServices;
     
-    std::ifstream file(customServicesPath);
+    // Load default services first
+    for (const auto& [name, service] : DEFAULT_SERVICES) {
+        allServices[name] = service;
+    }
+    
+    // Load user-defined services
+    std::string userServicesPath = cfg.configDir + "/user_services.txt";
+    std::ifstream file(userServicesPath);
     if (!file.is_open()) {
-        return services; // Return empty vector if file doesn't exist
+        return allServices; // Return just default services if file doesn't exist
     }
     
     std::string line;
-    CustomService currentService;
+    Service currentService;
     bool inService = false;
     
     while (std::getline(file, line)) {
@@ -501,6 +489,21 @@ std::vector<CustomService> loadCustomServices(const core::Config& cfg) {
                 services.push_back(currentService);
             }
             currentService = CustomService();
+            inService = true;
+            continue;
+        }
+        
+        if (!inService) continue;
+        
+        if (line == "[SERVICE]") {
+            // Save previous service if it's valid
+            if (inService && !currentService.name.empty()) {
+                currentService.isBuiltIn = false; // User-defined services are not built-in
+                allServices[currentService.name] = currentService;
+            }
+            
+            // Start new service
+            currentService = Service();
             inService = true;
             continue;
         }
@@ -526,6 +529,8 @@ std::vector<CustomService> loadCustomServices(const core::Config& cfg) {
             currentService.testMethod = value;
         } else if (key == "test_headers") {
             currentService.testHeaders = value;
+        } else if (key == "auth_method") {
+            currentService.authMethod = value;
         } else if (key == "testable") {
             currentService.testable = (value == "true" || value == "1");
         }
@@ -533,84 +538,151 @@ std::vector<CustomService> loadCustomServices(const core::Config& cfg) {
     
     // Add the last service if valid
     if (inService && !currentService.name.empty()) {
-        services.push_back(currentService);
+        currentService.isBuiltIn = false; // User-defined services are not built-in
+        allServices[currentService.name] = currentService;
     }
     
-    return services;
+    return allServices;
 }
 
-void saveCustomServices(const core::Config& cfg, const std::vector<CustomService>& services) {
-    std::string customServicesPath = cfg.configDir + "/custom_services.txt";
+void saveUserServices(const core::Config& cfg, const std::map<std::string, Service>& services) {
+    std::string userServicesPath = cfg.configDir + "/user_services.txt";
     
     // Create config directory if it doesn't exist
     std::filesystem::create_directories(cfg.configDir);
     
-    std::ofstream file(customServicesPath);
+    std::ofstream file(userServicesPath);
     if (!file.is_open()) {
-        throw std::runtime_error("Cannot open custom services file for writing: " + customServicesPath);
+        throw std::runtime_error("Cannot open user services file for writing: " + userServicesPath);
     }
     
-    file << "# Custom Services Configuration\n";
+    file << "# User Services Configuration\n";
     file << "# This file contains user-defined API services\n\n";
     
-    for (const auto& service : services) {
-        file << "[SERVICE]\n";
-        file << "name=" << service.name << "\n";
-        file << "key_name=" << service.keyName << "\n";
-        file << "description=" << service.description << "\n";
-        file << "test_endpoint=" << service.testEndpoint << "\n";
-        file << "test_method=" << service.testMethod << "\n";
-        file << "test_headers=" << service.testHeaders << "\n";
-        file << "testable=" << (service.testable ? "true" : "false") << "\n";
-        file << "\n";
+    for (const auto& [name, service] : services) {
+        // Only save user-defined services (not built-in ones)
+        if (!service.isBuiltIn) {
+            file << "[SERVICE]\n";
+            file << "name=" << service.name << "\n";
+            file << "key_name=" << service.keyName << "\n";
+            file << "description=" << service.description << "\n";
+            file << "test_endpoint=" << service.testEndpoint << "\n";
+            file << "test_method=" << service.testMethod << "\n";
+            file << "test_headers=" << service.testHeaders << "\n";
+            file << "auth_method=" << service.authMethod << "\n";
+            file << "testable=" << (service.testable ? "true" : "false") << "\n";
+            file << "\n";
+        }
     }
 }
 
-void addCustomService(const core::Config& cfg, const CustomService& service) {
-    auto services = loadCustomServices(cfg);
+void addService(const core::Config& cfg, const Service& service) {
+    auto services = loadAllServices(cfg);
+    services[service.name] = service;
+    saveUserServices(cfg, services);
+}
+
+void removeService(const core::Config& cfg, const std::string& serviceName) {
+    auto services = loadAllServices(cfg);
     
-    // Check if service already exists and replace it
-    auto it = std::find_if(services.begin(), services.end(),
-        [&service](const CustomService& s) { return s.name == service.name; });
+    // Only allow removal of user-defined services
+    auto it = services.find(serviceName);
+    if (it != services.end() && !it->second.isBuiltIn) {
+        services.erase(it);
+        saveUserServices(cfg, services);
+    }
+}
+
+void updateService(const core::Config& cfg, const Service& service) {
+    auto services = loadAllServices(cfg);
     
+    // Only allow update of user-defined services or modification of built-in ones
+    auto it = services.find(service.name);
     if (it != services.end()) {
-        *it = service;
-    } else {
-        services.push_back(service);
+        // If it's a built-in service being modified, create a user override
+        Service updatedService = service;
+        if (it->second.isBuiltIn) {
+            updatedService.isBuiltIn = false; // Mark as user-defined override
+        }
+        services[service.name] = updatedService;
+        saveUserServices(cfg, services);
     }
-    
-    saveCustomServices(cfg, services);
 }
 
-void removeCustomService(const core::Config& cfg, const std::string& serviceName) {
-    auto services = loadCustomServices(cfg);
-    
-    services.erase(
-        std::remove_if(services.begin(), services.end(),
-            [&serviceName](const CustomService& s) { return s.name == serviceName; }),
-        services.end()
-    );
-    
-    saveCustomServices(cfg, services);
+Service* findService(std::map<std::string, Service>& services, const std::string& name) {
+    auto it = services.find(name);
+    return (it != services.end()) ? &(it->second) : nullptr;
 }
 
-CustomService* findCustomService(std::vector<CustomService>& services, const std::string& name) {
-    auto it = std::find_if(services.begin(), services.end(),
-        [&name](const CustomService& s) { return s.name == name; });
-    
-    return (it != services.end()) ? &(*it) : nullptr;
+Service getServiceByName(const core::Config& cfg, const std::string& name) {
+    auto services = loadAllServices(cfg);
+    auto it = services.find(name);
+    if (it != services.end()) {
+        return it->second;
+    }
+    throw std::runtime_error("Service not found: " + name);
 }
 
 std::map<std::string, std::string> getAllServiceKeys(const core::Config& cfg) {
-    std::map<std::string, std::string> allKeys = SERVICE_KEYS;
+    std::map<std::string, std::string> allKeys;
     
-    // Add custom services
-    auto customServices = loadCustomServices(cfg);
-    for (const auto& service : customServices) {
-        allKeys[service.name] = service.keyName;
+    auto allServices = loadAllServices(cfg);
+    for (const auto& [name, service] : allServices) {
+        allKeys[name] = service.keyName;
     }
     
     return allKeys;
+}
+
+TestResult testServiceWithKey(const Service& service, const std::string& apiKey) {
+    TestResult result;
+    result.service = service.name;
+    result.ok = false;
+    
+    auto start = std::chrono::steady_clock::now();
+    
+    try {
+        if (!apiKey.empty() && !service.testEndpoint.empty() && service.testable) {
+            // Perform actual HTTP test
+            std::string curlArgs = "-X " + service.testMethod;
+            
+            // Add custom headers if specified
+            if (!service.testHeaders.empty()) {
+                curlArgs += " " + service.testHeaders;
+            }
+            
+            // Add authorization header based on auth method
+            if (service.authMethod == "Bearer") {
+                curlArgs += " -H 'Authorization: Bearer " + apiKey + "'";
+            } else if (service.authMethod == "Basic Auth") {
+                curlArgs += " -H 'Authorization: Basic " + apiKey + "'";
+            } else {
+                curlArgs += " -H 'Authorization: " + service.authMethod + " " + apiKey + "'";
+            }
+            
+            // Add the endpoint
+            curlArgs += " " + service.testEndpoint;
+            
+            auto curl_result = curl_ok(curlArgs);
+            result.ok = curl_result.first;
+            if (!result.ok) {
+                result.error_message = curl_result.second;
+            }
+        } else if (!apiKey.empty()) {
+            // Basic key existence test for non-testable services
+            result.ok = true;
+        } else {
+            result.error_message = "No API key provided";
+        }
+    } catch (...) {
+        result.ok = false;
+        result.error_message = "Unknown exception during testing";
+    }
+    
+    auto end = std::chrono::steady_clock::now();
+    result.duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    
+    return result;
 }
 
 } // namespace services
