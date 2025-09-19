@@ -62,6 +62,9 @@ set(CORE_SOURCES
 option(BUILD_GUI "Build GUI support with Qt 6" ON)
 
 if(BUILD_GUI)
+    # Force use of system Qt6 instead of Homebrew Qt6
+    set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/cmake/Qt6" ${CMAKE_PREFIX_PATH})
+    
     # Find Qt 6 components - require minimum 6.4.0 for compatibility
     find_package(Qt6 6.4.0 REQUIRED COMPONENTS Core Widgets)
     
