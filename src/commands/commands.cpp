@@ -106,7 +106,7 @@ void detectAndPromptCustomService(const core::Config& cfg, const std::string& ke
     }
     
     // Create custom service
-    services::CustomService newService;
+    services::Service newService;
     
     // Generate service name from key name
     std::string serviceName = keyName;
@@ -120,6 +120,7 @@ void detectAndPromptCustomService(const core::Config& cfg, const std::string& ke
     std::transform(serviceName.begin(), serviceName.end(), serviceName.begin(), ::tolower);
     
     newService.name = serviceName;
+    newService.isBuiltIn = false;  // User-created services are not built-in
     newService.keyName = keyName;
     
     // Get description
@@ -148,7 +149,7 @@ void detectAndPromptCustomService(const core::Config& cfg, const std::string& ke
     }
     
     try {
-        services::addCustomService(cfg, newService);
+        services::addService(cfg, newService);
         core::success(cfg, "Created custom service '" + newService.name + "'");
     } catch (const std::exception& e) {
         core::error(cfg, "Failed to create custom service: " + std::string(e.what()));
@@ -1094,7 +1095,13 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
             } else {
                 // Check if it's a testable custom service
                 try {
-                    auto customServices = services::loadCustomServices(cfg);
+                    auto allServices = services::loadAllServices(cfg);
+                    std::vector<services::Service> customServices;
+                    for (const auto& [name, service] : allServices) {
+                        if (!service.isBuiltIn) {
+                            customServices.push_back(service);
+                        }
+                    }
                     for (const auto& customService : customServices) {
                         if (customService.name == specificService && customService.testable) {
                             isTestable = true;
@@ -1115,7 +1122,7 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
         }
     } else {
         // Test all configured services (default behavior)
-        servicesToTest = services::detectConfiguredServices(cfg);
+        servicesToTest = services::detectConfiguredServices(cfg, storage::getDefaultProfileName());
         
         if (servicesToTest.empty()) {
             if (cfg.json) {
@@ -1153,13 +1160,19 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
                 std::string serviceName = result.service;
                 
                 // Check built-in services first
-                auto builtinIt = services::BUILTIN_SERVICES.find(result.service);
-                if (builtinIt != services::BUILTIN_SERVICES.end()) {
+                auto builtinIt = services::DEFAULT_SERVICES.find(result.service);
+                if (builtinIt != services::DEFAULT_SERVICES.end()) {
                     serviceName = builtinIt->second.description;
                 } else {
                     // Check custom services
                     try {
-                        auto customServices = services::loadCustomServices(cfg);
+                        auto allServices = services::loadAllServices(cfg);
+                        std::vector<services::Service> customServices;
+                        for (const auto& [name, service] : allServices) {
+                            if (!service.isBuiltIn) {
+                                customServices.push_back(service);
+                            }
+                        }
                         for (const auto& customService : customServices) {
                             if (customService.name == result.service) {
                                 serviceName = customService.description.empty() ?
@@ -1200,13 +1213,19 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
                 
                 // Get display name for service (built-in or custom)
                 std::string displayName = result.service;
-                auto builtinIt2 = services::BUILTIN_SERVICES.find(result.service);
-                if (builtinIt2 != services::BUILTIN_SERVICES.end()) {
+                auto builtinIt2 = services::DEFAULT_SERVICES.find(result.service);
+                if (builtinIt2 != services::DEFAULT_SERVICES.end()) {
                     displayName = builtinIt2->second.description;
                 } else {
                     // Check custom services
                     try {
-                        auto customServices = services::loadCustomServices(cfg);
+                        auto allServices = services::loadAllServices(cfg);
+                        std::vector<services::Service> customServices;
+                        for (const auto& [name, service] : allServices) {
+                            if (!service.isBuiltIn) {
+                                customServices.push_back(service);
+                            }
+                        }
                         for (const auto& customService : customServices) {
                             if (customService.name == result.service) {
                                 displayName = customService.description.empty() ?
@@ -1224,13 +1243,19 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
                 
                 // Use the same display name logic as for single service
                 std::string serviceName = result.service;
-                auto builtinIter = services::BUILTIN_SERVICES.find(result.service);
-                if (builtinIter != services::BUILTIN_SERVICES.end()) {
+                auto builtinIter = services::DEFAULT_SERVICES.find(result.service);
+                if (builtinIter != services::DEFAULT_SERVICES.end()) {
                     serviceName = builtinIter->second.description;
                 } else {
                     // Check custom services
                     try {
-                        auto customServices = services::loadCustomServices(cfg);
+                        auto allServices = services::loadAllServices(cfg);
+                        std::vector<services::Service> customServices;
+                        for (const auto& [name, service] : allServices) {
+                            if (!service.isBuiltIn) {
+                                customServices.push_back(service);
+                            }
+                        }
                         for (const auto& customService : customServices) {
                             if (customService.name == result.service) {
                                 serviceName = customService.description.empty() ?
@@ -1398,7 +1423,7 @@ int cmd_gui(const core::Config& cfg, const std::vector<std::string>& args) {
 #endif
 }
 
-// Custom service management
+// Service management
 int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
     if (args.size() < 2) {
         core::error(cfg, "Usage: ak service <add|list|edit|delete> [options]");
@@ -1409,14 +1434,20 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
     if (subcommand == "list" || subcommand == "ls") {
         try {
             // Load both built-in and custom services
-            auto customServices = services::loadCustomServices(cfg);
+            auto allServices = services::loadAllServices(cfg);
+            std::vector<services::Service> customServices;
+            for (const auto& [name, service] : allServices) {
+                if (!service.isBuiltIn) {
+                    customServices.push_back(service);
+                }
+            }
             
             std::cout << ui::colorize("🔧 Available Services:", ui::Colors::BRIGHT_MAGENTA) << "\n\n";
             
             // Show built-in services first
             std::cout << ui::colorize("Built-in Services:", ui::Colors::BRIGHT_BLUE + ui::Colors::BOLD) << "\n";
             
-            for (const auto& [name, service] : services::BUILTIN_SERVICES) {
+            for (const auto& [name, service] : services::DEFAULT_SERVICES) {
                 std::string serviceName = ui::colorize(service.name, ui::Colors::BRIGHT_CYAN);
                 std::string keyName = ui::colorize(service.keyName, ui::Colors::WHITE);
                 std::string testable = service.testable ?
@@ -1460,7 +1491,7 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
             }
             
             // Show totals
-            std::cout << "\n" << ui::colorize("Total: " + std::to_string(services::BUILTIN_SERVICES.size()) +
+            std::cout << "\n" << ui::colorize("Total: " + std::to_string(services::DEFAULT_SERVICES.size()) +
                                              " built-in + " + std::to_string(customServices.size()) +
                                              " custom services", ui::Colors::DIM) << "\n";
             
@@ -1469,7 +1500,7 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
         }
         
     } else if (subcommand == "add") {
-        services::CustomService newService;
+        services::Service newService;
         
         // Interactive service creation
         std::cout << ui::colorize("Creating new custom service...", ui::Colors::BRIGHT_YELLOW) << "\n";
@@ -1513,8 +1544,8 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
         }
         
         try {
-            services::addCustomService(cfg, newService);
-            core::success(cfg, "Custom service '" + newService.name + "' created successfully");
+            services::addService(cfg, newService);
+            core::success(cfg, "Service '" + newService.name + "' created successfully");
         } catch (const std::exception& e) {
             core::error(cfg, "Failed to create custom service: " + std::string(e.what()));
         }
@@ -1527,18 +1558,15 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
         std::string serviceName = args[2];
         
         try {
-            auto customServices = services::loadCustomServices(cfg);
-            auto it = std::find_if(customServices.begin(), customServices.end(),
-                [&serviceName](const services::CustomService& s) { 
-                    return s.name == serviceName; 
-                });
+            auto allServices = services::loadAllServices(cfg);
+            auto it = allServices.find(serviceName);
             
-            if (it == customServices.end()) {
-                core::error(cfg, "Custom service '" + serviceName + "' not found");
+            if (it == allServices.end()) {
+                core::error(cfg, "Service '" + serviceName + "' not found");
             }
             
-            services::removeCustomService(cfg, serviceName);
-            core::success(cfg, "Custom service '" + serviceName + "' deleted successfully");
+            services::removeService(cfg, serviceName);
+            core::success(cfg, "Service '" + serviceName + "' deleted successfully");
             
         } catch (const std::exception& e) {
             core::error(cfg, "Failed to delete custom service: " + std::string(e.what()));
@@ -1552,17 +1580,14 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
         std::string serviceName = args[2];
         
         try {
-            auto customServices = services::loadCustomServices(cfg);
-            auto it = std::find_if(customServices.begin(), customServices.end(),
-                [&serviceName](const services::CustomService& s) { 
-                    return s.name == serviceName; 
-                });
+            auto allServices = services::loadAllServices(cfg);
+            auto it = allServices.find(serviceName);
             
-            if (it == customServices.end()) {
-                core::error(cfg, "Custom service '" + serviceName + "' not found");
+            if (it == allServices.end()) {
+                core::error(cfg, "Service '" + serviceName + "' not found");
             }
             
-            services::CustomService editedService = *it;
+            services::Service editedService = it->second;
             
             std::cout << ui::colorize("Editing service '" + serviceName + "'...", ui::Colors::BRIGHT_YELLOW) << "\n";
             
@@ -1601,10 +1626,10 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
             }
             
             // Remove old service and add updated one
-            services::removeCustomService(cfg, serviceName);
-            services::addCustomService(cfg, editedService);
+            services::removeService(cfg, serviceName);
+            services::addService(cfg, editedService);
             
-            core::success(cfg, "Custom service '" + serviceName + "' updated successfully");
+            core::success(cfg, "Service '" + serviceName + "' updated successfully");
             
         } catch (const std::exception& e) {
             core::error(cfg, "Failed to edit custom service: " + std::string(e.what()));

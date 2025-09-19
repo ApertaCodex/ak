@@ -32,10 +32,10 @@ ServiceEditorDialog::ServiceEditorDialog(QWidget *parent)
     updateUi();
 }
 
-ServiceEditorDialog::ServiceEditorDialog(const services::CustomService &service, QWidget *parent)
+ServiceEditorDialog::ServiceEditorDialog(const services::Service &service, QWidget *parent)
     : QDialog(parent), currentService(service)
 {
-    setWindowTitle("Edit Custom Service");
+    setWindowTitle(service.isBuiltIn ? "View/Edit Built-in Service" : "Edit User Service");
     setMinimumSize(450, 400);
     setupUi();
     setService(service);
@@ -65,6 +65,10 @@ void ServiceEditorDialog::setupUi()
     testableCheckBox = new QCheckBox("Enable testing for this service");
     formLayout->addRow("", testableCheckBox);
     
+    builtInCheckBox = new QCheckBox("Built-in service (read-only core properties)");
+    builtInCheckBox->setEnabled(false); // This should not be user-editable
+    formLayout->addRow("", builtInCheckBox);
+    
     testEndpointEdit = new QLineEdit();
     testEndpointEdit->setPlaceholderText("https://api.example.com/v1/status");
     formLayout->addRow("Test Endpoint:", testEndpointEdit);
@@ -93,7 +97,23 @@ void ServiceEditorDialog::setupUi()
     validateInput();
 }
 
-void ServiceEditorDialog::setService(const services::CustomService &service)
+services::Service ServiceEditorDialog::getService() const
+{
+    services::Service service;
+    service.name = nameEdit->text().toStdString();
+    service.keyName = keyNameEdit->text().toStdString();
+    service.description = descriptionEdit->toPlainText().toStdString();
+    service.testEndpoint = testEndpointEdit->text().toStdString();
+    service.testMethod = testMethodCombo->currentText().toStdString();
+    service.testHeaders = testHeadersEdit->text().toStdString();
+    service.authMethod = "Bearer"; // Default auth method
+    service.testable = testableCheckBox->isChecked();
+    service.isBuiltIn = builtInCheckBox->isChecked();
+    
+    return service;
+}
+
+void ServiceEditorDialog::setService(const services::Service &service)
 {
     currentService = service;
     nameEdit->setText(QString::fromStdString(service.name));
@@ -103,19 +123,19 @@ void ServiceEditorDialog::setService(const services::CustomService &service)
     testEndpointEdit->setText(QString::fromStdString(service.testEndpoint));
     testMethodCombo->setCurrentText(QString::fromStdString(service.testMethod));
     testHeadersEdit->setText(QString::fromStdString(service.testHeaders));
+    builtInCheckBox->setChecked(service.isBuiltIn);
+    
+    // Disable editing of built-in services' core properties
+    nameEdit->setEnabled(!service.isBuiltIn);
+    keyNameEdit->setEnabled(!service.isBuiltIn);
+    builtInCheckBox->setEnabled(false); // This should not be user-editable
+    
+    updateUi();
 }
 
-services::CustomService ServiceEditorDialog::getService() const
+bool ServiceEditorDialog::isBuiltIn() const
 {
-    services::CustomService service;
-    service.name = nameEdit->text().toStdString();
-    service.keyName = keyNameEdit->text().toStdString();
-    service.description = descriptionEdit->toPlainText().toStdString();
-    service.testable = testableCheckBox->isChecked();
-    service.testEndpoint = testEndpointEdit->text().toStdString();
-    service.testMethod = testMethodCombo->currentText().toStdString();
-    service.testHeaders = testHeadersEdit->text().toStdString();
-    return service;
+    return builtInCheckBox->isChecked();
 }
 
 void ServiceEditorDialog::validateInput()
@@ -170,7 +190,7 @@ void ServiceManagerWidget::setupUi()
 void ServiceManagerWidget::setupTable()
 {
     table->setColumnCount(ColumnCount);
-    QStringList headers = {"Name", "Key Name", "Description", "Testable", "Status"};
+    QStringList headers = {"Name", "Key Name", "Description", "Type", "Testable", "Status"};
     table->setHorizontalHeaderLabels(headers);
     
     // Configure table appearance
@@ -288,18 +308,23 @@ void ServiceManagerWidget::setupContextMenu()
     duplicateAction = contextMenu->addAction("Duplicate");
     connect(duplicateAction, &QAction::triggered, [this]() {
         int row = table->currentRow();
-        if (row >= 0 && row < static_cast<int>(customServices.size())) {
-            auto service = customServices[row];
-            service.name += "_copy";
-            ServiceEditorDialog dialog(service, this);
-            if (dialog.exec() == QDialog::Accepted) {
-                auto newService = dialog.getService();
-                try {
-                    services::addCustomService(config, newService);
-                    refreshServices();
-                    emit statusMessage("Service duplicated successfully");
-                } catch (const std::exception& e) {
-                    showError("Failed to duplicate service: " + QString::fromStdString(e.what()));
+        if (row >= 0 && row < table->rowCount()) {
+            QString serviceName = table->item(row, ColumnName)->text();
+            auto it = allServices.find(serviceName.toStdString());
+            if (it != allServices.end()) {
+                auto service = it->second;
+                service.name += "_copy";
+                service.isBuiltIn = false; // Duplicated services are always user-defined
+                ServiceEditorDialog dialog(service, this);
+                if (dialog.exec() == QDialog::Accepted) {
+                    auto newService = dialog.getService();
+                    try {
+                        services::addService(config, newService);
+                        refreshServices();
+                        emit statusMessage("Service duplicated successfully");
+                    } catch (const std::exception& e) {
+                        showError("Failed to duplicate service: " + QString::fromStdString(e.what()));
+                    }
                 }
             }
         }
@@ -309,9 +334,14 @@ void ServiceManagerWidget::setupContextMenu()
 void ServiceManagerWidget::loadServices()
 {
     try {
-        customServices = services::loadCustomServices(config);
+        allServices = services::loadAllServices(config);
         updateTable();
-        emit statusMessage(QString("Loaded %1 custom services").arg(customServices.size()));
+        emit statusMessage(QString("Loaded %1 services (%2 built-in, %3 user-defined)")
+                          .arg(allServices.size())
+                          .arg(std::count_if(allServices.begin(), allServices.end(),
+                               [](const auto& pair) { return pair.second.isBuiltIn; }))
+                          .arg(std::count_if(allServices.begin(), allServices.end(),
+                               [](const auto& pair) { return !pair.second.isBuiltIn; })));
     } catch (const std::exception& e) {
         showError("Failed to load services: " + QString::fromStdString(e.what()));
     }
@@ -320,8 +350,8 @@ void ServiceManagerWidget::loadServices()
 void ServiceManagerWidget::saveServices()
 {
     try {
-        services::saveCustomServices(config, customServices);
-        emit statusMessage("Services saved successfully");
+        services::saveUserServices(config, allServices);
+        emit statusMessage("User services saved successfully");
     } catch (const std::exception& e) {
         showError("Failed to save services: " + QString::fromStdString(e.what()));
     }
@@ -331,8 +361,8 @@ void ServiceManagerWidget::updateTable()
 {
     table->setRowCount(0);
     
-    for (const auto& service : customServices) {
-        if (!currentFilter.isEmpty() && 
+    for (const auto& [name, service] : allServices) {
+        if (!currentFilter.isEmpty() &&
             !QString::fromStdString(service.name).contains(currentFilter, Qt::CaseInsensitive) &&
             !QString::fromStdString(service.keyName).contains(currentFilter, Qt::CaseInsensitive) &&
             !QString::fromStdString(service.description).contains(currentFilter, Qt::CaseInsensitive)) {
@@ -345,7 +375,7 @@ void ServiceManagerWidget::updateTable()
     table->resizeRowsToContents();
 }
 
-void ServiceManagerWidget::addServiceToTable(const services::CustomService &service)
+void ServiceManagerWidget::addServiceToTable(const services::Service &service)
 {
     int row = table->rowCount();
     table->insertRow(row);
@@ -353,6 +383,11 @@ void ServiceManagerWidget::addServiceToTable(const services::CustomService &serv
     // Name
     QTableWidgetItem *nameItem = new QTableWidgetItem(QString::fromStdString(service.name));
     nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
+    if (service.isBuiltIn) {
+        nameItem->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
+    } else {
+        nameItem->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileIcon));
+    }
     table->setItem(row, ColumnName, nameItem);
     
     // Key Name
@@ -370,11 +405,21 @@ void ServiceManagerWidget::addServiceToTable(const services::CustomService &serv
     descItem->setToolTip(QString::fromStdString(service.description));
     table->setItem(row, ColumnDescription, descItem);
     
+    // Type
+    QTableWidgetItem *typeItem = new QTableWidgetItem(service.isBuiltIn ? "Built-in" : "User");
+    typeItem->setFlags(typeItem->flags() & ~Qt::ItemIsEditable);
+    if (service.isBuiltIn) {
+        typeItem->setForeground(QColor(0, 100, 0)); // Dark green for built-in
+    } else {
+        typeItem->setForeground(QColor(0, 0, 150)); // Dark blue for user-defined
+    }
+    table->setItem(row, ColumnType, typeItem);
+    
     // Testable
     QTableWidgetItem *testableItem = new QTableWidgetItem(service.testable ? "Yes" : "No");
     testableItem->setFlags(testableItem->flags() & ~Qt::ItemIsEditable);
     if (service.testable) {
-        testableItem->setIcon(QIcon(":/icons/check.png"));
+        testableItem->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogApplyButton));
     }
     table->setItem(row, ColumnTestable, testableItem);
     
@@ -382,6 +427,18 @@ void ServiceManagerWidget::addServiceToTable(const services::CustomService &serv
     QTableWidgetItem *statusItem = new QTableWidgetItem("Not tested");
     statusItem->setFlags(statusItem->flags() & ~Qt::ItemIsEditable);
     table->setItem(row, ColumnTestStatus, statusItem);
+}
+
+bool ServiceManagerWidget::canEditService(const services::Service &service)
+{
+    // Built-in services can have their testing configuration edited, but not core properties
+    return true;
+}
+
+bool ServiceManagerWidget::canDeleteService(const services::Service &service)
+{
+    // Only user-defined services can be deleted
+    return !service.isBuiltIn;
 }
 
 void ServiceManagerWidget::refreshServices()
@@ -406,15 +463,13 @@ void ServiceManagerWidget::addService()
         auto service = dialog.getService();
         
         // Check if service name already exists
-        for (const auto& existing : customServices) {
-            if (existing.name == service.name) {
-                showError("A service with this name already exists");
-                return;
-            }
+        if (allServices.find(service.name) != allServices.end()) {
+            showError("A service with this name already exists");
+            return;
         }
         
         try {
-            services::addCustomService(config, service);
+            services::addService(config, service);
             refreshServices();
             selectService(QString::fromStdString(service.name));
             emit statusMessage("Service added successfully");
@@ -427,27 +482,35 @@ void ServiceManagerWidget::addService()
 void ServiceManagerWidget::editService()
 {
     int row = table->currentRow();
-    if (row < 0 || row >= static_cast<int>(customServices.size())) {
+    if (row < 0 || row >= table->rowCount()) {
         return;
     }
     
-    auto service = customServices[row];
+    QString serviceName = table->item(row, ColumnName)->text();
+    auto it = allServices.find(serviceName.toStdString());
+    if (it == allServices.end()) {
+        return;
+    }
+    
+    auto service = it->second;
+    if (!canEditService(service)) {
+        showError("This service cannot be edited");
+        return;
+    }
+    
     ServiceEditorDialog dialog(service, this);
     if (dialog.exec() == QDialog::Accepted) {
         auto updatedService = dialog.getService();
         
-        // Check if name conflicts with other services
-        for (size_t i = 0; i < customServices.size(); ++i) {
-            if (i != static_cast<size_t>(row) && customServices[i].name == updatedService.name) {
-                showError("A service with this name already exists");
-                return;
-            }
+        // Check if name conflicts with other services (if name changed)
+        if (updatedService.name != service.name &&
+            allServices.find(updatedService.name) != allServices.end()) {
+            showError("A service with this name already exists");
+            return;
         }
         
         try {
-            // Remove old service and add updated one
-            services::removeCustomService(config, service.name);
-            services::addCustomService(config, updatedService);
+            services::updateService(config, updatedService);
             refreshServices();
             selectService(QString::fromStdString(updatedService.name));
             emit statusMessage("Service updated successfully");
@@ -460,12 +523,21 @@ void ServiceManagerWidget::editService()
 void ServiceManagerWidget::deleteService()
 {
     int row = table->currentRow();
-    if (row < 0 || row >= static_cast<int>(customServices.size())) {
+    if (row < 0 || row >= table->rowCount()) {
         return;
     }
     
-    auto service = customServices[row];
-    QString serviceName = QString::fromStdString(service.name);
+    QString serviceName = table->item(row, ColumnName)->text();
+    auto it = allServices.find(serviceName.toStdString());
+    if (it == allServices.end()) {
+        return;
+    }
+    
+    auto service = it->second;
+    if (!canDeleteService(service)) {
+        showError("Built-in services cannot be deleted");
+        return;
+    }
     
     QMessageBox::StandardButton reply = QMessageBox::question(
         this, "Delete Service",
@@ -477,7 +549,7 @@ void ServiceManagerWidget::deleteService()
     
     if (reply == QMessageBox::Yes) {
         try {
-            services::removeCustomService(config, service.name);
+            services::removeService(config, service.name);
             refreshServices();
             emit statusMessage("Service deleted successfully");
         } catch (const std::exception& e) {
@@ -495,17 +567,23 @@ void ServiceManagerWidget::searchServices(const QString &text)
 void ServiceManagerWidget::testSelectedService()
 {
     int row = table->currentRow();
-    if (row < 0 || row >= static_cast<int>(customServices.size())) {
+    if (row < 0 || row >= table->rowCount()) {
         return;
     }
     
-    auto service = customServices[row];
+    QString serviceName = table->item(row, 0)->text();
+    auto it = allServices.find(serviceName.toStdString());
+    if (it == allServices.end()) {
+        return;
+    }
+    
+    auto service = it->second;
     if (!service.testable) {
         showError("This service is not configured for testing");
         return;
     }
     
-    QString serviceName = QString::fromStdString(service.name);
+    // Use the existing serviceName variable
     table->item(row, ColumnTestStatus)->setText("Testing...");
     
     QTimer::singleShot(100, [this, serviceName, row]() {
@@ -521,7 +599,7 @@ void ServiceManagerWidget::testSelectedService()
 void ServiceManagerWidget::testAllServices()
 {
     std::vector<std::string> testableServices;
-    for (const auto& service : customServices) {
+    for (const auto& [name, service] : allServices) {
         if (service.testable) {
             testableServices.push_back(service.name);
         }
@@ -563,16 +641,18 @@ void ServiceManagerWidget::exportServices()
     
     try {
         QJsonArray servicesArray;
-        for (const auto& service : customServices) {
-            QJsonObject serviceObj;
-            serviceObj["name"] = QString::fromStdString(service.name);
-            serviceObj["keyName"] = QString::fromStdString(service.keyName);
-            serviceObj["description"] = QString::fromStdString(service.description);
-            serviceObj["testEndpoint"] = QString::fromStdString(service.testEndpoint);
-            serviceObj["testMethod"] = QString::fromStdString(service.testMethod);
-            serviceObj["testHeaders"] = QString::fromStdString(service.testHeaders);
-            serviceObj["testable"] = service.testable;
-            servicesArray.append(serviceObj);
+        for (const auto& [name, service] : allServices) {
+            if (!service.isBuiltIn) {  // Only export user-defined services
+                QJsonObject serviceObj;
+                serviceObj["name"] = QString::fromStdString(service.name);
+                serviceObj["keyName"] = QString::fromStdString(service.keyName);
+                serviceObj["description"] = QString::fromStdString(service.description);
+                serviceObj["testEndpoint"] = QString::fromStdString(service.testEndpoint);
+                serviceObj["testMethod"] = QString::fromStdString(service.testMethod);
+                serviceObj["testHeaders"] = QString::fromStdString(service.testHeaders);
+                serviceObj["testable"] = service.testable;
+                servicesArray.append(serviceObj);
+            }
         }
         
         QJsonDocument doc(servicesArray);
@@ -613,8 +693,9 @@ void ServiceManagerWidget::importServices()
         for (const auto& value : servicesArray) {
             QJsonObject obj = value.toObject();
             
-            services::CustomService service;
+            services::Service service;
             service.name = obj["name"].toString().toStdString();
+            service.isBuiltIn = false;  // Imported services are user-defined
             service.keyName = obj["keyName"].toString().toStdString();
             service.description = obj["description"].toString().toStdString();
             service.testEndpoint = obj["testEndpoint"].toString().toStdString();
@@ -624,7 +705,7 @@ void ServiceManagerWidget::importServices()
             
             // Check if service already exists
             bool exists = false;
-            for (const auto& existing : customServices) {
+            for (const auto& [existingName, existing] : allServices) {
                 if (existing.name == service.name) {
                     exists = true;
                     break;
@@ -632,7 +713,7 @@ void ServiceManagerWidget::importServices()
             }
             
             if (!exists) {
-                services::addCustomService(config, service);
+                services::addService(config, service);
                 imported++;
             } else {
                 skipped++;
