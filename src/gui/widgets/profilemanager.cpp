@@ -66,6 +66,14 @@ ProfileManagerWidget::ProfileManagerWidget(const core::Config& config, QWidget *
       profileNameLabel(nullptr), keyCountLabel(nullptr), keysText(nullptr),
       statusLabel(nullptr)
 {
+    // Ensure default profile exists
+    try {
+        ak::storage::ensureDefaultProfile(config);
+    } catch (const std::exception& e) {
+        // Log error but continue
+        qWarning() << "Failed to ensure default profile:" << e.what();
+    }
+    
     setupUi();
     loadProfiles();
 }
@@ -237,6 +245,13 @@ void ProfileManagerWidget::loadProfiles()
 
 void ProfileManagerWidget::refreshProfiles()
 {
+    // Ensure default profile exists first
+    try {
+        ak::storage::ensureDefaultProfile(config);
+    } catch (const std::exception& e) {
+        showError(QString("Failed to ensure default profile: %1").arg(e.what()));
+    }
+    
     loadProfiles();
     showSuccess("Profiles refreshed");
 }

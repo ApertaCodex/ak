@@ -49,9 +49,13 @@ public:
     explicit ProfileManagerWidget(const core::Config& config, QWidget *parent = nullptr);
 
     void refreshProfiles();
+    void ensureDefaultProfile();
+    void setAsDefaultProfile();
+    QString getDefaultProfileName() const;
 
 signals:
     void statusMessage(const QString &message);
+    void defaultProfileChanged(const QString &profileName);
 
 private slots:
     void createProfile();
@@ -79,6 +83,7 @@ private:
     const core::Config& config;
     QStringList availableProfiles;
     QString currentProfile;
+    QString defaultProfileName;
 
     // UI components
     QVBoxLayout *mainLayout;
@@ -96,6 +101,7 @@ private:
     QPushButton *importButton;
     QPushButton *exportButton;
     QPushButton *refreshButton;
+    QPushButton *setDefaultButton;
 
     // Profile details
     QGroupBox *detailsGroup;
