@@ -1,466 +1,173 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 
-# Version is managed by the build system
-set(AK_VERSION "4.2.27")
-project(ak VERSION ${AK_VERSION} LANGUAGES CXX)
+project(ak
+  VERSION 4.2.28
+  DESCRIPTION "ak — API Key Manager"
+  HOMEPAGE_URL "https://github.com/apertacodex/ak"
+  LANGUAGES CXX)
 
-# C++ Standard
+# ---- Basics ----
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+option(BUILD_TESTING "Build tests" ON)
 
-# Build type
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+# ---- Version (git describe -> compile define) ----
+find_package(Git QUIET)
+set(GIT_DESCRIBE "${PROJECT_VERSION}")   # fallback "4.2.28"
+if(Git_FOUND)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} describe --tags --dirty --always
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_DESCRIBE
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
+add_compile_definitions(AK_VERSION_STRING="${GIT_DESCRIBE}")
 
-# Platform detection
-if(WIN32)
-    set(PLATFORM_NAME "Windows")
-elseif(APPLE)
-    set(PLATFORM_NAME "macOS")
+# ---- Debian-safe version for packages ----
+# Examples:
+#   v4.2.28                  -> 4.2.28
+#   v4.2.28-3-gabc1234       -> 4.2.28+3.gabc1234
+#   v4.2.28-3-gabc1234-dirty -> 4.2.28+3.gabc1234+dirty
+set(_AK_RAW "${GIT_DESCRIBE}")
+string(REGEX REPLACE "^v" "" _AK_STRIPPED "${_AK_RAW}")
+# Pattern groups:
+# 1: tag  (starts with a digit; may include [A-Za-z0-9.+~-])
+# 2: count (digits)
+# 3: sha  (hex)
+# 4: optional "-dirty"
+if(_AK_STRIPPED MATCHES "^([0-9][A-Za-z0-9.+~-]*)-([0-9]+)-g([0-9a-f]+)(-dirty)?$")
+  set(_AK_TAG   "${CMAKE_MATCH_1}")
+  set(_AK_CNT   "${CMAKE_MATCH_2}")
+  set(_AK_SHA   "${CMAKE_MATCH_3}")
+  set(_AK_DIRTY "${CMAKE_MATCH_4}")
+  set(AK_DEBVER "${_AK_TAG}+${_AK_CNT}.g${_AK_SHA}")
+  if(_AK_DIRTY)
+    set(AK_DEBVER "${AK_DEBVER}+dirty")
+  endif()
 else()
-    set(PLATFORM_NAME "Linux")
+  # already looks like a plain tag/version
+  set(AK_DEBVER "${_AK_STRIPPED}")
+endif()
+message(STATUS "Git describe: ${GIT_DESCRIBE}  ->  Debian-safe: ${AK_DEBVER}")
+
+# ---- Dependencies ----
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
+find_package(Threads REQUIRED)
+find_package(OpenSSL QUIET)
+find_package(ZLIB QUIET)
+
+# ---- Sources ----
+file(GLOB_RECURSE AK_HEADERS CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/include/**/*.hpp")
+file(GLOB_RECURSE AK_ALL_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/**/*.cpp")
+set(AK_APP_MAIN "${CMAKE_SOURCE_DIR}/src/main.cpp")
+list(REMOVE_ITEM AK_ALL_SOURCES "${AK_APP_MAIN}")
+
+# ---- Core library (all code except main) ----
+add_library(ak_core STATIC ${AK_ALL_SOURCES} ${AK_HEADERS})
+set_target_properties(ak_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(ak_core PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(ak_core
+  PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Threads::Threads)
+if(OpenSSL_FOUND)
+  target_link_libraries(ak_core PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+endif()
+if(ZLIB_FOUND)
+  target_link_libraries(ak_core PRIVATE ZLIB::ZLIB)
 endif()
 
-# Compiler-specific flags
 if(MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2")
+  target_compile_options(ak_core PRIVATE /W4 /permissive-)
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pipe")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
-    if(APPLE)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-    endif()
+  target_compile_options(ak_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-# Coverage flags for GCC/Clang
-if(CMAKE_BUILD_TYPE STREQUAL "Coverage" AND NOT MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
-endif()
+# ---- Executable ----
+add_executable(ak ${AK_APP_MAIN})
+target_link_libraries(ak PRIVATE ak_core)
 
-# Include directories
-include_directories(include)
-
-# Source files
-set(CORE_SOURCES
-    src/core/config.cpp
-    src/crypto/crypto.cpp
-    src/storage/vault.cpp
-    src/ui/ui.cpp
-    src/system/system.cpp
-    src/cli/cli.cpp
-    src/services/services.cpp
-    src/commands/commands.cpp
-)
-
-# ============================================================================
-# GUI Configuration
-# ============================================================================
-
-option(BUILD_GUI "Build GUI support with Qt 6" ON)
-
-if(BUILD_GUI)
-    # Find Qt 6 components - require minimum 6.4.0 for compatibility
-    find_package(Qt6 6.4.0 REQUIRED COMPONENTS Core Widgets)
-    
-    # Enable Qt 6 MOC (Meta-Object Compiler) globally
-    set(CMAKE_AUTOMOC ON)
-    set(CMAKE_AUTOUIC ON)
-    set(CMAKE_AUTORCC ON)
-    
-    message(STATUS "Qt6 found: Building with GUI support")
-    
-    # Add GUI sources and headers for AUTOMOC discovery
-    set(GUI_SOURCES
-        src/gui/gui.cpp
-        src/gui/mainwindow.cpp
-        src/gui/widgets/keymanager.cpp
-        src/gui/widgets/servicetester.cpp
-        src/gui/widgets/profilemanager.cpp
-        src/gui/widgets/servicemanager.cpp
-        src/gui/widgets/common/secureinput.cpp
-        src/gui/widgets/common/dialogs.cpp
-        include/gui/mainwindow.hpp
-        include/gui/widgets/keymanager.hpp
-        include/gui/widgets/servicetester.hpp
-        include/gui/widgets/profilemanager.hpp
-        include/gui/widgets/servicemanager.hpp
-        include/gui/widgets/common/secureinput.hpp
-        include/gui/widgets/common/dialogs.hpp
-    )
-else()
-    message(STATUS "Qt6 not enabled: Building CLI-only version")
-    set(GUI_SOURCES "")
-endif()
-
-# Main executable
-add_executable(ak
-    src/main.cpp
-    ${CORE_SOURCES}
-    ${GUI_SOURCES}
-)
-
-# Link Qt6 libraries if GUI is enabled
-if(BUILD_GUI)
-    target_link_libraries(ak Qt6::Core Qt6::Widgets)
-    target_include_directories(ak PRIVATE include/gui)
-    target_compile_definitions(ak PRIVATE BUILD_GUI)
-endif()
-
-# Pass version to C++ code
-target_compile_definitions(ak PRIVATE AK_VERSION_STRING="${AK_VERSION}")
-
-# Windows-specific settings
-if(WIN32)
-    target_compile_definitions(ak PRIVATE WIN32_LEAN_AND_MEAN)
-    if(MSVC)
-        target_compile_definitions(ak PRIVATE _CRT_SECURE_NO_WARNINGS)
-    endif()
-endif()
-
-# macOS-specific settings
+# Portable RPATH
 if(APPLE)
-    set_target_properties(ak PROPERTIES
-        MACOSX_BUNDLE FALSE
-    )
+  set_target_properties(ak PROPERTIES
+    INSTALL_RPATH "@loader_path/../Frameworks;@executable_path/../Frameworks")
+elseif(UNIX AND NOT APPLE)
+  set_target_properties(ak PROPERTIES
+    BUILD_RPATH "\$ORIGIN"
+    INSTALL_RPATH "\$ORIGIN")
 endif()
 
-# Linux-specific settings
-if(UNIX AND NOT APPLE)
-    target_link_libraries(ak pthread)
-endif()
+# ---- Install ----
+include(GNUInstallDirs)
 
-# ============================================================================
-# Testing Configuration
-# ============================================================================
-
-option(BUILD_TESTS "Build tests" ON)
-
-if(BUILD_TESTS)
-    enable_testing()
-    
-    # Download and build Google Test
-    include(FetchContent)
-    FetchContent_Declare(
-        googletest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG v1.15.2
-    )
-    
-    # For Windows: Prevent overriding the parent project's compiler/linker settings
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
-    
-    # Test executable
-    set(TEST_SOURCES
-        tests/test_main_gtest.cpp
-        tests/core/test_config.cpp
-        tests/crypto/test_crypto.cpp
-        tests/cli/test_cli.cpp
-        tests/services/test_services.cpp
-    )
-    
-    add_executable(ak_tests
-        ${TEST_SOURCES}
-        ${CORE_SOURCES}
-        ${GUI_SOURCES}
-    )
-    
-    # Link Qt6 to tests if GUI enabled
-    if(BUILD_GUI)
-        target_link_libraries(ak_tests Qt6::Core Qt6::Widgets)
-        target_compile_definitions(ak_tests PRIVATE BUILD_GUI)
-    endif()
-    
-    # Pass version to test target
-    target_compile_definitions(ak_tests PRIVATE AK_VERSION_STRING="${AK_VERSION}")
-    
-    target_include_directories(ak_tests PRIVATE tests)
-    target_link_libraries(ak_tests
-        gtest
-        gtest_main
-    )
-    
-    # Windows threading
-    if(WIN32)
-        target_link_libraries(ak_tests)
-    else()
-        target_link_libraries(ak_tests pthread)
-    endif()
-    
-    # Register tests with CTest
-    include(GoogleTest)
-    gtest_discover_tests(ak_tests)
-    
-    # Custom test target
-    add_custom_target(run_tests
-        COMMAND ak_tests
-        DEPENDS ak_tests
-        COMMENT "Running tests..."
-    )
-endif()
-
-# ============================================================================
-# Coverage Configuration (Linux/macOS only)
-# ============================================================================
-
-if(NOT WIN32)
-    find_program(GCOV_EXECUTABLE gcov)
-    find_program(LCOV_EXECUTABLE lcov)
-    find_program(GENHTML_EXECUTABLE genhtml)
-    
-    if(GCOV_EXECUTABLE AND LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
-        add_custom_target(coverage
-            COMMAND ${CMAKE_COMMAND} -E make_directory coverage_html
-            COMMAND ${CMAKE_COMMAND} -E remove -f coverage.info coverage_base.info coverage_test.info
-            
-            # Clean previous coverage data
-            COMMAND ${LCOV_EXECUTABLE} --directory . --zerocounters
-            
-            # Run tests
-            COMMAND ${CMAKE_COMMAND} --build . --target ak_tests
-            COMMAND ./ak_tests
-            
-            # Capture coverage data
-            COMMAND ${LCOV_EXECUTABLE} --directory . --capture --output-file coverage.info
-            
-            # Filter out system headers and test files
-            COMMAND ${LCOV_EXECUTABLE} --remove coverage.info '/usr/*' --output-file coverage.info
-            COMMAND ${LCOV_EXECUTABLE} --remove coverage.info '*/tests/*' --output-file coverage.info
-            COMMAND ${LCOV_EXECUTABLE} --remove coverage.info '*/googletest/*' --output-file coverage.info
-            
-            # Generate HTML report
-            COMMAND ${GENHTML_EXECUTABLE} coverage.info --output-directory coverage_html
-            COMMAND ${CMAKE_COMMAND} -E echo "📊 Coverage report generated in coverage_html/index.html"
-            
-            DEPENDS ak_tests
-            COMMENT "🧪 Generating coverage report..."
-            VERBATIM
-        )
-    endif()
-endif()
-
-# ============================================================================
-# Installation Configuration
-# ============================================================================
-
-# Installation paths
-if(WIN32)
-    set(INSTALL_BIN_DIR "bin")
-    set(INSTALL_COMPLETION_DIR "share/ak")
-else()
-    include(GNUInstallDirs)
-    set(INSTALL_BIN_DIR ${CMAKE_INSTALL_BINDIR})
-    if(APPLE)
-        set(INSTALL_COMPLETION_DIR "share/ak")
-    else()
-        set(INSTALL_COMPLETION_DIR ${CMAKE_INSTALL_DATAROOTDIR}/ak)
-    endif()
-endif()
-
-# Install binary
 install(TARGETS ak
-    RUNTIME DESTINATION ${INSTALL_BIN_DIR}
-)
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  BUNDLE  DESTINATION .)
 
-# Create shell completion files (Unix-like systems)
-if(NOT WIN32)
-    install(CODE "
-        execute_process(
-            COMMAND \${CMAKE_INSTALL_PREFIX}/${INSTALL_BIN_DIR}/ak completion bash
-            OUTPUT_FILE bash_completion.tmp
-        )
-        execute_process(
-            COMMAND \${CMAKE_INSTALL_PREFIX}/${INSTALL_BIN_DIR}/ak completion zsh  
-            OUTPUT_FILE zsh_completion.tmp
-        )
-        execute_process(
-            COMMAND \${CMAKE_INSTALL_PREFIX}/${INSTALL_BIN_DIR}/ak completion fish
-            OUTPUT_FILE fish_completion.tmp
-        )
-    ")
-    
-    if(APPLE)
-        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/bash_completion.tmp
-            DESTINATION /usr/local/etc/bash_completion.d
-            RENAME ak
-            OPTIONAL
-        )
-    else()
-        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/bash_completion.tmp
-            DESTINATION /etc/bash_completion.d
-            RENAME ak
-            OPTIONAL
-        )
-        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/zsh_completion.tmp
-            DESTINATION /usr/share/zsh/site-functions
-            RENAME _ak
-            OPTIONAL
-        )
-        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/fish_completion.tmp
-            DESTINATION /usr/share/fish/completions
-            RENAME ak.fish
-            OPTIONAL
-        )
-    endif()
+install(FILES docs/ak.1
+  DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+  OPTIONAL)
+
+install(FILES ak.desktop
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications
+  OPTIONAL)
+
+install(FILES logo.png
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pixmaps
+  RENAME ak.png
+  OPTIONAL)
+
+install(FILES logo.svg
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps
+  RENAME ak.svg
+  OPTIONAL)
+
+# ---- Tests ----
+include(CTest)
+if(BUILD_TESTING)
+  enable_testing()
+  find_package(GTest QUIET)
+  if(NOT GTest_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(googletest
+      URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip)
+    set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+  endif()
+  file(GLOB_RECURSE AK_TESTS CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tests/*.cpp")
+  add_executable(ak_tests ${AK_TESTS})
+  target_link_libraries(ak_tests PRIVATE ak_core GTest::gtest GTest::gtest_main)
+  add_test(NAME ak_tests COMMAND ak_tests)
 endif()
 
-# Install man page (Unix-like systems only)
-if(NOT WIN32)
-    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/docs/ak.1
-        DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
-        OPTIONAL
-    )
+# ---- Packaging ----
+# If the user passed -DCPACK_PACKAGE_VERSION, respect it; otherwise use AK_DEBVER.
+if(NOT DEFINED CPACK_PACKAGE_VERSION OR CPACK_PACKAGE_VERSION STREQUAL "")
+  set(CPACK_PACKAGE_VERSION "${AK_DEBVER}")
 endif()
 
-# Install desktop file and icons (Linux only)
-if(UNIX AND NOT APPLE AND BUILD_GUI)
-    # Install desktop file to user applications directory
-    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ak.desktop
-        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-    )
-    
-    # Install SVG icon
-    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/logo.svg
-        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps
-        RENAME ak.svg
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-    )
-    
-    # Install PNG icon
-    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/logo.png
-        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps
-        RENAME ak.png
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-    )
-endif()
+set(CPACK_PACKAGE_NAME "ak")
+set(CPACK_PACKAGE_VENDOR "ApertaCodex")
+set(CPACK_PACKAGE_CONTACT "support@apertacodex.ai")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ak — API Key Manager")
 
-# Post-install setup for automatic shell integration
-if(NOT WIN32)
-    install(CODE "
-        # Set up shell integration automatically after installation
-        message(STATUS \"Setting up AK shell integration...\")
-        execute_process(
-            COMMAND \${CMAKE_INSTALL_PREFIX}/${INSTALL_BIN_DIR}/ak install-shell
-            RESULT_VARIABLE SHELL_SETUP_RESULT
-            OUTPUT_QUIET
-            ERROR_QUIET
-        )
-        
-        if(SHELL_SETUP_RESULT EQUAL 0)
-            message(STATUS \"Shell integration configured successfully\")
-        else()
-            message(STATUS \"Shell integration will be configured on first run\")
-        endif()
-    ")
-endif()
-
-# ============================================================================
-# Version Management and Publishing
-# ============================================================================
-
-
-# Version bump targets
-add_custom_target(bump-patch
-    COMMAND ${CMAKE_COMMAND} 
-        -DPROJECT_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-        -DBUMP_TYPE=patch
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version_bump.cmake
-    COMMENT "🔄 Bumping patch version..."
-)
-
-add_custom_target(bump-minor
-    COMMAND ${CMAKE_COMMAND}
-        -DPROJECT_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-        -DBUMP_TYPE=minor
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version_bump.cmake
-    COMMENT "🔄 Bumping minor version..."
-)
-
-add_custom_target(bump-major
-    COMMAND ${CMAKE_COMMAND}
-        -DPROJECT_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-        -DBUMP_TYPE=major
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version_bump.cmake
-    COMMENT "🔄 Bumping major version..."
-)
-
-# Build release target
-add_custom_target(build-release
-    COMMAND ${CMAKE_COMMAND} --build . --config Release --target ak
-    COMMENT "🏗️  Building release version..."
-)
-
-# Test release target
-add_custom_target(test-release
-    COMMAND ${CMAKE_COMMAND} -E echo "🧪 Running tests before release..."
-    COMMAND ${CMAKE_COMMAND} --build . --config Release --target ak_tests
-    COMMAND ./ak_tests
-    COMMAND ${CMAKE_COMMAND} -E echo "✅ All tests passed"
-    DEPENDS ak_tests
-    COMMENT "🧪 Running release tests..."
-)
-
-# APT repository update target
-add_custom_target(update-apt-repo
-    COMMAND ${CMAKE_COMMAND}
-        -DPROJECT_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apt_publish.cmake
-    COMMENT "📦 Updating APT repository..."
-)
-
-# Publish targets
-add_custom_target(publish
-    COMMAND ${CMAKE_COMMAND} --build . --target bump-patch
-    COMMAND ${CMAKE_COMMAND} --build . --target build-release
-    COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
-    COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
-    COMMENT "🚀 Publishing patch release..."
-)
-
-add_custom_target(publish-minor
-    COMMAND ${CMAKE_COMMAND} --build . --target bump-minor
-    COMMAND ${CMAKE_COMMAND} --build . --target build-release
-    COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
-    COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
-    COMMENT "🚀 Publishing minor release..."
-)
-
-add_custom_target(publish-major
-    COMMAND ${CMAKE_COMMAND} --build . --target bump-major
-    COMMAND ${CMAKE_COMMAND} --build . --target build-release
-    COMMAND ${CMAKE_COMMAND} --build . --target update-apt-repo
-    COMMAND ${CMAKE_COMMAND} --build . --target commit-and-push
-    COMMENT "🚀 Publishing major release..."
-)
-
-# Git commit and push target
-add_custom_target(commit-and-push
-    COMMAND ${CMAKE_COMMAND}
-        -DPROJECT_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/git_publish.cmake
-    COMMENT "📦 Committing and pushing release..."
-)
-
-# ============================================================================
-# Status Information
-# ============================================================================
-
-message(STATUS "")
-message(STATUS "========================================")
-message(STATUS "  AK (API Key Manager) v${AK_VERSION}")
-message(STATUS "========================================")
-message(STATUS "Platform: ${PLATFORM_NAME}")
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
-message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID}")
-if(BUILD_TESTS)
-    message(STATUS "Tests: Enabled")
+if(WIN32)
+  set(CPACK_GENERATOR "ZIP")
+elseif(APPLE)
+  set(CPACK_GENERATOR "DragNDrop;TGZ")
+  set(CPACK_DMG_VOLUME_NAME "ak-${CPACK_PACKAGE_VERSION}")
 else()
-    message(STATUS "Tests: Disabled")
+  set(CPACK_GENERATOR "DEB;TGZ")
+  set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+  set(CPACK_DEBIAN_PACKAGE_MAINTAINER "ApertaCodex <support@apertacodex.ai>")
+  set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
+  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)  # auto runtime deps
 endif()
-message(STATUS "========================================")
-message(STATUS "")
+
+include(CPack)
