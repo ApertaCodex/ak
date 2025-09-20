@@ -35,10 +35,11 @@ class ServiceEditorDialog : public QDialog
 
 public:
     explicit ServiceEditorDialog(QWidget *parent = nullptr);
-    explicit ServiceEditorDialog(const services::CustomService &service, QWidget *parent = nullptr);
+    explicit ServiceEditorDialog(const services::Service &service, QWidget *parent = nullptr);
     
-    services::CustomService getService() const;
-    void setService(const services::CustomService &service);
+    services::Service getService() const;
+    void setService(const services::Service &service);
+    bool isBuiltIn() const;
 
 private slots:
     void validateInput();
@@ -57,8 +58,9 @@ private:
     QLineEdit *testHeadersEdit;
     QCheckBox *testableCheckBox;
     QDialogButtonBox *buttonBox;
+    QCheckBox *builtInCheckBox;
     
-    services::CustomService currentService;
+    services::Service currentService;
 };
 
 // Custom Service Manager Widget
@@ -100,15 +102,17 @@ private:
     void filterTable(const QString &filter);
     
     // Utility methods
-    void addServiceToTable(const services::CustomService &service);
+    void addServiceToTable(const services::Service &service);
     void updateTestStatus(const QString &serviceName, bool success, const QString &message = "");
     bool validateServiceName(const QString &name);
+    bool canEditService(const services::Service &service);
+    bool canDeleteService(const services::Service &service);
     void showError(const QString &message);
     void showSuccess(const QString &message);
     
     // Configuration and data
     const core::Config& config;
-    std::vector<services::CustomService> customServices;
+    std::map<std::string, services::Service> allServices;
     
     // UI components
     QVBoxLayout *mainLayout;
@@ -143,9 +147,10 @@ private:
         ColumnName = 0,
         ColumnKeyName = 1,
         ColumnDescription = 2,
-        ColumnTestable = 3,
-        ColumnTestStatus = 4,
-        ColumnCount = 5
+        ColumnType = 3,
+        ColumnTestable = 4,
+        ColumnTestStatus = 5,
+        ColumnCount = 6
     };
     
     // State
