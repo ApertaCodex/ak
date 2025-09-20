@@ -1,297 +1,201 @@
 # AK Manual
 
 ## NAME
-
-**ak** - secure API key manager for developers
+**ak** — Secure API Key Manager (CLI)
 
 ## SYNOPSIS
-
-**ak** [OPTION]... [COMMAND] [ARGS]...
+- `ak [--json] <command> [options] [arguments]`
+- `ak help`
+- `ak completion {bash|zsh|fish}`
+- `ak serve [--host HOST] [--port PORT]`
 
 ## DESCRIPTION
-
-**ak** is a cross-platform command-line tool for managing API keys securely across different services. It provides encrypted storage, service integration, and comprehensive testing capabilities for developers working with multiple APIs.
-
-**ak** stores API keys in an encrypted local vault using industry-standard cryptographic algorithms, ensuring your sensitive credentials remain secure while providing easy access when needed.
+**ak** is a cross‑platform command‑line tool for managing API keys securely across services. It provides:
+- Encrypted storage and profile‑scoped key management
+- Service definitions with connectivity testing
+- Shell integration and completions (bash/zsh/fish)
+- Lightweight HTTP server for the web interface
 
 ## COMMANDS
 
-### Key Management
+### Secret Management
+- `ak add <NAME> <VALUE>`  
+  Add a secret with value directly (also supports `NAME=VALUE`). Use `-p|--profile` to add to a profile.
 
-**ak add** *name* *key*
-: Add a new API key with the specified name. The key will be encrypted and stored securely in the local vault.
+- `ak set <NAME>`  
+  Prompt to set a secret value interactively.
 
-**ak get** *name*
-: Retrieve and display the API key for the specified name. Use with caution as this will display the key in plain text.
+- `ak get <NAME> [--full]`  
+  Get a secret value (`--full` shows unmasked).
 
-**ak get** *name* **--copy**
-: Retrieve the API key and copy it directly to the system clipboard without displaying it on screen.
+- `ak ls [--json]`  
+  List secret names (masked values in non‑JSON mode).
 
-**ak list**
-: List all stored API key names without displaying the actual keys.
+- `ak rm <NAME>`  
+  Remove a secret from the vault.
 
-**ak remove** *name*
-: Remove the specified API key from the vault permanently. This action cannot be undone.
+- `ak rm --profile <NAME>`  
+  Remove an entire profile.
 
-**ak update** *name* *key*
-: Update an existing API key with a new value.
+- `ak search <PATTERN>`  
+  Search for secrets by name (case‑insensitive).
 
-### Service Testing
+- `ak cp <NAME>`  
+  Copy secret value to clipboard (pbcopy/wl‑copy/xclip).
 
-**ak test** *service*
-: Test the API connection for a specific service. Supported services include openai, github, aws, and others.
+- `ak purge [--no-backup]`  
+  Remove all secrets and profiles (creates backup by default unless `--no-backup`).
 
-**ak test --all**
-: Test all configured API keys against their respective services.
+### Profile Management
+- `ak save <PROFILE> [NAMES...]`  
+  Save named secrets to a profile (all secrets if none given).
 
-**ak test --list**
-: List all available service test configurations.
+- `ak load <PROFILE|KEY> [--persist]`  
+  Print export statements to load env vars; `--persist` remembers the profile for the current directory.
 
-### Shell Integration
+- `ak unload [<PROFILE> ...] [--persist]`  
+  Print unset statements for profile keys; with `--persist` remove remembered profile(s) for the current directory.
 
-**ak completion bash**
-: Generate bash completion script for the ak command.
+- `ak profiles`  
+  List available profiles with key counts.
 
-**ak completion zsh**
-: Generate zsh completion script for the ak command.
+- `ak duplicate <SOURCE> <DEST>`  
+  Duplicate a profile.
 
-**ak completion fish**
-: Generate fish shell completion script for the ak command.
+- `ak env --profile|-p <NAME>`  
+  Show profile as export statements.
 
-### Vault Management
+### Export / Import
+- `ak export --profile|-p <PROFILE> --format|-f <FORMAT> --output|-o <FILE>`  
+  Export profile to file. Formats: `env`, `dotenv`, `json`, `yaml`.
 
-**ak vault init**
-: Initialize a new encrypted vault. This is automatically done on first use.
+- `ak import --profile|-p <PROFILE> --format|-f <FORMAT> --file|-i <FILE> [--keys]`  
+  Import secrets from file to profile. `--keys` imports only known service provider keys.
 
-**ak vault status**
-: Display information about the current vault, including location and encryption status.
+### Service Management
+- `ak service add`  
+  Create a new custom API service (interactive).
 
-**ak vault backup** *path*
-: Create a backup of the encrypted vault to the specified path.
+- `ak service list`  
+  List built‑in and custom services.
 
-**ak vault restore** *path*
-: Restore vault from a backup file. This will overwrite the current vault.
+- `ak service edit <NAME>`  
+  Edit an existing custom service (interactive).
 
-**ak vault export** *path*
-: Export all keys to a JSON file (encrypted). Useful for migration or backup.
+- `ak service delete <NAME>`  
+  Delete a custom service.
 
-**ak vault import** *path*
-: Import keys from an exported JSON file.
+### Testing and Utilities
+- `ak run --profile|-p <PROFILE> -- <CMD...>`  
+  Run command with profile environment loaded.
 
-### Configuration
+- `ak test [<SERVICE> ... | --all] [--json] [--fail-fast] [--profile|-p <NAME>]`  
+  Test connectivity for configured providers or specific services/keys.
 
-**ak config set** *key* *value*
-: Set a configuration option. Common options include vault_path, default_service, and timeout.
+- `ak guard enable|disable`  
+  Enable or disable shell guard for secret protection.
 
-**ak config get** *key*
-: Get the current value of a configuration option.
+- `ak doctor`  
+  Show system configuration/dependencies summary.
 
-**ak config list**
-: List all current configuration options and their values.
+- `ak audit [N]`  
+  Show audit log (last N entries, default 10).
 
-**ak config reset**
-: Reset all configuration to default values.
+### System
+- `ak help`  
+  Show detailed help.
 
-## OPTIONS
+- `ak version`  
+  Show version information.
 
-**-h, --help**
-: Display help information and exit.
+- `ak backend`  
+  Show backend info (`gpg` or `plain`).
 
-**-v, --version**
-: Display version information and exit.
+- `ak serve [--host HOST] [--port PORT]`  
+  Start HTTP server for the web interface (serves `/web-app.html` and related assets).
 
-**--verbose**
-: Enable verbose output for debugging.
+- `ak install-shell`  
+  Install shell integration for auto‑loading.
 
-**--quiet**
-: Suppress all non-essential output.
+- `ak uninstall`  
+  Remove shell integration.
 
-**--vault-path** *PATH*
-: Specify a custom path for the vault file. Overrides the default or configured path.
+- `ak completion <bash|zsh|fish>`  
+  Generate completion script for the specified shell.
 
-**--timeout** *SECONDS*
-: Set timeout for API test operations (default: 30 seconds).
+## OPTIONS (Global)
+- `-h, --help` — Show help and exit  
+- `-v, --version` — Show version and exit  
+- `--json` — Enable JSON output for supported commands
 
-**--no-color**
-: Disable colored output.
+## ENVIRONMENT
+- `AK_DISABLE_GPG` — If set, forces plain storage even if `gpg` is available  
+- `AK_PASSPHRASE` — Preset passphrase for `gpg` operations (non‑interactive)
 
-**--format** *FORMAT*
-: Output format for list and status commands. Options: table, json, yaml (default: table).
-
-## SUPPORTED SERVICES
-
-**ak** includes built-in support for testing the following services:
-
-**openai**
-: OpenAI API - Tests authentication and basic API access
-
-**github**
-: GitHub API - Validates token and user access
-
-**aws**
-: Amazon Web Services - Tests AWS credentials and permissions
-
-**google**
-: Google Cloud Platform - Validates service account or OAuth credentials
-
-**stripe**
-: Stripe Payment API - Tests API key validity
-
-**sendgrid**
-: SendGrid Email API - Validates API key and account status
-
-**twilio**
-: Twilio Communication API - Tests account SID and auth token
-
-**slack**
-: Slack API - Validates bot or user tokens
-
-**discord**
-: Discord Bot API - Tests bot token validity
-
-**heroku**
-: Heroku Platform API - Validates API key and app access
-
-## CONFIGURATION FILES
-
-**~/.config/ak/config.yaml**
-: Main configuration file containing user preferences and default settings.
-
-**~/.config/ak/vault.enc**
-: Encrypted vault file containing all stored API keys.
-
-**~/.config/ak/services.yaml**
-: Custom service definitions for testing additional APIs.
-
-## ENVIRONMENT VARIABLES
-
-**AK_VAULT_PATH**
-: Override the default vault file location.
-
-**AK_CONFIG_PATH**
-: Override the default configuration directory.
-
-**AK_NO_COLOR**
-: Disable colored output (equivalent to --no-color).
-
-**AK_VERBOSE**
-: Enable verbose output (equivalent to --verbose).
-
-**AK_TIMEOUT**
-: Default timeout for API operations in seconds.
+## FILES
+- `~/.config/ak/` — Default configuration directory  
+- `~/.config/ak/keys.env` — Unencrypted vault (when GPG unavailable/disabled)  
+- `~/.config/ak/keys.env.gpg` — Encrypted vault (when GPG available)  
+- `~/.config/ak/profiles/` — Profile definitions  
+- `~/.config/ak/persist/` — Directory‑profile persistence metadata  
+- `~/.config/ak/audit.log` — Audit log file
 
 ## EXAMPLES
 
-Add an OpenAI API key:
+### Add / Set / Get / List / Remove
 ```bash
-ak add openai sk-1234567890abcdef1234567890abcdef
+ak add API_KEY "sk-..."
+ak set API_KEY
+ak get API_KEY --full
+ak ls
+ak rm API_KEY
 ```
 
-Test GitHub API connection:
+### Profiles
 ```bash
-ak test github
+ak save dev API_KEY DB_URL
+ak load dev --persist
+eval "$(ak load dev)"
+ak profiles
 ```
 
-List all stored keys:
+### Export / Import
 ```bash
-ak list
+ak export -p dev -f dotenv -o dev.env
+ak import -p dev -f env -i .env --keys
 ```
 
-Get a key and copy to clipboard:
-```bash
-ak get openai --copy
-```
-
-Install bash completions:
-```bash
-ak completion bash | sudo tee /etc/bash_completion.d/ak
-```
-
-Backup your vault:
-```bash
-ak vault backup ~/ak-backup.enc
-```
-
-Test all configured services:
+### Service testing
 ```bash
 ak test --all
+ak test openai --fail-fast
 ```
 
-## SECURITY CONSIDERATIONS
+### Completions
+```bash
+ak completion bash | sudo tee /etc/bash_completion.d/ak
+ak completion zsh | sudo tee /usr/share/zsh/site-functions/_ak
+ak completion fish > ~/.config/fish/completions/ak.fish
+```
 
-**Encryption**
-: All API keys are encrypted using AES-256-GCM with a key derived from a master password using PBKDF2.
-
-**Storage**
-: The vault file is stored with restricted permissions (600) to prevent unauthorized access.
-
-**Memory**
-: Keys are cleared from memory immediately after use to minimize exposure time.
-
-**Network**
-: All service tests use HTTPS connections. No keys are transmitted in plain text.
-
-**Backup**
-: Always backup your vault file and store it securely. Lost master passwords cannot be recovered.
-
-## FILES
-
-**~/.config/ak/**
-: Default configuration directory
-
-**~/.config/ak/vault.enc**
-: Encrypted key storage
-
-**~/.config/ak/config.yaml**
-: Configuration file
-
-**/etc/ak/**
-: System-wide configuration directory
-
-**/usr/share/ak/**
-: Shared application data
+### HTTP server
+```bash
+ak serve --host 127.0.0.1 --port 8027
+# Open http://127.0.0.1:8027/web-app.html in a browser
+```
 
 ## DIAGNOSTICS
-
-| Exit Status | Meaning |
-|-------------|---------|
-| 0 | Success |
-| 1 | General error |
-| 2 | Invalid command or arguments |
-| 3 | Vault access error (permissions, corruption, wrong password) |
-| 4 | Network error during service testing |
-| 5 | Service authentication failed |
-| 6 | Configuration error |
+Exit status is 0 on success, non‑zero on error.
 
 ## BUGS
-
-Report bugs at: https://github.com/apertacodex/ak/issues
-
-Please include the following information in bug reports:
-
-- Operating system and version
-- AK version (`ak --version`)
-- Command that triggered the error
-- Error message (use `--verbose` for detailed output)
-- Steps to reproduce the issue
-
-## AUTHOR
-
-AK development team
+Report issues at: https://github.com/apertacodex/ak/issues
 
 ## COPYRIGHT
-
-Copyright (C) 2024 apertacodex. This software is licensed under the terms of the End-User License Agreement (EULA). See the EULA.txt file for complete license terms. There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Copyright (C) 2024–2025 ApertaCodex.
+License: MIT with Attribution (see LICENSE).
 
 ## SEE ALSO
-
-- **gpg**(1)
-- **pass**(1)
-- **keyring**(1)
-- **ssh-agent**(1)
-
-For complete documentation, visit: https://github.com/apertacodex/ak
+`gpg(1)`, `pass(1)`
 
 ## VERSION
-
-This manual page corresponds to AK version 4.2.27.
+This manual corresponds to AK version 4.2.27.
