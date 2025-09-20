@@ -196,9 +196,9 @@ ak --help
 
 # Key management
 ak add mykey "sk-..." 
-ak list
+ak ls
 ak get mykey
-ak remove mykey
+ak rm mykey
 
 # Service testing
 ak test openai

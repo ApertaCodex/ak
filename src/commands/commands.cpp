@@ -5,6 +5,7 @@
 #include "services/services.hpp"
 #include "ui/ui.hpp"
 #include "cli/cli.hpp"
+#include "http/server.hpp"
 #ifdef BUILD_GUI
 #include "gui/gui.hpp"
 #endif
@@ -24,20 +25,31 @@ namespace commands {
 
 // Utility functions
 std::string makeExportsForProfile(const core::Config& cfg, const std::string& name) {
-    auto keys = storage::readProfile(cfg, name);
+    // Export values for the selected profile, preferring per-profile key storage
+    // and falling back to the legacy global vault for compatibility.
+    auto keyNames = storage::readProfile(cfg, name);
+    auto profileKeyMap = storage::loadProfileKeys(cfg, name);
     core::KeyStore ks = storage::loadVault(cfg);
+
     std::ostringstream oss;
-    
-    for (const auto& key : keys) {
-        auto it = ks.kv.find(key);
-        if (it == ks.kv.end()) {
-            continue;
+
+    for (const auto& key : keyNames) {
+        // Prefer per-profile value
+        auto pit = profileKeyMap.find(key);
+        std::string value;
+        if (pit != profileKeyMap.end()) {
+            value = pit->second;
+        } else {
+            // Fallback to global vault (legacy behavior)
+            auto vit = ks.kv.find(key);
+            if (vit == ks.kv.end()) {
+                continue;
+            }
+            value = vit->second;
         }
-        
-        std::string value = it->second;
+
         std::string escaped;
         escaped.reserve(value.size() * 2);
-        
         for (char c : value) {
             if (c == '\\' || c == '"') {
                 escaped.push_back('\\');
@@ -48,10 +60,10 @@ std::string makeExportsForProfile(const core::Config& cfg, const std::string& na
             }
             escaped.push_back(c);
         }
-        
+
         oss << "export " << key << "=\"" << escaped << "\"\n";
     }
-    
+
     return oss.str();
 }
 
@@ -65,95 +77,7 @@ void printUnsetsForProfile(const core::Config& cfg, const std::string& name) {
     }
 }
 
-// Helper function to detect and potentially create custom services
-void detectAndPromptCustomService(const core::Config& cfg, const std::string& keyName) {
-    // Check if this is a known service key
-    auto allServiceKeys = services::getAllServiceKeys(cfg);
-    
-    // Check if it's already a known service
-    for (const auto& [service, serviceKey] : allServiceKeys) {
-        if (serviceKey == keyName) {
-            return; // Already known, no need to create custom service
-        }
-    }
-    
-    // Check if key name looks like an API key (ends with _KEY, _TOKEN, _API_KEY, etc.)
-    bool looksLikeApiKey = false;
-    std::vector<std::string> apiKeySuffixes = {"_KEY", "_TOKEN", "_API_KEY", "_SECRET", "_AUTH"};
-    
-    for (const auto& suffix : apiKeySuffixes) {
-        if (keyName.length() > suffix.length() &&
-            keyName.substr(keyName.length() - suffix.length()) == suffix) {
-            looksLikeApiKey = true;
-            break;
-        }
-    }
-    
-    if (!looksLikeApiKey) {
-        return; // Doesn't look like an API key
-    }
-    
-    // Prompt user if they want to create a custom service
-    std::cout << ui::colorize("⚡ Detected potential API key: ", ui::Colors::BRIGHT_YELLOW)
-              << ui::colorize(keyName, ui::Colors::BRIGHT_CYAN) << "\n";
-    std::cout << ui::colorize("Would you like to create a custom service for this API? [y/N]: ", ui::Colors::WHITE);
-    
-    std::string response;
-    std::getline(std::cin, response);
-    
-    if (response.empty() || (response[0] != 'y' && response[0] != 'Y')) {
-        return;
-    }
-    
-    // Create custom service
-    services::CustomService newService;
-    
-    // Generate service name from key name
-    std::string serviceName = keyName;
-    for (const auto& suffix : apiKeySuffixes) {
-        if (serviceName.length() > suffix.length() &&
-            serviceName.substr(serviceName.length() - suffix.length()) == suffix) {
-            serviceName = serviceName.substr(0, serviceName.length() - suffix.length());
-            break;
-        }
-    }
-    std::transform(serviceName.begin(), serviceName.end(), serviceName.begin(), ::tolower);
-    
-    newService.name = serviceName;
-    newService.keyName = keyName;
-    
-    // Get description
-    std::cout << ui::colorize("Enter service description (optional): ", ui::Colors::WHITE);
-    std::getline(std::cin, newService.description);
-    
-    // Ask about testing
-    std::cout << ui::colorize("Would you like to configure testing for this service? [y/N]: ", ui::Colors::WHITE);
-    std::getline(std::cin, response);
-    
-    if (!response.empty() && (response[0] == 'y' || response[0] == 'Y')) {
-        newService.testable = true;
-        
-        std::cout << ui::colorize("Enter test endpoint URL: ", ui::Colors::WHITE);
-        std::getline(std::cin, newService.testEndpoint);
-        
-        std::cout << ui::colorize("Enter HTTP method [GET]: ", ui::Colors::WHITE);
-        std::getline(std::cin, response);
-        newService.testMethod = response.empty() ? "GET" : response;
-        
-        std::cout << ui::colorize("Enter additional headers (optional): ", ui::Colors::WHITE);
-        std::getline(std::cin, newService.testHeaders);
-    } else {
-        newService.testable = false;
-        newService.testMethod = "GET";
-    }
-    
-    try {
-        services::addCustomService(cfg, newService);
-        core::success(cfg, "Created custom service '" + newService.name + "'");
-    } catch (const std::exception& e) {
-        core::error(cfg, "Failed to create custom service: " + std::string(e.what()));
-    }
-}
+// Custom service auto-detection/prompt removed: unified Services model with full CRUD on default set.
 
 // Individual command handlers
 int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
@@ -209,8 +133,7 @@ int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
         core::error(cfg, "Environment variable value cannot be empty");
     }
     
-    // Check if we should prompt for custom service creation
-    detectAndPromptCustomService(cfg, name);
+    // Unified Services model: no custom-service prompt
     
     // Add to vault
     core::KeyStore ks = storage::loadVault(cfg);
@@ -218,87 +141,64 @@ int cmd_add(const core::Config& cfg, const std::vector<std::string>& args) {
     ks.kv[name] = value;
     storage::saveVault(cfg, ks);
     
-    // Add to profile if specified
-    if (!profileName.empty()) {
-        // Read existing profile keys
-        std::vector<std::string> profileKeys = storage::readProfile(cfg, profileName);
-        
-        // Check if key already exists in profile
-        auto it = std::find(profileKeys.begin(), profileKeys.end(), name);
-        bool keyExistsInProfile = (it != profileKeys.end());
-        
-        if (!keyExistsInProfile) {
-            profileKeys.push_back(name);
-            storage::writeProfile(cfg, profileName, profileKeys);
-        }
-        
-        // Update encrypted bundles for persistence
-        // Generate updated exports for this profile
-        std::string exports = makeExportsForProfile(cfg, profileName);
-        if (!exports.empty()) {
-            storage::writeEncryptedBundle(cfg, profileName, exports);
-        }
-        
-        // Also update any temporary profile bundles for individual keys that might reference this key
-        std::string tempProfileName = "_key_" + name;
-        std::string escaped;
-        escaped.reserve(value.size() * 2);
-        
-        for (char c : value) {
-            if (c == '\\' || c == '"') {
-                escaped.push_back('\\');
-            }
-            if (c == '\n') {
-                escaped += "\\n";
-                continue;
-            }
-            escaped.push_back(c);
-        }
-        
-        std::string tempExports = "export " + name + "=\"" + escaped + "\"\n";
-        storage::writeEncryptedBundle(cfg, tempProfileName, tempExports);
-        
-        // Provide appropriate feedback based on whether key existed
-        if (keyExistsInVault && keyExistsInProfile) {
-            core::success(cfg, "Updated " + name + " in vault and profile '" + profileName + "'");
-        } else if (keyExistsInVault && !keyExistsInProfile) {
-            core::success(cfg, "Updated " + name + " in vault and added to profile '" + profileName + "'");
-        } else if (!keyExistsInVault && keyExistsInProfile) {
-            core::success(cfg, "Added " + name + " to vault (already in profile '" + profileName + "')");
-        } else {
-            core::success(cfg, "Added " + name + " to vault and profile '" + profileName + "'");
-        }
-        
-        core::auditLog(cfg, keyExistsInVault ? "update_profile" : "add_profile", {name, profileName});
-    } else {
-        // Even without a profile, we might need to update individual key bundles
-        // that were created during persistent loading
-        std::string tempProfileName = "_key_" + name;
-        std::string escaped;
-        escaped.reserve(value.size() * 2);
-        
-        for (char c : value) {
-            if (c == '\\' || c == '"') {
-                escaped.push_back('\\');
-            }
-            if (c == '\n') {
-                escaped += "\\n";
-                continue;
-            }
-            escaped.push_back(c);
-        }
-        
-        std::string tempExports = "export " + name + "=\"" + escaped + "\"\n";
-        storage::writeEncryptedBundle(cfg, tempProfileName, tempExports);
-        
-        // Provide appropriate feedback for vault-only operations
-        if (keyExistsInVault) {
-            core::success(cfg, "Successfully updated " + name);
-        } else {
-            core::success(cfg, "Successfully stored " + name);
-        }
-        core::auditLog(cfg, keyExistsInVault ? "update" : "add", {name});
+    // Determine target profile (default if not specified)
+    if (profileName.empty()) {
+        profileName = storage::getDefaultProfileName();
     }
+
+    // Read existing profile key list
+    std::vector<std::string> profileKeys = storage::readProfile(cfg, profileName);
+
+    // Save/update value in the profile-specific encrypted store
+    auto profileKeyMap = storage::loadProfileKeys(cfg, profileName);
+    bool keyExistedInProfileStore = (profileKeyMap.find(name) != profileKeyMap.end());
+    profileKeyMap[name] = value;
+    storage::saveProfileKeys(cfg, profileName, profileKeyMap);
+
+    // Ensure key is listed in the profile
+    bool keyListedInProfile = (std::find(profileKeys.begin(), profileKeys.end(), name) != profileKeys.end());
+    if (!keyListedInProfile) {
+        profileKeys.push_back(name);
+        storage::writeProfile(cfg, profileName, profileKeys);
+    }
+
+    // Update encrypted bundle exports for persistence/loading
+    std::string exports = makeExportsForProfile(cfg, profileName);
+    if (!exports.empty()) {
+        storage::writeEncryptedBundle(cfg, profileName, exports);
+    }
+
+    // Also update any temporary per-key bundles
+    {
+        std::string tempProfileName = "_key_" + name;
+        std::string escaped;
+        escaped.reserve(value.size() * 2);
+        for (char c : value) {
+            if (c == '\\' || c == '"') {
+                escaped.push_back('\\');
+            }
+            if (c == '\n') {
+                escaped += "\\n";
+                continue;
+            }
+            escaped.push_back(c);
+        }
+        std::string tempExports = "export " + name + "=\"" + escaped + "\"\n";
+        storage::writeEncryptedBundle(cfg, tempProfileName, tempExports);
+    }
+
+    // Feedback
+    if (keyExistsInVault && (keyExistedInProfileStore || keyListedInProfile)) {
+        core::success(cfg, "Updated " + name + " in vault and profile '" + profileName + "'");
+    } else if (keyExistsInVault && !keyListedInProfile) {
+        core::success(cfg, "Updated " + name + " in vault and added to profile '" + profileName + "'");
+    } else if (!keyExistsInVault && (keyExistedInProfileStore || keyListedInProfile)) {
+        core::success(cfg, "Added " + name + " to vault (already in profile '" + profileName + "')");
+    } else {
+        core::success(cfg, "Added " + name + " to vault and profile '" + profileName + "'");
+    }
+
+    core::auditLog(cfg, keyExistsInVault ? "update_profile" : "add_profile", {name, profileName});
     
     return 0;
 }
@@ -584,7 +484,13 @@ int cmd_load(const core::Config& cfg, const std::vector<std::string>& args) {
     }
     
     std::string name = args[1];
-    bool persist = (args.size() >= 3 && args[2] == "--persist");
+    bool persist = false;
+    for (size_t i = 2; i < args.size(); ++i) {
+        if (args[i] == "--persist" || args[i] == "--presist") {
+            persist = true;
+            break;
+        }
+    }
     
     // Check if it's a profile first
     auto profiles = storage::listProfiles(cfg);
@@ -731,7 +637,7 @@ int cmd_unload(const core::Config& cfg, const std::vector<std::string>& args) {
         profilesToUnload = storage::listProfiles(cfg);
     } else {
         for (size_t i = 1; i < args.size(); i++) {
-            if (args[i] != "--persist") {
+            if (args[i] != "--persist" && args[i] != "--presist") {
                 profilesToUnload.push_back(args[i]);
             }
         }
@@ -907,6 +813,7 @@ int cmd_import(const core::Config& cfg, const std::vector<std::string>& args) {
     // Load existing vault and profile
     core::KeyStore ks = storage::loadVault(cfg);
     std::vector<std::string> profileKeys = storage::readProfile(cfg, profileName);
+    auto profileKeyMap = storage::loadProfileKeys(cfg, profileName);
     
     // Track what we're doing
     int addedToVault = 0;
@@ -931,6 +838,9 @@ int cmd_import(const core::Config& cfg, const std::vector<std::string>& args) {
             addedToVault++;
         }
         
+        // Also store/update value in the profile-scoped encrypted keystore
+        profileKeyMap[key] = value;
+        
         // Add to profile if not already there
         if (!keyExistsInProfile) {
             profileKeys.push_back(key);
@@ -938,9 +848,10 @@ int cmd_import(const core::Config& cfg, const std::vector<std::string>& args) {
         }
     }
     
-    // Save vault and profile
+    // Save vault and profile + profile key map
     storage::saveVault(cfg, ks);
     storage::writeProfile(cfg, profileName, profileKeys);
+    storage::saveProfileKeys(cfg, profileName, profileKeyMap);
     
     // Generate updated exports for the profile
     std::string exports = makeExportsForProfile(cfg, profileName);
@@ -1032,14 +943,17 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
         try {
             auto profileKeys = storage::readProfile(cfg, profileName);
             auto vault = storage::loadVault(cfg);
+            auto profileValues = storage::loadProfileKeys(cfg, profileName);
             
             // Map profile keys to services they belong to
             for (const auto& keyName : profileKeys) {
                 for (const auto& [service, serviceKey] : services::SERVICE_KEYS) {
                     if (serviceKey == keyName && services::TESTABLE_SERVICES.find(service) != services::TESTABLE_SERVICES.end()) {
-                        // Check if key exists in vault or environment
+                        // Check if key exists in profile store, vault, or environment
                         bool hasKey = false;
-                        if (vault.kv.find(keyName) != vault.kv.end()) {
+                        if (profileValues.find(keyName) != profileValues.end()) {
+                            hasKey = true;
+                        } else if (vault.kv.find(keyName) != vault.kv.end()) {
                             hasKey = true;
                         } else {
                             const char* envValue = getenv(keyName.c_str());
@@ -1094,7 +1008,13 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
             } else {
                 // Check if it's a testable custom service
                 try {
-                    auto customServices = services::loadCustomServices(cfg);
+                    auto allServices = services::loadAllServices(cfg);
+                    std::vector<services::Service> customServices;
+                    for (const auto& [name, service] : allServices) {
+                        if (!service.isBuiltIn) {
+                            customServices.push_back(service);
+                        }
+                    }
                     for (const auto& customService : customServices) {
                         if (customService.name == specificService && customService.testable) {
                             isTestable = true;
@@ -1115,7 +1035,7 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
         }
     } else {
         // Test all configured services (default behavior)
-        servicesToTest = services::detectConfiguredServices(cfg);
+        servicesToTest = services::detectConfiguredServices(cfg, storage::getDefaultProfileName());
         
         if (servicesToTest.empty()) {
             if (cfg.json) {
@@ -1153,13 +1073,19 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
                 std::string serviceName = result.service;
                 
                 // Check built-in services first
-                auto builtinIt = services::BUILTIN_SERVICES.find(result.service);
-                if (builtinIt != services::BUILTIN_SERVICES.end()) {
+                auto builtinIt = services::DEFAULT_SERVICES.find(result.service);
+                if (builtinIt != services::DEFAULT_SERVICES.end()) {
                     serviceName = builtinIt->second.description;
                 } else {
                     // Check custom services
                     try {
-                        auto customServices = services::loadCustomServices(cfg);
+                        auto allServices = services::loadAllServices(cfg);
+                        std::vector<services::Service> customServices;
+                        for (const auto& [name, service] : allServices) {
+                            if (!service.isBuiltIn) {
+                                customServices.push_back(service);
+                            }
+                        }
                         for (const auto& customService : customServices) {
                             if (customService.name == result.service) {
                                 serviceName = customService.description.empty() ?
@@ -1200,13 +1126,19 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
                 
                 // Get display name for service (built-in or custom)
                 std::string displayName = result.service;
-                auto builtinIt2 = services::BUILTIN_SERVICES.find(result.service);
-                if (builtinIt2 != services::BUILTIN_SERVICES.end()) {
+                auto builtinIt2 = services::DEFAULT_SERVICES.find(result.service);
+                if (builtinIt2 != services::DEFAULT_SERVICES.end()) {
                     displayName = builtinIt2->second.description;
                 } else {
                     // Check custom services
                     try {
-                        auto customServices = services::loadCustomServices(cfg);
+                        auto allServices = services::loadAllServices(cfg);
+                        std::vector<services::Service> customServices;
+                        for (const auto& [name, service] : allServices) {
+                            if (!service.isBuiltIn) {
+                                customServices.push_back(service);
+                            }
+                        }
                         for (const auto& customService : customServices) {
                             if (customService.name == result.service) {
                                 displayName = customService.description.empty() ?
@@ -1224,13 +1156,19 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
                 
                 // Use the same display name logic as for single service
                 std::string serviceName = result.service;
-                auto builtinIter = services::BUILTIN_SERVICES.find(result.service);
-                if (builtinIter != services::BUILTIN_SERVICES.end()) {
+                auto builtinIter = services::DEFAULT_SERVICES.find(result.service);
+                if (builtinIter != services::DEFAULT_SERVICES.end()) {
                     serviceName = builtinIter->second.description;
                 } else {
                     // Check custom services
                     try {
-                        auto customServices = services::loadCustomServices(cfg);
+                        auto allServices = services::loadAllServices(cfg);
+                        std::vector<services::Service> customServices;
+                        for (const auto& [name, service] : allServices) {
+                            if (!service.isBuiltIn) {
+                                customServices.push_back(service);
+                            }
+                        }
                         for (const auto& customService : customServices) {
                             if (customService.name == result.service) {
                                 serviceName = customService.description.empty() ?
@@ -1398,7 +1336,7 @@ int cmd_gui(const core::Config& cfg, const std::vector<std::string>& args) {
 #endif
 }
 
-// Custom service management
+// Service management
 int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
     if (args.size() < 2) {
         core::error(cfg, "Usage: ak service <add|list|edit|delete> [options]");
@@ -1409,14 +1347,20 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
     if (subcommand == "list" || subcommand == "ls") {
         try {
             // Load both built-in and custom services
-            auto customServices = services::loadCustomServices(cfg);
+            auto allServices = services::loadAllServices(cfg);
+            std::vector<services::Service> customServices;
+            for (const auto& [name, service] : allServices) {
+                if (!service.isBuiltIn) {
+                    customServices.push_back(service);
+                }
+            }
             
             std::cout << ui::colorize("🔧 Available Services:", ui::Colors::BRIGHT_MAGENTA) << "\n\n";
             
             // Show built-in services first
             std::cout << ui::colorize("Built-in Services:", ui::Colors::BRIGHT_BLUE + ui::Colors::BOLD) << "\n";
             
-            for (const auto& [name, service] : services::BUILTIN_SERVICES) {
+            for (const auto& [name, service] : services::DEFAULT_SERVICES) {
                 std::string serviceName = ui::colorize(service.name, ui::Colors::BRIGHT_CYAN);
                 std::string keyName = ui::colorize(service.keyName, ui::Colors::WHITE);
                 std::string testable = service.testable ?
@@ -1460,7 +1404,7 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
             }
             
             // Show totals
-            std::cout << "\n" << ui::colorize("Total: " + std::to_string(services::BUILTIN_SERVICES.size()) +
+            std::cout << "\n" << ui::colorize("Total: " + std::to_string(services::DEFAULT_SERVICES.size()) +
                                              " built-in + " + std::to_string(customServices.size()) +
                                              " custom services", ui::Colors::DIM) << "\n";
             
@@ -1469,7 +1413,7 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
         }
         
     } else if (subcommand == "add") {
-        services::CustomService newService;
+        services::Service newService;
         
         // Interactive service creation
         std::cout << ui::colorize("Creating new custom service...", ui::Colors::BRIGHT_YELLOW) << "\n";
@@ -1513,8 +1457,8 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
         }
         
         try {
-            services::addCustomService(cfg, newService);
-            core::success(cfg, "Custom service '" + newService.name + "' created successfully");
+            services::addService(cfg, newService);
+            core::success(cfg, "Service '" + newService.name + "' created successfully");
         } catch (const std::exception& e) {
             core::error(cfg, "Failed to create custom service: " + std::string(e.what()));
         }
@@ -1527,18 +1471,15 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
         std::string serviceName = args[2];
         
         try {
-            auto customServices = services::loadCustomServices(cfg);
-            auto it = std::find_if(customServices.begin(), customServices.end(),
-                [&serviceName](const services::CustomService& s) { 
-                    return s.name == serviceName; 
-                });
+            auto allServices = services::loadAllServices(cfg);
+            auto it = allServices.find(serviceName);
             
-            if (it == customServices.end()) {
-                core::error(cfg, "Custom service '" + serviceName + "' not found");
+            if (it == allServices.end()) {
+                core::error(cfg, "Service '" + serviceName + "' not found");
             }
             
-            services::removeCustomService(cfg, serviceName);
-            core::success(cfg, "Custom service '" + serviceName + "' deleted successfully");
+            services::removeService(cfg, serviceName);
+            core::success(cfg, "Service '" + serviceName + "' deleted successfully");
             
         } catch (const std::exception& e) {
             core::error(cfg, "Failed to delete custom service: " + std::string(e.what()));
@@ -1552,17 +1493,14 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
         std::string serviceName = args[2];
         
         try {
-            auto customServices = services::loadCustomServices(cfg);
-            auto it = std::find_if(customServices.begin(), customServices.end(),
-                [&serviceName](const services::CustomService& s) { 
-                    return s.name == serviceName; 
-                });
+            auto allServices = services::loadAllServices(cfg);
+            auto it = allServices.find(serviceName);
             
-            if (it == customServices.end()) {
-                core::error(cfg, "Custom service '" + serviceName + "' not found");
+            if (it == allServices.end()) {
+                core::error(cfg, "Service '" + serviceName + "' not found");
             }
             
-            services::CustomService editedService = *it;
+            services::Service editedService = it->second;
             
             std::cout << ui::colorize("Editing service '" + serviceName + "'...", ui::Colors::BRIGHT_YELLOW) << "\n";
             
@@ -1601,10 +1539,10 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
             }
             
             // Remove old service and add updated one
-            services::removeCustomService(cfg, serviceName);
-            services::addCustomService(cfg, editedService);
+            services::removeService(cfg, serviceName);
+            services::addService(cfg, editedService);
             
-            core::success(cfg, "Custom service '" + serviceName + "' updated successfully");
+            core::success(cfg, "Service '" + serviceName + "' updated successfully");
             
         } catch (const std::exception& e) {
             core::error(cfg, "Failed to edit custom service: " + std::string(e.what()));
@@ -1722,6 +1660,62 @@ int cmd_internal_get_bundle(const core::Config& cfg, const std::vector<std::stri
     }
     
     std::cout << exports;
+    return 0;
+}
+
+int cmd_serve(const core::Config& cfg, const std::vector<std::string>& args) {
+    std::string host = "127.0.0.1";
+    uint16_t port = 8765;
+    
+    // Parse arguments for host and port
+    for (size_t i = 1; i < args.size(); ++i) {
+        if ((args[i] == "--host" || args[i] == "-h") && i + 1 < args.size()) {
+            host = args[i + 1];
+            ++i;
+        } else if ((args[i] == "--port" || args[i] == "-p") && i + 1 < args.size()) {
+            try {
+                port = static_cast<uint16_t>(std::stoi(args[i + 1]));
+            } catch (const std::exception&) {
+                core::error(cfg, "Invalid port number: " + args[i + 1]);
+                return 1;
+            }
+            ++i;
+        } else if (args[i] == "--help") {
+            std::cout << ui::colorize("Usage: ak serve [OPTIONS]", ui::Colors::BRIGHT_WHITE) << "\n\n";
+            std::cout << ui::colorize("OPTIONS:", ui::Colors::BRIGHT_CYAN) << "\n";
+            std::cout << "  --host, -h HOST    Host to bind to (default: 127.0.0.1)\n";
+            std::cout << "  --port, -p PORT    Port to listen on (default: 8765)\n";
+            std::cout << "  --help             Show this help message\n\n";
+            std::cout << ui::colorize("DESCRIPTION:", ui::Colors::BRIGHT_CYAN) << "\n";
+            std::cout << "  Start an HTTP server that exposes AK functionality via REST API.\n";
+            std::cout << "  This allows the web interface to communicate directly with the\n";
+            std::cout << "  C++ backend without duplicating key management logic.\n\n";
+            std::cout << ui::colorize("EXAMPLES:", ui::Colors::BRIGHT_CYAN) << "\n";
+            std::cout << "  ak serve                     # Start server on 127.0.0.1:8765\n";
+            std::cout << "  ak serve --port 3000         # Start server on port 3000\n";
+            std::cout << "  ak serve --host 0.0.0.0      # Bind to all interfaces\n";
+            return 0;
+        }
+    }
+    
+    try {
+        http::Server server(cfg);
+        
+        std::cout << ui::colorize("🚀 Starting AK HTTP Server", ui::Colors::BRIGHT_GREEN) << "\n";
+        std::cout << ui::colorize("   Serving AK REST API endpoints", ui::Colors::WHITE) << "\n";
+        std::cout << ui::colorize("   Press Ctrl+C to stop", ui::Colors::DIM) << "\n\n";
+        
+        if (!server.start(host, port)) {
+            core::error(cfg, "Failed to start HTTP server on " + host + ":" + std::to_string(port));
+            core::error(cfg, "Make sure the port is available and not blocked by firewall");
+            return 1;
+        }
+        
+    } catch (const std::exception& e) {
+        core::error(cfg, "HTTP Server error: " + std::string(e.what()));
+        return 1;
+    }
+    
     return 0;
 }
 
