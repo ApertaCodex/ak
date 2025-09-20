@@ -108,6 +108,21 @@ void MainWindow::setupTabs()
     profileManagerWidget = new widgets::ProfileManagerWidget(config, this);
     connect(profileManagerWidget, &widgets::ProfileManagerWidget::statusMessage,
             this, &MainWindow::onStatusMessage);
+    
+    // Connect ProfileManager to KeyManager for profile synchronization
+    connect(profileManagerWidget, &widgets::ProfileManagerWidget::profileSelectionChanged,
+            keyManagerWidget, &widgets::KeyManagerWidget::setCurrentProfile);
+    
+    // Refresh KeyManager's profile list when profiles are created/deleted
+    connect(profileManagerWidget, &widgets::ProfileManagerWidget::statusMessage,
+            [this](const QString &message) {
+                // Refresh profile list in KeyManager when profiles are created/deleted
+                if (message.contains("created") || message.contains("deleted") ||
+                    message.contains("renamed") || message.contains("imported")) {
+                    keyManagerWidget->refreshProfileList();
+                }
+            });
+    
     tabWidget->addTab(profileManagerWidget, "Profile Manager");
 
     // Service Manager Tab
