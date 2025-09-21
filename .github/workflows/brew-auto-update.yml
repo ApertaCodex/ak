@@ -1,0 +1,66 @@
+name: brew-auto-update
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump-brew:
+    runs-on: macos-13
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download macOS artifact tarball from Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          mkdir -p dl
+          # grab macOS tar.gz from the just-created release
+          gh release download "$TAG" --pattern "*macos*.tar.gz" --dir dl
+          ls -lah dl
+
+      - name: Compute sha256
+        id: shasum
+        run: |
+          FILE=$(ls dl/*.tar.gz | head -n1)
+          echo "FILE=$FILE" >> $GITHUB_OUTPUT
+          echo "SHA=$(shasum -a 256 "$FILE" | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Update Formula/ak.rb
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          FILE_NAME=$(basename "${{ steps.shasum.outputs.FILE }}")
+          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${FILE_NAME}"
+          SHA="${{ steps.shasum.outputs.SHA }}"
+
+          # naive in-place update: replace url and sha256 lines
+          tmp=Formula/ak.rb.tmp
+          awk -v url="$URL" -v sha="$SHA" -v tag="$TAG" '
+            { gsub(/^  url .*/, "  url \"" url "\""); 
+              gsub(/^  sha256 .*/, "  sha256 \"" sha "\""); 
+              gsub(/^  version .*/, "  version \"" tag "\""); }
+            { print }' Formula/ak.rb > "$tmp"
+          mv "$tmp" Formula/ak.rb
+          git diff -- Formula/ak.rb || true
+
+      - name: Commit & PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BR="brew-bump-${GITHUB_REF_NAME}"
+          git checkout -b "$BR"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/ak.rb
+          git commit -m "chore(brew): bump to ${GITHUB_REF_NAME}"
+          git push -u origin "$BR"
+          gh pr create --fill --title "Brew: bump to ${GITHUB_REF_NAME}" || true
