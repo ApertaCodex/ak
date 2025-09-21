@@ -1,291 +1,232 @@
-.TH AK 1 "2024-12-17" "AK 4.2.27" "AK Manual"
+.TH AK 1 "2025-09-20" "AK 4.2.27" "AK Manual"
 .SH NAME
-ak \- secure API key manager for developers
+ak \- Secure API Key Manager (CLI)
 .SH SYNOPSIS
 .B ak
-.RI [ OPTION ]...
-.RI [ COMMAND ]
-.RI [ ARGS ]...
+.RI [ --json ]
+.RI < command >
+.RI [ options ]
+.RI [ arguments ]
+.br
+.B ak help
+.br
+.B ak completion
+.RI { bash | zsh | fish }
+.br
+.B ak serve
+.RI [ --host HOST ]
+.RI [ --port PORT ]
 .SH DESCRIPTION
 .B ak
-is a cross-platform command-line tool for managing API keys securely across different services. It provides encrypted storage, service integration, and comprehensive testing capabilities for developers working with multiple APIs.
-
-.B ak
-stores API keys in an encrypted local vault using industry-standard cryptographic algorithms, ensuring your sensitive credentials remain secure while providing easy access when needed.
-
+is a cross\-platform command\-line tool for managing API keys securely across services. It provides:
+.br
+\- Encrypted storage and profile\-scoped key management
+.br
+\- Service definitions with connectivity testing
+.br
+\- Shell integration and completions (bash/zsh/fish)
+.br
+\- Lightweight HTTP server for the web interface
 .SH COMMANDS
-.SS Key Management
+.SS Secret Management
 .TP
-.B ak add \fIname\fR \fIkey\fR
-Add a new API key with the specified name. The key will be encrypted and stored securely in the local vault.
+.B ak add \fINAME\fR \fIVALUE\fR
+Add a secret with value directly (also supports \fINAME=VALUE\fR). Use \fB\-p\fR/\fB\-\-profile\fR to add to a profile.
 .TP
-.B ak get \fIname\fR
-Retrieve and display the API key for the specified name. Use with caution as this will display the key in plain text.
+.B ak set \fINAME\fR
+Prompt to set a secret value interactively.
 .TP
-.B ak get \fIname\fR --copy
-Retrieve the API key and copy it directly to the system clipboard without displaying it on screen.
+.B ak get \fINAME\fR [\fB\-\-full\fR]
+Get a secret value (\fB\-\-full\fR shows unmasked).
 .TP
-.B ak list
-List all stored API key names without displaying the actual keys.
+.B ak ls
+List secret names (masked values in non\-JSON mode).
 .TP
-.B ak remove \fIname\fR
-Remove the specified API key from the vault permanently. This action cannot be undone.
+.B ak rm \fINAME\fR
+Remove a secret from the vault.
 .TP
-.B ak update \fIname\fR \fIkey\fR
-Update an existing API key with a new value.
-
-.SS Service Testing
+.B ak rm \fB\-\-profile\fR \fINAME\fR
+Remove an entire profile.
 .TP
-.B ak test \fIservice\fR
-Test the API connection for a specific service. Supported services include openai, github, aws, and others.
+.B ak search \fIPATTERN\fR
+Search for secrets by name (case\-insensitive).
 .TP
-.B ak test --all
-Test all configured API keys against their respective services.
+.B ak cp \fINAME\fR
+Copy secret value to clipboard (pbcopy/wl\-copy/xclip).
 .TP
-.B ak test --list
-List all available service test configurations.
-
-.SS Shell Integration
+.B ak purge [\fB\-\-no\-backup\fR]
+Remove all secrets and profiles (creates backup by default unless \fB\-\-no\-backup\fR).
+.SS Profile Management
 .TP
-.B ak completion bash
-Generate bash completion script for the ak command.
+.B ak save \fIPROFILE\fR [\fINAMES...\fR]
+Save named secrets to a profile (all secrets if none given).
 .TP
-.B ak completion zsh
-Generate zsh completion script for the ak command.
+.B ak load \fIPROFILE|KEY\fR [\fB\-\-persist\fR]
+Print export statements to load env vars; \fB\-\-persist\fR remembers the profile for the current directory.
 .TP
-.B ak completion fish
-Generate fish shell completion script for the ak command.
-
-.SS Vault Management
+.B ak unload [\fIPROFILE...\fR] [\fB\-\-persist\fR]
+Print unset statements for profile keys; with \fB\-\-persist\fR remove remembered profile(s) for the current directory.
 .TP
-.B ak vault init
-Initialize a new encrypted vault. This is automatically done on first use.
+.B ak profiles
+List available profiles with key counts.
 .TP
-.B ak vault status
-Display information about the current vault, including location and encryption status.
+.B ak duplicate \fISOURCE\fR \fIDEST\fR
+Duplicate a profile.
 .TP
-.B ak vault backup \fIpath\fR
-Create a backup of the encrypted vault to the specified path.
+.B ak env \fB\-\-profile\fR|\fB\-p\fR \fINAME\fR
+Show profile as export statements.
+.SS Export / Import
 .TP
-.B ak vault restore \fIpath\fR
-Restore vault from a backup file. This will overwrite the current vault.
+.B ak export \fB\-\-profile\fR|\fB\-p\fR \fIPROFILE\fR \fB\-\-format\fR|\fB\-f\fR \fIFORMAT\fR \fB\-\-output\fR|\fB\-o\fR \fIFILE\fR
+Export profile to file. Formats: \fBenv\fR, \fBdotenv\fR, \fBjson\fR, \fByaml\fR.
 .TP
-.B ak vault export \fIpath\fR
-Export all keys to a JSON file (encrypted). Useful for migration or backup.
+.B ak import \fB\-\-profile\fR|\fB\-p\fR \fIPROFILE\fR \fB\-\-format\fR|\fB\-f\fR \fIFORMAT\fR \fB\-\-file\fR|\fB\-i\fR \fIFILE\fR [\fB\-\-keys\fR]
+Import secrets from file to profile. \fB\-\-keys\fR imports only known service provider keys.
+.SS Service Management
 .TP
-.B ak vault import \fIpath\fR
-Import keys from an exported JSON file.
-
-.SS Configuration
+.B ak service add
+Create a new custom API service (interactive).
 .TP
-.B ak config set \fIkey\fR \fIvalue\fR
-Set a configuration option. Common options include vault_path, default_service, and timeout.
+.B ak service list
+List built\-in and custom services.
 .TP
-.B ak config get \fIkey\fR
-Get the current value of a configuration option.
+.B ak service edit \fINAME\fR
+Edit an existing custom service (interactive).
 .TP
-.B ak config list
-List all current configuration options and their values.
+.B ak service delete \fINAME\fR
+Delete a custom service.
+.SS Testing and Utilities
 .TP
-.B ak config reset
-Reset all configuration to default values.
-
+.B ak run \fB\-\-profile\fR|\fB\-p\fR \fIPROFILE\fR \fB\-\-\fR \fICMD...\fR
+Run command with profile environment loaded.
+.TP
+.B ak test [\fISERVICE...\fR|\fB\-\-all\fR] [\fB\-\-json\fR] [\fB\-\-fail\-fast\fR] [\fB\-\-profile\fR|\fB\-p\fR \fINAME\fR]
+Test connectivity for configured providers or specific services/keys.
+.TP
+.B ak guard \fIenable|disable\fR
+Enable or disable shell guard for secret protection.
+.TP
+.B ak doctor
+Show system configuration/dependencies summary.
+.TP
+.B ak audit [\fIN\fR]
+Show audit log (last N entries, default 10).
+.SS System
+.TP
+.B ak help
+Show detailed help.
+.TP
+.B ak version
+Show version information.
+.TP
+.B ak backend
+Show backend info (\fBgpg\fR or \fBplain\fR).
+.TP
+.B ak serve [\fB\-\-host\fR \fIHOST\fR] [\fB\-\-port\fR \fIPORT\fR]
+Start HTTP server for the web interface (serves \fI/web\-app.html\fR and related assets).
+.TP
+.B ak install\-shell
+Install shell integration for auto\-loading.
+.TP
+.B ak uninstall
+Remove shell integration.
+.TP
+.B ak completion \fBbash|zsh|fish\fR
+Generate completion script for the specified shell.
 .SH OPTIONS
 .TP
 .B \-h, \-\-help
-Display help information and exit.
+Show help and exit.
 .TP
 .B \-v, \-\-version
-Display version information and exit.
+Show version and exit.
 .TP
-.B \-\-verbose
-Enable verbose output for debugging.
+.B \-\-json
+Enable JSON output for supported commands.
+.SH ENVIRONMENT
 .TP
-.B \-\-quiet
-Suppress all non-essential output.
+.B AK_DISABLE_GPG
+If set, forces plain storage even if \fBgpg\fR is available.
 .TP
-.B \-\-vault-path \fIPATH\fR
-Specify a custom path for the vault file. Overrides the default or configured path.
-.TP
-.B \-\-timeout \fISECONDS\fR
-Set timeout for API test operations (default: 30 seconds).
-.TP
-.B \-\-no-color
-Disable colored output.
-.TP
-.B \-\-format \fIFORMAT\fR
-Output format for list and status commands. Options: table, json, yaml (default: table).
-
-.SH SUPPORTED SERVICES
-.B ak
-includes built-in support for testing the following services:
-.TP
-.B openai
-OpenAI API - Tests authentication and basic API access
-.TP
-.B github
-GitHub API - Validates token and user access
-.TP
-.B aws
-Amazon Web Services - Tests AWS credentials and permissions
-.TP
-.B google
-Google Cloud Platform - Validates service account or OAuth credentials
-.TP
-.B stripe
-Stripe Payment API - Tests API key validity
-.TP
-.B sendgrid
-SendGrid Email API - Validates API key and account status
-.TP
-.B twilio
-Twilio Communication API - Tests account SID and auth token
-.TP
-.B slack
-Slack API - Validates bot or user tokens
-.TP
-.B discord
-Discord Bot API - Tests bot token validity
-.TP
-.B heroku
-Heroku Platform API - Validates API key and app access
-
-.SH CONFIGURATION FILES
-.TP
-.B ~/.config/ak/config.yaml
-Main configuration file containing user preferences and default settings.
-.TP
-.B ~/.config/ak/vault.enc
-Encrypted vault file containing all stored API keys.
-.TP
-.B ~/.config/ak/services.yaml
-Custom service definitions for testing additional APIs.
-
-.SH ENVIRONMENT VARIABLES
-.TP
-.B AK_VAULT_PATH
-Override the default vault file location.
-.TP
-.B AK_CONFIG_PATH
-Override the default configuration directory.
-.TP
-.B AK_NO_COLOR
-Disable colored output (equivalent to --no-color).
-.TP
-.B AK_VERBOSE
-Enable verbose output (equivalent to --verbose).
-.TP
-.B AK_TIMEOUT
-Default timeout for API operations in seconds.
-
-.SH EXAMPLES
-.TP
-Add an OpenAI API key:
-.B ak add openai sk-1234567890abcdef1234567890abcdef
-.TP
-Test GitHub API connection:
-.B ak test github
-.TP
-List all stored keys:
-.B ak list
-.TP
-Get a key and copy to clipboard:
-.B ak get openai --copy
-.TP
-Install bash completions:
-.B ak completion bash | sudo tee /etc/bash_completion.d/ak
-.TP
-Backup your vault:
-.B ak vault backup ~/ak-backup.enc
-.TP
-Test all configured services:
-.B ak test --all
-
-.SH SECURITY CONSIDERATIONS
-.TP
-.B Encryption
-All API keys are encrypted using AES-256-GCM with a key derived from a master password using PBKDF2.
-.TP
-.B Storage
-The vault file is stored with restricted permissions (600) to prevent unauthorized access.
-.TP
-.B Memory
-Keys are cleared from memory immediately after use to minimize exposure time.
-.TP
-.B Network
-All service tests use HTTPS connections. No keys are transmitted in plain text.
-.TP
-.B Backup
-Always backup your vault file and store it securely. Lost master passwords cannot be recovered.
-
+.B AK_PASSPHRASE
+Preset passphrase for \fBgpg\fR operations (non\-interactive).
 .SH FILES
 .TP
 .B ~/.config/ak/
-Default configuration directory
+Default configuration directory.
 .TP
-.B ~/.config/ak/vault.enc
-Encrypted key storage
+.B ~/.config/ak/keys.env
+Unencrypted vault file (when GPG unavailable/disabled).
 .TP
-.B ~/.config/ak/config.yaml
-Configuration file
+.B ~/.config/ak/keys.env.gpg
+Encrypted vault file (when GPG available).
 .TP
-.B /etc/ak/
-System-wide configuration directory
+.B ~/.config/ak/profiles/
+Profile definitions.
 .TP
-.B /usr/share/ak/
-Shared application data
-
+.B ~/.config/ak/persist/
+Directory\-profile persistence metadata.
+.TP
+.B ~/.config/ak/audit.log
+Audit log file.
+.SH EXAMPLES
+.TP
+Add/set/get/list/remove:
+.br
+.B ak add API_KEY "sk\-..."
+.br
+.B ak set API_KEY
+.br
+.B ak get API_KEY \-\-full
+.br
+.B ak ls
+.br
+.B ak rm API_KEY
+.TP
+Profiles:
+.br
+.B ak save dev API_KEY DB_URL
+.br
+.B ak load dev \-\-persist
+.br
+.B eval "$(ak load dev)"
+.br
+.B ak profiles
+.TP
+Export/import:
+.br
+.B ak export \-p dev \-f dotenv \-o dev.env
+.br
+.B ak import \-p dev \-f env \-i .env \-\-keys
+.TP
+Service testing:
+.br
+.B ak test \-\-all
+.br
+.B ak test openai \-\-fail\-fast
+.TP
+Completions:
+.br
+.B ak completion bash | sudo tee /etc/bash_completion.d/ak
+.br
+.B ak completion zsh | sudo tee /usr/share/zsh/site\-functions/_ak
+.br
+.B ak completion fish > ~/.config/fish/completions/ak.fish
+.TP
+HTTP server:
+.br
+.B ak serve \-\-host 127.0.0.1 \-\-port 8027
+.br
+Open \fIhttp://127.0.0.1:8027/web\-app.html\fR in a browser.
 .SH DIAGNOSTICS
-.TP
-.B Exit Status 0
-Success
-.TP
-.B Exit Status 1
-General error
-.TP
-.B Exit Status 2
-Invalid command or arguments
-.TP
-.B Exit Status 3
-Vault access error (permissions, corruption, wrong password)
-.TP
-.B Exit Status 4
-Network error during service testing
-.TP
-.B Exit Status 5
-Service authentication failed
-.TP
-.B Exit Status 6
-Configuration error
-
+Exit status is 0 on success, non\-zero on error.
 .SH BUGS
-Report bugs at: https://github.com/apertacodex/ak/issues
-
-Please include the following information in bug reports:
-.TP
-\(bu Operating system and version
-.TP
-\(bu AK version (ak --version)
-.TP
-\(bu Command that triggered the error
-.TP
-\(bu Error message (use --verbose for detailed output)
-.TP
-\(bu Steps to reproduce the issue
-
-.SH AUTHOR
-AK development team
-
+Report issues at: https://github.com/apertacodex/ak/issues
 .SH COPYRIGHT
-Copyright (C) 2024 apertacodex. This software is licensed under the terms of the End-User License Agreement (EULA). See the EULA.txt file for complete license terms. There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
+Copyright (C) 2024\-2025 ApertaCodex.
+License: MIT with Attribution (see LICENSE).
 .SH SEE ALSO
 .BR gpg (1),
-.BR pass (1),
-.BR keyring (1),
-.BR ssh-agent (1)
-
-For complete documentation, visit: https://github.com/apertacodex/ak
-
+.BR pass (1)
 .SH VERSION
-This manual page corresponds to AK version 4.2.27.
+This manual corresponds to AK version 4.2.27.
