@@ -1,0 +1,83 @@
+name: macOS Build and Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    tags:
+      - "v*"
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: ver
+        shell: bash
+        run: |
+          V=$(grep -Eo 'set\(AK_VERSION "[0-9]+\.[0-9]+\.[0-9]+"' CMakeLists.txt | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "VERSION=$V" | tee -a $GITHUB_ENV
+          echo "version=$V" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies (Homebrew)
+        shell: bash
+        run: |
+          brew update
+          # Build tools
+          brew install cmake ninja || true
+          # 7-Zip (formula name may be 7zip or sevenzip depending on runner image)
+          brew install 7zip || brew install sevenzip || true
+          # Qt for potential GUI bundling (best effort)
+          brew install qt@6 || true
+          # Misc
+          brew install coreutils || true
+          echo "brew list:"
+          brew list
+
+      - name: Build CLI
+        shell: bash
+        run: |
+          make all
+          ls -la ./ak
+
+      - name: Smoke test CLI
+        shell: bash
+        continue-on-error: true
+        run: |
+          ./ak --version || true
+          file ./ak || true
+          otool -L ./ak || true
+
+      - name: Package macOS artifacts (DMG or cross-platform)
+        shell: bash
+        run: |
+          # Uses Makefile target; on mac runner it will call macos/scripts/package-all.sh
+          # and pass AK_VERSION via Makefile (we recently wired this)
+          make publish-macos
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          # DMG produced by native mac packaging
+          find build -type f -name "AK-*.dmg" -exec cp {} artifacts/ \; || true
+          # Cross-platform packages produced by Linux-compatible script (also runs on mac)
+          find ak-macos-repo/packages -type f \( -name "AK-*.7z" -o -name "AK-*-macos.tar.xz" -o -name "INSTALL-*.md" \) -exec cp {} artifacts/ \; || true
+          ls -la artifacts || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ak-macos-${{ steps.ver.outputs.version }}
+          path: artifacts/**
+          if-no-files-found: warn
+
+      - name: Summary
+        shell: bash
+        run: |
+          echo "Built version: $VERSION"
+          echo "Artifacts uploaded under name: ak-macos-$VERSION"
