@@ -474,3 +474,31 @@ Section: utils
 Priority: optional
 Description: ak — secure API key manager (CLI, C++)
 
+Package: ak
+Version: 4.6.0
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.6.0_amd64.deb
+Size: 319682
+MD5sum: fc04312a65d6b13117996b7c03b753ab
+SHA1: bb95915d0a01279ea585a88fd0323596739ced0a
+SHA256: 87794c115a3df13c897fa01c0da6956936618b63d5373a9c6c67ad24067a315b
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
+Package: ak
+Version: 4.7.0
+Architecture: amd64
+Maintainer: Moussa Mokhtari <me@moussamokhtari.com>
+Depends: gpg, coreutils, bash, curl
+Filename: pool/main/ak_4.7.0_amd64.deb
+Size: 319688
+MD5sum: f7cda40a09b3a03c4697bb445671712d
+SHA1: 8152f47fc49fc7848e0bcb5501b36cf721e3bcd4
+SHA256: e366bb8a92f3bad772b5ffd9e9cb092c01f8a0b5cb1f2c68c26af410e5c8499f
+Section: utils
+Priority: optional
+Description: ak — secure API key manager (CLI, C++)
+
