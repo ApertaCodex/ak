@@ -65,6 +65,14 @@ set(FILES_TO_UPDATE
     "Formula/ak.rb:version \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
     "macos/homebrew/generated/ak.rb:version \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
     "ak-apt-repo/index.html:Latest version: ([0-9]+\\.[0-9]+\\.[0-9]+)"
+    "ak-macos-repo/index.html:Latest version: ([0-9]+\\.[0-9]+\\.[0-9]+)"
+    "README.md:- \\*\\*Version\\*\\*: ([0-9]+\\.[0-9]+\\.[0-9]+)"
+    "README.md:ak_([0-9]+\\.[0-9]+\\.[0-9]+)_amd64.deb"
+    "windows-installer.nsi:VIProductVersion \"([0-9]+\\.[0-9]+\\.[0-9]+)\\.0\""
+    "windows-installer.nsi:VIAddVersionKey \"FileVersion\" \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
+    "windows-installer.nsi:VIAddVersionKey \"ProductVersion\" \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
+    "windows-installer.nsi:WriteRegStr HKLM \"Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall\\\\AK\" \"DisplayVersion\" \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
+    "debian/changelog:ak \\(([0-9]+\\.[0-9]+\\.[0-9]+).*\\)"
 )
 
 foreach(FILE_PATTERN ${FILES_TO_UPDATE})
@@ -88,6 +96,39 @@ foreach(FILE_PATTERN ${FILES_TO_UPDATE})
             string(REGEX REPLACE "/archive/v[0-9]+\\.[0-9]+\\.[0-9]+\\.tar\\.gz" "/archive/v${NEW_VERSION}.tar.gz" NEW_FILE_CONTENT "${NEW_FILE_CONTENT}")
         elseif("${FILE_PATH}" STREQUAL "ak-apt-repo/index.html")
             string(REGEX REPLACE "Latest version: [0-9]+\\.[0-9]+\\.[0-9]+" "Latest version: ${NEW_VERSION}" NEW_FILE_CONTENT "${FILE_CONTENT}")
+        elseif("${FILE_PATH}" STREQUAL "ak-macos-repo/index.html")
+            string(REGEX REPLACE "Latest version: [0-9]+\\.[0-9]+\\.[0-9]+" "Latest version: ${NEW_VERSION}" NEW_FILE_CONTENT "${FILE_CONTENT}")
+        elseif("${FILE_PATH}" STREQUAL "README.md")
+            string(REGEX REPLACE "- \\*\\*Version\\*\\*: [0-9]+\\.[0-9]+\\.[0-9]+"
+                                  "- **Version**: ${NEW_VERSION}"
+                                  NEW_FILE_CONTENT
+                                  "${FILE_CONTENT}")
+            string(REGEX REPLACE "ak_[0-9]+\\.[0-9]+\\.[0-9]+_amd64\\.deb"
+                                  "ak_${NEW_VERSION}_amd64.deb"
+                                  NEW_FILE_CONTENT
+                                  "${NEW_FILE_CONTENT}")
+        elseif("${FILE_PATH}" STREQUAL "windows-installer.nsi")
+            string(REGEX REPLACE "VIProductVersion \"[0-9]+\\.[0-9]+\\.[0-9]+\\.0\""
+                                  "VIProductVersion \"${NEW_VERSION}.0\""
+                                  NEW_FILE_CONTENT
+                                  "${FILE_CONTENT}")
+            string(REGEX REPLACE "VIAddVersionKey \"FileVersion\" \"[0-9]+\\.[0-9]+\\.[0-9]+\""
+                                  "VIAddVersionKey \"FileVersion\" \"${NEW_VERSION}\""
+                                  NEW_FILE_CONTENT
+                                  "${NEW_FILE_CONTENT}")
+            string(REGEX REPLACE "VIAddVersionKey \"ProductVersion\" \"[0-9]+\\.[0-9]+\\.[0-9]+\""
+                                  "VIAddVersionKey \"ProductVersion\" \"${NEW_VERSION}\""
+                                  NEW_FILE_CONTENT
+                                  "${NEW_FILE_CONTENT}")
+            string(REGEX REPLACE "WriteRegStr HKLM \"Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall\\\\AK\" \"DisplayVersion\" \"[0-9]+\\.[0-9]+\\.[0-9]+\""
+                                  "WriteRegStr HKLM \"Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall\\\\AK\" \"DisplayVersion\" \"${NEW_VERSION}\""
+                                  NEW_FILE_CONTENT
+                                  "${NEW_FILE_CONTENT}")
+        elseif("${FILE_PATH}" STREQUAL "debian/changelog")
+            string(REGEX REPLACE "ak \\([0-9]+\\.[0-9]+\\.[0-9]+"
+                                  "ak (${NEW_VERSION}"
+                                  NEW_FILE_CONTENT
+                                  "${FILE_CONTENT}")
         endif()
         
         file(WRITE "${PROJECT_DIR}/${FILE_PATH}" "${NEW_FILE_CONTENT}")

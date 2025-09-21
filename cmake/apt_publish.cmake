@@ -17,7 +17,10 @@ set(VERSION ${CMAKE_MATCH_1})
 set(DEB_VERSION "${VERSION}")
 set(REPO_DIR "${PROJECT_DIR}/ak-apt-repo")
 set(POOL_DIR "${REPO_DIR}/pool/main")
-set(PACKAGES_DIR "${REPO_DIR}/dists/stable/main/binary-amd64")
+if(NOT DEFINED DISTRIBUTION)
+    set(DISTRIBUTION "stable")
+endif()
+set(PACKAGES_DIR "${REPO_DIR}/dists/${DISTRIBUTION}/main/binary-amd64")
 
 message(STATUS "🚀 Publishing AK v${VERSION} to APT repository...")
 
@@ -107,14 +110,14 @@ file(SHA256 "${PACKAGES_DIR}/Packages.gz" PACKAGES_GZ_SHA256)
 message(STATUS "🔐 Generating Release file...")
 string(TIMESTAMP CURRENT_DATE "%a, %d %b %Y %H:%M:%S +0000" UTC)
 
-set(RELEASE_CONTENT "Archive: stable
-Codename: stable
+set(RELEASE_CONTENT "Archive: ${DISTRIBUTION}
+Codename: ${DISTRIBUTION}
 Components: main
 Date: ${CURRENT_DATE}
 Description: AK API Key Manager Repository
 Label: AK Repository
 Origin: AK
-Suite: stable
+Suite: ${DISTRIBUTION}
 Version: 1.0
 Architectures: amd64
 MD5Sum:
@@ -128,20 +131,20 @@ SHA256:
  ${PACKAGES_GZ_SHA256} ${PACKAGES_GZ_SIZE} main/binary-amd64/Packages.gz
 ")
 
-file(WRITE "${REPO_DIR}/dists/stable/Release" ${RELEASE_CONTENT})
+file(WRITE "${REPO_DIR}/dists/${DISTRIBUTION}/Release" ${RELEASE_CONTENT})
 
 # Sign Release file
 message(STATUS "✍️  Signing Release file...")
 execute_process(
     COMMAND gpg --yes --clearsign -o InRelease Release
-    WORKING_DIRECTORY "${REPO_DIR}/dists/stable"
+    WORKING_DIRECTORY "${REPO_DIR}/dists/${DISTRIBUTION}"
     INPUT_FILE /dev/null
     RESULT_VARIABLE SIGN1_RESULT
 )
 
 execute_process(
     COMMAND gpg --yes --armor --detach-sig -o Release.gpg Release
-    WORKING_DIRECTORY "${REPO_DIR}/dists/stable"
+    WORKING_DIRECTORY "${REPO_DIR}/dists/${DISTRIBUTION}"
     INPUT_FILE /dev/null
     RESULT_VARIABLE SIGN2_RESULT
 )

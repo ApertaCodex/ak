@@ -114,16 +114,7 @@ if [ -d "tests/googletest" ]; then
     rm -rf tests/googletest
     BACKED_UP_DIRS+=("tests/googletest")
 fi
-if [ -d "ak-apt-repo" ]; then
-    cp -r ak-apt-repo "${TEMP_BACKUP_DIR}/"
-    rm -rf ak-apt-repo
-    BACKED_UP_DIRS+=("ak-apt-repo")
-fi
-if [ -d "ak-macos-repo" ]; then
-    cp -r ak-macos-repo "${TEMP_BACKUP_DIR}/"
-    rm -rf ak-macos-repo
-    BACKED_UP_DIRS+=("ak-macos-repo")
-fi
+# Preserve ak repositories during PPA build; do not modify ak-apt-repo or ak-macos-repo
 
 # Handle uncommitted changes directly
 if ! git diff --quiet || ! git diff --cached --quiet; then
@@ -146,30 +137,11 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     fi
 fi
 
-# Create backup directory for repositories
+# Preserve repository directories; no backup/removal performed
 REPO_BACKUP_DIR="/tmp/ak_repo_backup_$$"
 mkdir -p "${REPO_BACKUP_DIR}"
 
-# Back up repositories
-if [ -d "ak-apt-repo" ]; then
-    echo "Backing up apt repository..."
-    cp -r ak-apt-repo "${REPO_BACKUP_DIR}/"
-    rm -rf ak-apt-repo
-fi
-
-if [ -d "ak-macos-repo" ]; then
-    echo "Backing up macOS repository..."
-    cp -r ak-macos-repo "${REPO_BACKUP_DIR}/"
-    rm -rf ak-macos-repo
-fi
-
-# Remove repository directories again if they were restored by stash
-if [ -d "ak-apt-repo" ]; then
-    rm -rf ak-apt-repo
-fi
-if [ -d "ak-macos-repo" ]; then
-    rm -rf ak-macos-repo
-fi
+# Do not remove ak-apt-repo or ak-macos-repo under any circumstances
 
 # Build source package (-S) with full orig upload (-sa)
 BUILD_SUCCESS=false
@@ -198,24 +170,7 @@ fi
 
 # Restore repositories at the end
 function restore_repositories() {
-    echo "Restoring repositories..."
-    
-    # Restore original repositories
-    if [ -d "${REPO_BACKUP_DIR}/ak-apt-repo" ]; then
-        if [ -d "ak-apt-repo" ]; then
-            rm -rf ak-apt-repo
-        fi
-        cp -r "${REPO_BACKUP_DIR}/ak-apt-repo" .
-    fi
-    
-    if [ -d "${REPO_BACKUP_DIR}/ak-macos-repo" ]; then
-        if [ -d "ak-macos-repo" ]; then
-            rm -rf ak-macos-repo
-        fi
-        cp -r "${REPO_BACKUP_DIR}/ak-macos-repo" .
-    fi
-    
-    # Clean up backup directory
+    # Repositories are preserved; just clean up backup directory
     rm -rf "${REPO_BACKUP_DIR}"
 }
 
