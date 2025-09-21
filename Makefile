@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 4.4.0
+VERSION   ?= 4.6.0
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -385,7 +385,12 @@ bump-patch:
 	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-dmg.sh; \
 	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-pkg.sh; \
 	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/package-all.sh; \
-	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata, macOS)"
+	new_version_win="$$new_version.0"; \
+	sed -i "s/VIProductVersion \".*\"/VIProductVersion \"$$new_version_win\"/" windows-installer.nsi; \
+	sed -i "s/VIAddVersionKey \"FileVersion\" \".*\"/VIAddVersionKey \"FileVersion\" \"$$new_version\"/" windows-installer.nsi; \
+	sed -i "s/VIAddVersionKey \"ProductVersion\" \".*\"/VIAddVersionKey \"ProductVersion\" \"$$new_version\"/" windows-installer.nsi; \
+	sed -i "s/WriteRegStr HKLM \"Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall\\\\AK\" \"DisplayVersion\" \".*\"/WriteRegStr HKLM \"Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall\\\\AK\" \"DisplayVersion\" \"$$new_version\"/" windows-installer.nsi; \
+	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata, macOS, Windows)"
 
 bump-minor:
 	@echo "🔄 Bumping minor version..."
@@ -418,7 +423,12 @@ bump-minor:
 	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-dmg.sh; \
 	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-pkg.sh; \
 	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/package-all.sh; \
-	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata, macOS)"
+	new_version_win="$$new_version.0"; \
+	sed -i "s/VIProductVersion \".*\"/VIProductVersion \"$$new_version_win\"/" windows-installer.nsi; \
+	sed -i "s/VIAddVersionKey \"FileVersion\" \".*\"/VIAddVersionKey \"FileVersion\" \"$$new_version\"/" windows-installer.nsi; \
+	sed -i "s/VIAddVersionKey \"ProductVersion\" \".*\"/VIAddVersionKey \"ProductVersion\" \"$$new_version\"/" windows-installer.nsi; \
+	sed -i "s/WriteRegStr HKLM \"Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall\\\\AK\" \"DisplayVersion\" \".*\"/WriteRegStr HKLM \"Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall\\\\AK\" \"DisplayVersion\" \"$$new_version\"/" windows-installer.nsi; \
+	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata, macOS, Windows)"
 
 bump-major:
 	@echo "🔄 Bumping major version..."
@@ -452,7 +462,12 @@ bump-major:
 	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-dmg.sh; \
 	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/create-pkg.sh; \
 	sed -i "s/VERSION=\"\$${AK_VERSION:-[0-9]\+\.[0-9]\+\.[0-9]\+}\"/VERSION=\"\$${AK_VERSION:-$$new_version}\"/" macos/scripts/package-all.sh; \
-	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata, macOS)"
+	new_version_win="$$new_version.0"; \
+	sed -i "s/VIProductVersion \".*\"/VIProductVersion \"$$new_version_win\"/" windows-installer.nsi; \
+	sed -i "s/VIAddVersionKey \"FileVersion\" \".*\"/VIAddVersionKey \"FileVersion\" \"$$new_version\"/" windows-installer.nsi; \
+	sed -i "s/VIAddVersionKey \"ProductVersion\" \".*\"/VIAddVersionKey \"ProductVersion\" \"$$new_version\"/" windows-installer.nsi; \
+	sed -i "s/WriteRegStr HKLM \"Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall\\\\AK\" \"DisplayVersion\" \".*\"/WriteRegStr HKLM \"Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall\\\\AK\" \"DisplayVersion\" \"$$new_version\"/" windows-installer.nsi; \
+	echo "✅ Updated version to $$new_version in ALL files (code, docs, HTML, metadata, macOS, Windows)"
 
 build-release: clean
 	@echo "🏗️  Building complete production release..."
