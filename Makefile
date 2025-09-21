@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 4.7.0
+VERSION   ?= 4.8.0
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -270,11 +270,11 @@ publish-macos:
 	@echo "🍎 Building macOS packages (Linux-compatible)..."
 	@if command -v hdiutil >/dev/null 2>&1; then \
 		echo "📦 macOS detected - building native packages..."; \
-		cd macos/scripts && ./package-all.sh; \
+		cd macos/scripts && AK_VERSION=$(VERSION) ./package-all.sh; \
 		echo "✅ Native macOS packages built in build/macos-packages/"; \
 	elif command -v 7z >/dev/null 2>&1; then \
 		echo "📦 Linux detected - building cross-platform packages..."; \
-		./macos/scripts/create-dmg-linux.sh; \
+		AK_VERSION=$(VERSION) ./macos/scripts/create-dmg-linux.sh; \
 		echo "✅ Cross-platform macOS packages built in ak-macos-repo/packages/"; \
 	else \
 		echo "⚠️  Neither macOS nor 7z available - skipping macOS package build"; \
