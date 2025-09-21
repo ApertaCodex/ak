@@ -84,7 +84,7 @@ TEST(TestResultStructure, TestResultCanBeCopied) {
 
 TEST(DetectConfiguredServicesFunction, ShouldReturnEmptyVectorWhenNoServicesConfigured) {
     ak::core::Config cfg;
-    auto services = detectConfiguredServices(cfg);
+    auto services = detectConfiguredServices(cfg, "default");
     
     // Without environment variables set, should return empty or minimal list
     // This depends on the actual environment, so we just test that it doesn't crash
@@ -93,7 +93,7 @@ TEST(DetectConfiguredServicesFunction, ShouldReturnEmptyVectorWhenNoServicesConf
 
 TEST(DetectConfiguredServicesFunction, ReturnedServicesShouldBeSorted) {
     ak::core::Config cfg;
-    auto services = detectConfiguredServices(cfg);
+    auto services = detectConfiguredServices(cfg, "default");
     
     if (services.size() > 1) {
         for (size_t i = 1; i < services.size(); ++i) {
@@ -104,7 +104,7 @@ TEST(DetectConfiguredServicesFunction, ReturnedServicesShouldBeSorted) {
 
 TEST(DetectConfiguredServicesFunction, ReturnedServicesShouldBeTestable) {
     ak::core::Config cfg;
-    auto services = detectConfiguredServices(cfg);
+    auto services = detectConfiguredServices(cfg, "default");
     
     for (const auto& service : services) {
         ASSERT_NE(TESTABLE_SERVICES.find(service), TESTABLE_SERVICES.end());

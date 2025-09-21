@@ -1,6 +1,6 @@
 #!/bin/bash
 # Special script for building and uploading PPA packages
-# This creates a clean temporary repository without the ak-apt-repo and ak-macos-repo directories
+# This uses a clean temporary repository and preserves ak-apt-repo and ak-macos-repo directories
 
 set -e
 
@@ -37,8 +37,7 @@ git archive --format=tar HEAD | tar -x -C "${TEMP_DIR}"
 # Change to the temp directory
 cd "${TEMP_DIR}"
 
-# Remove problematic directories
-rm -rf ak-apt-repo ak-macos-repo 2>/dev/null || true
+# Ensure repository directories exist (do not delete them)
 mkdir -p ak-apt-repo ak-macos-repo
 
 # Ensure we have the correct debian/source/format
