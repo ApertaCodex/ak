@@ -128,7 +128,10 @@ int main(int argc, char** argv) {
         {"_internal_get_bundle", commands::cmd_internal_get_bundle},
         
         // GUI
-        {"gui", commands::cmd_gui}
+        {"gui", commands::cmd_gui},
+        
+        // HTTP Server
+        {"serve", commands::cmd_serve}
     };
     
     // Dispatch to appropriate command handler

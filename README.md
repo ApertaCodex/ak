@@ -196,9 +196,9 @@ ak --help
 
 # Key management
 ak add mykey "sk-..." 
-ak list
+ak ls
 ak get mykey
-ak remove mykey
+ak rm mykey
 
 # Service testing
 ak test openai
@@ -349,4 +349,4 @@ sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 60
 
 - Issues: [GitHub Issues](https://github.com/apertacodex/ak/issues)
 - Documentation: This README and inline code comments
-- Build Problems: Check troubleshooting section above
+- Build Problems: Check troubleshooting section above`
