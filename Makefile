@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 4.2.27
+VERSION   ?= 4.4.0
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -27,7 +27,7 @@ RPM_ARCH  := $(if $(filter $(UNAME_M),x86_64 amd64),x86_64,$(UNAME_M))
 CXX       ?= g++
 CXXFLAGS  ?= -std=c++17 -O2 -pipe -Wall -Wextra -Iinclude -Itests/googletest/googletest/include -Itests/googletest/googlemock/include
 CXXFLAGS_COV := -std=c++17 -O0 -g -pipe -Wall -Wextra -Iinclude -Itests/googletest/googletest/include -Itests/googletest/googlemock/include --coverage
-LDFLAGS   ?=
+LDFLAGS   ?= -pthread
 LDFLAGS_COV := --coverage
 PREFIX    ?= /usr/local
 BINDIR    ?= $(PREFIX)/bin
@@ -41,12 +41,13 @@ CRYPTO_SRC := src/crypto/crypto.cpp
 STORAGE_SRC := src/storage/vault.cpp
 UI_SRC    := src/ui/ui.cpp
 SYSTEM_SRC := src/system/system.cpp
+HTTP_SRC   := src/http/server.cpp
 CLI_SRC   := src/cli/cli.cpp
 SERVICES_SRC := src/services/services.cpp
 COMMANDS_SRC := src/commands/commands.cpp
 MAIN_SRC  := src/main.cpp
 
-APP_SRCS  := $(CORE_SRC) $(CRYPTO_SRC) $(STORAGE_SRC) $(UI_SRC) $(SYSTEM_SRC) $(CLI_SRC) $(SERVICES_SRC) $(COMMANDS_SRC) $(MAIN_SRC)
+APP_SRCS  := $(CORE_SRC) $(CRYPTO_SRC) $(STORAGE_SRC) $(UI_SRC) $(SYSTEM_SRC) $(HTTP_SRC) $(CLI_SRC) $(SERVICES_SRC) $(COMMANDS_SRC) $(MAIN_SRC)
 BIN       := $(APP)
 
 # Test files
@@ -171,7 +172,7 @@ clean-coverage:
 # Clean only object files (for rebuilding with coverage)
 clean-obj:
 	@rm -rf $(OBJDIR)
-	@mkdir -p $(OBJDIR)/src/core $(OBJDIR)/src/crypto $(OBJDIR)/src/cli $(OBJDIR)/src/commands $(OBJDIR)/src/services $(OBJDIR)/src/storage $(OBJDIR)/src/ui $(OBJDIR)/src/system $(OBJDIR)/tests/core $(OBJDIR)/tests/crypto $(OBJDIR)/tests/cli $(OBJDIR)/tests/services
+	@mkdir -p $(OBJDIR)/src/core $(OBJDIR)/src/crypto $(OBJDIR)/src/cli $(OBJDIR)/src/commands $(OBJDIR)/src/services $(OBJDIR)/src/storage $(OBJDIR)/src/ui $(OBJDIR)/src/system $(OBJDIR)/src/http $(OBJDIR)/tests/core $(OBJDIR)/tests/crypto $(OBJDIR)/tests/cli $(OBJDIR)/tests/services
 
 # -------------------------
 # Debian package (.deb)

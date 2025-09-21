@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Version is managed by the build system
-set(AK_VERSION "4.2.27")
+set(AK_VERSION "4.4.0")
 project(ak VERSION ${AK_VERSION} LANGUAGES CXX)
 
 # C++ Standard
@@ -42,6 +42,7 @@ endif()
 
 # Include directories
 include_directories(include)
+include_directories(third_party)
 
 # Source files
 set(CORE_SOURCES
@@ -53,6 +54,7 @@ set(CORE_SOURCES
     src/cli/cli.cpp
     src/services/services.cpp
     src/commands/commands.cpp
+    src/http/server.cpp
 )
 
 # ============================================================================
@@ -62,6 +64,19 @@ set(CORE_SOURCES
 option(BUILD_GUI "Build GUI support with Qt 6" ON)
 
 if(BUILD_GUI)
+    # Force use of system Qt6 instead of Homebrew Qt6
+    set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/cmake/Qt6" ${CMAKE_PREFIX_PATH})
+    
+    # Explicitly set Qt6 tool executables before find_package
+    set(Qt6_MOC_EXECUTABLE "/usr/lib/qt6/libexec/moc")
+    set(Qt6_UIC_EXECUTABLE "/usr/lib/qt6/libexec/uic")
+    set(Qt6_RCC_EXECUTABLE "/usr/lib/qt6/libexec/rcc")
+    
+    # Also set CMAKE variables that Qt6 uses
+    set(CMAKE_AUTOMOC_EXECUTABLE "/usr/lib/qt6/libexec/moc")
+    set(CMAKE_AUTOUIC_EXECUTABLE "/usr/lib/qt6/libexec/uic")
+    set(CMAKE_AUTORCC_EXECUTABLE "/usr/lib/qt6/libexec/rcc")
+    
     # Find Qt 6 components - require minimum 6.4.0 for compatibility
     find_package(Qt6 6.4.0 REQUIRED COMPONENTS Core Widgets)
     

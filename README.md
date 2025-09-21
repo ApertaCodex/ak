@@ -196,9 +196,9 @@ ak --help
 
 # Key management
 ak add mykey "sk-..." 
-ak list
+ak ls
 ak get mykey
-ak remove mykey
+ak rm mykey
 
 # Service testing
 ak test openai
@@ -290,7 +290,7 @@ TEST(ModuleTest, BasicFunctionality) {
 
 ## 📊 Current Status
 
-- **Version**: 4.2.27
+- **Version**: 4.4.0
 - **Test Coverage**: ~60% line coverage, ~67% function coverage
 - **Tests**: 65 tests across 21 test suites
 - **Build System**: CMake 3.16+ with cross-platform support
@@ -349,4 +349,4 @@ sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 60
 
 - Issues: [GitHub Issues](https://github.com/apertacodex/ak/issues)
 - Documentation: This README and inline code comments
-- Build Problems: Check troubleshooting section above
+- Build Problems: Check troubleshooting section above`
