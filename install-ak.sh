@@ -315,27 +315,39 @@ build_ak_gui_from_source() {
         log_warning "Failed to install some build dependencies; continuing..."
     }
     
-    # Get current directory (should be AK project root)
-    local current_dir
-    current_dir=$(pwd)
-    
-    # Check if we're in AK project directory
-    if [ ! -f "$current_dir/CMakeLists.txt" ]; then
-        log_error "Not in AK project directory. CMakeLists.txt not found."
-        return 1
+    # Decide where to build from:
+    # - If current directory looks like the AK project (has CMakeLists.txt), use it
+    # - Otherwise, clone to a temporary directory
+    local project_dir
+    if [ -f "./CMakeLists.txt" ]; then
+        project_dir="$(pwd)"
+        log_message "📂 Detected AK project directory: $project_dir"
+    else
+        log_warning "Not in AK project directory. Cloning AK repository to a temporary location..."
+        TEMP_BUILD_DIR="$(mktemp -d -t ak-build-XXXXXX)"
+        project_dir="$TEMP_BUILD_DIR/ak"
+        if ! command -v git >/dev/null 2>&1; then
+            log_error "git is not available to clone the repository"
+            return 1
+        fi
+        if ! git clone --depth 1 https://github.com/apertacodex/ak "$project_dir"; then
+            log_error "Failed to clone AK repository"
+            return 1
+        fi
+        log_message "📥 Cloned to: $project_dir"
     fi
     
-    # Build in a subshell to avoid changing cwd of the installer
+    # Build in a subshell to avoid changing the installer's cwd
     (
         set -e
-        cd "$current_dir"
+        cd "$project_dir"
         rm -rf build
         mkdir -p build
         cd build
         cmake .. -DBUILD_GUI=ON -DCMAKE_BUILD_TYPE=Release
-        make -j"$(nproc 2>/dev/null || echo 2)"
+        make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
         sudo make install
-        ) || {
+    ) || {
         log_error "Building or installing AK with GUI failed"
         return 1
     }
@@ -729,6 +741,11 @@ install_ak() {
 cleanup_installation() {
     log_message "🧹 Cleaning up..."
     restore_problematic_repos
+    # Remove temporary build directory if we cloned there
+    if [ -n "${TEMP_BUILD_DIR:-}" ] && [ -d "${TEMP_BUILD_DIR}" ]; then
+        rm -rf "${TEMP_BUILD_DIR}" 2>/dev/null || true
+        log_message "🧹 Removed temporary build directory"
+    fi
 }
 
 # Set up cleanup trap
