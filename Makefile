@@ -501,12 +501,16 @@ commit-and-push:
 		            ak-apt-repo/dists/*/main/binary-amd64/Packages* ak-macos-repo/packages/*.tar.xz \
 		            ak-macos-repo/packages/*.7z ak-macos-repo/packages/*.md 2>/dev/null || true; \
 		git commit -n -m "🚀 Release v$$new_version"; \
-		git tag "v$$new_version"; \
-		echo "🏷️  Created tag v$$new_version"; \
+		if git rev-parse -q --verify "refs/tags/v$$new_version" >/dev/null; then \
+			echo "🏷️  Tag v$$new_version already exists"; \
+		else \
+			git tag "v$$new_version"; \
+			echo "🏷️  Created tag v$$new_version"; \
+		fi; \
 		if git remote get-url origin >/dev/null 2>&1; then \
 			echo "📤 Pushing to main branch..."; \
 			git push origin main; \
-			git push origin "v$$new_version"; \
+			git push origin "v$$new_version" || true; \
 			echo "✅ Successfully published v$$new_version to GitHub"; \
 		else \
 			echo "⚠️  No remote 'origin' found. Skipping push to GitHub."; \
