@@ -126,14 +126,14 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     
     echo "Committing changes before PPA build..."
     git add .
-    git commit -m "Automatic commit before PPA build"
+    git commit -n -m "Automatic commit before PPA build"
     
     # Make sure there are no uncommitted changes left, especially for this script
     if ! git diff --quiet -- ppa-upload.sh; then
         echo "WARNING: ppa-upload.sh still shows as modified after commit"
         echo "Forcing another commit specifically for ppa-upload.sh"
         git add ppa-upload.sh
-        git commit -m "Explicitly commit ppa-upload.sh changes"
+        git commit -n -m "Explicitly commit ppa-upload.sh changes"
     fi
 fi
 
