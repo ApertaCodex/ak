@@ -46,7 +46,9 @@ int cmd_help(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_welcome(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_gui(const core::Config& cfg, const std::vector<std::string>& args);
 
-// Custom service management
+// Namespaced command handlers
+int cmd_secret(const core::Config& cfg, const std::vector<std::string>& args);
+int cmd_profile(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_service(const core::Config& cfg, const std::vector<std::string>& args);
 
 // Profile duplication
