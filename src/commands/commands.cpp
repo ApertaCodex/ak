@@ -227,11 +227,19 @@ int cmd_set(const core::Config& cfg, const std::vector<std::string>& args) {
 
 int cmd_get(const core::Config& cfg, const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        core::error(cfg, "Usage: ak get <NAME> [--full]");
+        core::error(cfg, "Usage: ak get <NAME> [--full|--reveal]");
     }
     
     std::string name = args[1];
-    bool full = (args.size() >= 3 && args[2] == "--full");
+    bool full = false;
+    
+    // Check for --full or --reveal flags
+    for (size_t i = 2; i < args.size(); ++i) {
+        if (args[i] == "--full" || args[i] == "--reveal") {
+            full = true;
+            break;
+        }
+    }
     
     core::KeyStore ks = storage::loadVault(cfg);
     auto it = ks.kv.find(name);
@@ -246,7 +254,18 @@ int cmd_get(const core::Config& cfg, const std::vector<std::string>& args) {
 }
 
 int cmd_ls(const core::Config& cfg, const std::vector<std::string>& args) {
-    (void)args; // Parameter intentionally unused
+    bool quiet = false;
+    bool jsonOutput = false;
+    
+    // Parse flags
+    for (const auto& arg : args) {
+        if (arg == "--quiet") {
+            quiet = true;
+        } else if (arg == "--json") {
+            jsonOutput = true;
+        }
+    }
+    
     core::KeyStore ks = storage::loadVault(cfg);
     std::vector<std::string> names;
     names.reserve(ks.kv.size());
@@ -258,7 +277,7 @@ int cmd_ls(const core::Config& cfg, const std::vector<std::string>& args) {
     
     core::auditLog(cfg, "ls", names);
     
-    if (cfg.json) {
+    if (jsonOutput || cfg.json) {
         std::cout << "[";
         bool first = true;
         for (const auto& name : names) {
@@ -267,6 +286,11 @@ int cmd_ls(const core::Config& cfg, const std::vector<std::string>& args) {
             std::cout << "{\"name\":\"" << name << "\",\"masked\":\"" << core::maskValue(ks.kv[name]) << "\"}";
         }
         std::cout << "]\n";
+    } else if (quiet) {
+        // Minimal output - just key names
+        for (const auto& name : names) {
+            std::cout << name << "\n";
+        }
     } else {
         if (names.empty()) {
             core::info(cfg, "No secrets stored yet. Use 'ak add <NAME> <VALUE>' to get started!");
@@ -365,10 +389,20 @@ int cmd_search(const core::Config& cfg, const std::vector<std::string>& args) {
 
 int cmd_cp(const core::Config& cfg, const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        core::error(cfg, "Usage: ak cp <NAME>");
+        core::error(cfg, "Usage: ak cp <NAME> [--clear <time>]");
     }
     
     std::string name = args[1];
+    std::string clearTime;
+    
+    // Parse --clear flag
+    for (size_t i = 2; i < args.size(); ++i) {
+        if (args[i] == "--clear" && i + 1 < args.size()) {
+            clearTime = args[i + 1];
+            break;
+        }
+    }
+    
     core::KeyStore ks = storage::loadVault(cfg);
     auto it = ks.kv.find(name);
     if (it == ks.kv.end()) {
@@ -380,6 +414,38 @@ int cmd_cp(const core::Config& cfg, const std::vector<std::string>& args) {
     }
     
     core::success(cfg, "Successfully copied " + name + " to clipboard");
+    
+    // Handle clipboard auto-clear
+    if (!clearTime.empty()) {
+        int seconds = 20; // default
+        try {
+            if (clearTime.back() == 's') {
+                seconds = std::stoi(clearTime.substr(0, clearTime.length() - 1));
+            } else {
+                seconds = std::stoi(clearTime);
+            }
+        } catch (const std::exception&) {
+            std::cout << ui::colorize("⚠️  Invalid clear time format, using default 20s", ui::Colors::BRIGHT_YELLOW) << "\n";
+            seconds = 20;
+        }
+        
+        std::cout << ui::colorize("🕐 Clipboard will be cleared in " + std::to_string(seconds) + " seconds...", ui::Colors::DIM) << "\n";
+        
+        // Start background process to clear clipboard
+        // This is a simple implementation - in production you might want a more sophisticated approach
+        std::string clearCommand;
+#ifdef __APPLE__
+        clearCommand = "sleep " + std::to_string(seconds) + " && echo '' | pbcopy &";
+#elif defined(__linux__)
+        clearCommand = "sleep " + std::to_string(seconds) + " && echo '' | xclip -selection clipboard &";
+#else
+        std::cout << ui::colorize("⚠️  Auto-clear not supported on this platform", ui::Colors::BRIGHT_YELLOW) << "\n";
+#endif
+        if (!clearCommand.empty()) {
+            system(clearCommand.c_str());
+        }
+    }
+    
     core::auditLog(cfg, "cp", {name});
     
     return 0;
@@ -470,11 +536,116 @@ int cmd_welcome(const core::Config& cfg, const std::vector<std::string>& args) {
     return 0;
 }
 
-// Placeholder implementations for other commands
 int cmd_purge(const core::Config& cfg, const std::vector<std::string>& args) {
-    (void)args; // Parameter intentionally unused
-    // Simplified implementation
-    core::ok(cfg, "Purge command - implementation needed");
+    // Parse flags
+    bool noBackup = false;
+    bool hasForce = false;
+    
+    for (const auto& arg : args) {
+        if (arg == "--no-backup") {
+            noBackup = true;
+        } else if (arg == "--force") {
+            hasForce = true;
+        }
+    }
+    
+    try {
+        // Safety confirmation unless --force is used
+        if (!hasForce) {
+            std::cout << ui::colorize("⚠️  DANGER: This will permanently delete ALL secrets and profiles!", ui::Colors::BRIGHT_RED) << "\n";
+            std::cout << ui::colorize("This action cannot be undone!", ui::Colors::BRIGHT_RED) << "\n";
+            if (noBackup) {
+                std::cout << ui::colorize("No backup will be created (--no-backup specified).", ui::Colors::BRIGHT_RED) << "\n";
+            } else {
+                std::cout << ui::colorize("A backup will be created before deletion.", ui::Colors::BRIGHT_YELLOW) << "\n";
+            }
+            std::cout << "Type 'DELETE EVERYTHING' to confirm: ";
+            
+            std::string confirmation;
+            std::getline(std::cin, confirmation);
+            
+            if (confirmation != "DELETE EVERYTHING") {
+                std::cout << ui::colorize("❌ Operation cancelled.", ui::Colors::YELLOW) << "\n";
+                return 1;
+            }
+        }
+        
+        // Create backup unless --no-backup is specified
+        if (!noBackup) {
+            std::string timestamp = std::to_string(std::time(nullptr));
+            std::string backupDir = cfg.configDir + "/backup-" + timestamp;
+            
+            std::cout << ui::colorize("📦 Creating backup in " + backupDir + "...", ui::Colors::BRIGHT_BLUE) << "\n";
+            
+            // Create backup directory
+            std::filesystem::create_directories(backupDir);
+            
+            // Copy all profiles and vault
+            try {
+                if (std::filesystem::exists(cfg.vaultPath)) {
+                    std::filesystem::copy_file(cfg.vaultPath, backupDir + "/keys.env.gpg");
+                }
+                if (std::filesystem::exists(cfg.profilesDir)) {
+                    std::filesystem::copy(cfg.profilesDir, backupDir + "/profiles", std::filesystem::copy_options::recursive);
+                }
+                if (std::filesystem::exists(cfg.persistDir)) {
+                    std::filesystem::copy(cfg.persistDir, backupDir + "/persist", std::filesystem::copy_options::recursive);
+                }
+                
+                std::cout << ui::colorize("✅ Backup created successfully.", ui::Colors::BRIGHT_GREEN) << "\n";
+            } catch (const std::exception& e) {
+                std::cout << ui::colorize("⚠️  Warning: Backup creation failed: " + std::string(e.what()), ui::Colors::BRIGHT_YELLOW) << "\n";
+                if (!hasForce) {
+                    std::cout << "Continue without backup? Type 'yes' to confirm: ";
+                    std::string continueConfirm;
+                    std::getline(std::cin, continueConfirm);
+                    if (continueConfirm != "yes") {
+                        return 1;
+                    }
+                }
+            }
+        }
+        
+        // Delete all data
+        std::cout << ui::colorize("🗑️  Deleting all secrets and profiles...", ui::Colors::BRIGHT_RED) << "\n";
+        
+        int deletedItems = 0;
+        
+        // Remove vault file
+        if (std::filesystem::exists(cfg.vaultPath)) {
+            std::filesystem::remove(cfg.vaultPath);
+            deletedItems++;
+        }
+        
+        // Remove profiles directory
+        if (std::filesystem::exists(cfg.profilesDir)) {
+            std::filesystem::remove_all(cfg.profilesDir);
+            deletedItems++;
+        }
+        
+        // Remove persist directory
+        if (std::filesystem::exists(cfg.persistDir)) {
+            std::filesystem::remove_all(cfg.persistDir);
+            deletedItems++;
+        }
+        
+        // Remove audit log
+        if (std::filesystem::exists(cfg.auditLogPath)) {
+            std::filesystem::remove(cfg.auditLogPath);
+            deletedItems++;
+        }
+        
+        core::auditLog(cfg, "purge_all", {});
+        
+        std::cout << ui::colorize("✅ Purge completed. All secrets and profiles have been deleted.", ui::Colors::BRIGHT_GREEN) << "\n";
+        if (!noBackup) {
+            std::cout << ui::colorize("📦 Backup preserved at: " + cfg.configDir + "/backup-*", ui::Colors::BRIGHT_BLUE) << "\n";
+        }
+        
+    } catch (const std::exception& e) {
+        core::error(cfg, "Failed to purge data: " + std::string(e.what()));
+    }
+    
     return 0;
 }
 
@@ -896,15 +1067,36 @@ int cmd_run(const core::Config& cfg, const std::vector<std::string>& args) {
 
 int cmd_guard(const core::Config& cfg, const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        core::error(cfg, "Usage: ak guard enable|disable");
+        core::error(cfg, "Usage: ak guard <enable|disable|status>\n"
+                          "  ak guard enable      Enable shell guard for secret protection\n"
+                          "  ak guard disable     Disable shell guard\n"
+                          "  ak guard status      Show current guard status");
     }
     
-    if (args[1] == "enable") {
+    std::string subcommand = args[1];
+    
+    if (subcommand == "enable") {
         system::guard_enable(cfg);
-    } else if (args[1] == "disable") {
+        std::cout << ui::colorize("✅ Shell guard enabled for secret protection.", ui::Colors::BRIGHT_GREEN) << "\n";
+    } else if (subcommand == "disable") {
         system::guard_disable();
+        std::cout << ui::colorize("🔓 Shell guard disabled.", ui::Colors::BRIGHT_YELLOW) << "\n";
+    } else if (subcommand == "status") {
+        // Check if guard is enabled by looking for shell integration
+        std::string shellInitPath = cfg.configDir + "/shell-init.sh";
+        bool isEnabled = std::filesystem::exists(shellInitPath);
+        
+        if (isEnabled) {
+            std::cout << ui::colorize("🛡️  Shell guard is ", ui::Colors::WHITE)
+                     << ui::colorize("ENABLED", ui::Colors::BRIGHT_GREEN)
+                     << ui::colorize(" - secrets are protected from accidental exposure.", ui::Colors::WHITE) << "\n";
+        } else {
+            std::cout << ui::colorize("🔓 Shell guard is ", ui::Colors::WHITE)
+                     << ui::colorize("DISABLED", ui::Colors::BRIGHT_RED)
+                     << ui::colorize(" - run 'ak guard enable' to protect secrets.", ui::Colors::WHITE) << "\n";
+        }
     } else {
-        core::error(cfg, "Usage: ak guard enable|disable");
+        core::error(cfg, "Unknown guard command: " + subcommand + ". Use enable, disable, or status.");
     }
     
     return 0;
@@ -913,6 +1105,8 @@ int cmd_guard(const core::Config& cfg, const std::vector<std::string>& args) {
 int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
     std::vector<std::string> servicesToTest;
     bool failFast = std::find(args.begin(), args.end(), "--fail-fast") != args.end();
+    bool jsonOutput = std::find(args.begin(), args.end(), "--json") != args.end() || cfg.json;
+    bool quiet = std::find(args.begin(), args.end(), "--quiet") != args.end();
     
     // Parse arguments for specific testing modes
     std::string profileName;
@@ -925,7 +1119,7 @@ int cmd_test(const core::Config& cfg, const std::vector<std::string>& args) {
                 profileName = args[i + 1];
                 i++; // Skip next argument
             }
-        } else if (args[i] != "--fail-fast" && args[i] != "--all" && args[i] != "--json") {
+        } else if (args[i] != "--fail-fast" && args[i] != "--all" && args[i] != "--json" && args[i] != "--quiet") {
             // Determine if this is a key name or service name
             std::string arg = args[i];
             if (arg.find('_') != std::string::npos && std::all_of(arg.begin(), arg.end(),
@@ -1339,7 +1533,12 @@ int cmd_gui(const core::Config& cfg, const std::vector<std::string>& args) {
 // Service management
 int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
     if (args.size() < 2) {
-        core::error(cfg, "Usage: ak service <add|list|edit|delete> [options]");
+        core::error(cfg, "Usage: ak service <add|ls|show|edit|rm> [options]\n"
+                          "  ak service add                    Create a new custom API service\n"
+                          "  ak service ls                     List all custom services\n"
+                          "  ak service show <name>            Show service details\n"
+                          "  ak service edit <name>            Edit an existing custom service\n"
+                          "  ak service rm <name>              Delete a custom service");
     }
     
     std::string subcommand = args[1];
@@ -1463,9 +1662,9 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
             core::error(cfg, "Failed to create custom service: " + std::string(e.what()));
         }
         
-    } else if (subcommand == "delete" || subcommand == "rm") {
+    } else if (subcommand == "show") {
         if (args.size() < 3) {
-            core::error(cfg, "Usage: ak service delete <service_name>");
+            core::error(cfg, "Usage: ak service show <service_name>");
         }
         
         std::string serviceName = args[2];
@@ -1476,6 +1675,71 @@ int cmd_service(const core::Config& cfg, const std::vector<std::string>& args) {
             
             if (it == allServices.end()) {
                 core::error(cfg, "Service '" + serviceName + "' not found");
+            }
+            
+            const services::Service& service = it->second;
+            
+            std::cout << ui::colorize("🔧 Service Details:", ui::Colors::BRIGHT_MAGENTA) << "\n\n";
+            std::cout << ui::colorize("Name: ", ui::Colors::BRIGHT_BLUE) << ui::colorize(service.name, ui::Colors::BRIGHT_CYAN) << "\n";
+            std::cout << ui::colorize("Key Name: ", ui::Colors::BRIGHT_BLUE) << ui::colorize(service.keyName, ui::Colors::WHITE) << "\n";
+            std::cout << ui::colorize("Description: ", ui::Colors::BRIGHT_BLUE) << ui::colorize(service.description.empty() ? "(none)" : service.description, ui::Colors::DIM) << "\n";
+            std::cout << ui::colorize("Testable: ", ui::Colors::BRIGHT_BLUE) << ui::colorize(service.testable ? "Yes" : "No", service.testable ? ui::Colors::BRIGHT_GREEN : ui::Colors::DIM) << "\n";
+            
+            if (service.testable) {
+                std::cout << ui::colorize("Test Endpoint: ", ui::Colors::BRIGHT_BLUE) << ui::colorize(service.testEndpoint, ui::Colors::DIM) << "\n";
+                std::cout << ui::colorize("Test Method: ", ui::Colors::BRIGHT_BLUE) << ui::colorize(service.testMethod, ui::Colors::DIM) << "\n";
+                std::cout << ui::colorize("Auth Method: ", ui::Colors::BRIGHT_BLUE) << ui::colorize(service.authMethod, ui::Colors::DIM) << "\n";
+                if (!service.testHeaders.empty()) {
+                    std::cout << ui::colorize("Test Headers: ", ui::Colors::BRIGHT_BLUE) << ui::colorize(service.testHeaders, ui::Colors::DIM) << "\n";
+                }
+            }
+            
+            std::cout << ui::colorize("Built-in: ", ui::Colors::BRIGHT_BLUE) << ui::colorize(service.isBuiltIn ? "Yes" : "No", service.isBuiltIn ? ui::Colors::BRIGHT_GREEN : ui::Colors::YELLOW) << "\n";
+            
+        } catch (const std::exception& e) {
+            core::error(cfg, "Failed to show service details: " + std::string(e.what()));
+        }
+        
+    } else if (subcommand == "rm" || subcommand == "remove" || subcommand == "delete") {
+        if (args.size() < 3) {
+            core::error(cfg, "Usage: ak service rm <service_name>");
+        }
+        
+        std::string serviceName = args[2];
+        
+        try {
+            auto allServices = services::loadAllServices(cfg);
+            auto it = allServices.find(serviceName);
+            
+            if (it == allServices.end()) {
+                core::error(cfg, "Service '" + serviceName + "' not found");
+            }
+            
+            if (it->second.isBuiltIn) {
+                core::error(cfg, "Cannot delete built-in service '" + serviceName + "'");
+            }
+            
+            // Check for --force flag
+            bool hasForce = false;
+            for (const auto& arg : args) {
+                if (arg == "--force") {
+                    hasForce = true;
+                    break;
+                }
+            }
+            
+            // Safety confirmation unless --force is used
+            if (!hasForce) {
+                std::cout << ui::colorize("⚠️  Warning: This will permanently delete custom service '" + serviceName + "'!", ui::Colors::BRIGHT_RED) << "\n";
+                std::cout << "Type 'yes' to confirm: ";
+                
+                std::string confirmation;
+                std::getline(std::cin, confirmation);
+                
+                if (confirmation != "yes") {
+                    std::cout << ui::colorize("❌ Operation cancelled.", ui::Colors::YELLOW) << "\n";
+                    return 1;
+                }
             }
             
             services::removeService(cfg, serviceName);
@@ -1718,6 +1982,123 @@ int cmd_serve(const core::Config& cfg, const std::vector<std::string>& args) {
     
     return 0;
 }
+// Namespaced command handlers
+
+// cmd_secret - handles ak secret <subcommand>
+int cmd_secret(const core::Config& cfg, const std::vector<std::string>& args) {
+    if (args.size() < 2) {
+        core::error(cfg, "Usage: ak secret <add|set|get|ls|rm|search|cp> [options] [arguments]\n"
+                          "  ak secret add <NAME> <VALUE>     Add a secret\n"
+                          "  ak secret add <NAME=VALUE>       Add a secret using NAME=VALUE format\n"
+                          "  ak secret set <NAME>             Set a secret (prompts for value)\n"
+                          "  ak secret get <NAME> [--full|--reveal]  Get a secret value\n"
+                          "  ak secret ls [--json]            List all secret names\n"
+                          "  ak secret rm <NAME>              Remove a secret\n"
+                          "  ak secret search <PATTERN>       Search for secrets by name pattern\n"
+                          "  ak secret cp <NAME> [--clear 20s]  Copy secret to clipboard");
+    }
+    
+    std::string subcommand = args[1];
+    
+    // Create modified args for the legacy command handlers
+    std::vector<std::string> modifiedArgs = {"ak"};  // Start with program name
+    modifiedArgs.insert(modifiedArgs.end(), args.begin() + 2, args.end());  // Add remaining args
+    
+    // Handle --reveal as alias for --full
+    for (auto& arg : modifiedArgs) {
+        if (arg == "--reveal") {
+            arg = "--full";
+        }
+    }
+    
+    if (subcommand == "add") {
+        return cmd_add(cfg, modifiedArgs);
+    } else if (subcommand == "set") {
+        return cmd_set(cfg, modifiedArgs);
+    } else if (subcommand == "get") {
+        return cmd_get(cfg, modifiedArgs);
+    } else if (subcommand == "ls" || subcommand == "list") {
+        return cmd_ls(cfg, modifiedArgs);
+    } else if (subcommand == "rm" || subcommand == "remove") {
+        return cmd_rm(cfg, modifiedArgs);
+    } else if (subcommand == "search") {
+        return cmd_search(cfg, modifiedArgs);
+    } else if (subcommand == "cp" || subcommand == "copy") {
+        // Handle --clear flag for clipboard auto-clear
+        // TODO: Implement clipboard auto-clear functionality
+        return cmd_cp(cfg, modifiedArgs);
+    } else {
+        core::error(cfg, "Unknown secret command: " + subcommand);
+    }
+    
+    return 1;
+}
+
+// cmd_profile - handles ak profile <subcommand>  
+int cmd_profile(const core::Config& cfg, const std::vector<std::string>& args) {
+    if (args.size() < 2) {
+        core::error(cfg, "Usage: ak profile <save|load|unload|ls|duplicate|rm> [options] [arguments]\n"
+                          "  ak profile save <profile> [NAMES...]     Save secrets to profile\n"
+                          "  ak profile load <profile> [--persist]    Load profile as environment variables\n"
+                          "  ak profile unload [<profile>] [--persist]  Unload profile environment variables\n"
+                          "  ak profile ls                             List all available profiles\n"
+                          "  ak profile duplicate <src> <dest>         Duplicate a profile\n"
+                          "  ak profile rm <name> [--force]            Remove a profile");
+    }
+    
+    std::string subcommand = args[1];
+    
+    // Create modified args for the legacy command handlers
+    std::vector<std::string> modifiedArgs = {"ak"};  // Start with program name
+    modifiedArgs.insert(modifiedArgs.end(), args.begin() + 2, args.end());  // Add remaining args
+    
+    if (subcommand == "save") {
+        return cmd_save(cfg, modifiedArgs);
+    } else if (subcommand == "load") {
+        return cmd_load(cfg, modifiedArgs);
+    } else if (subcommand == "unload") {
+        return cmd_unload(cfg, modifiedArgs);
+    } else if (subcommand == "ls" || subcommand == "list") {
+        return cmd_profiles(cfg, modifiedArgs);
+    } else if (subcommand == "duplicate") {
+        return cmd_duplicate(cfg, modifiedArgs);
+    } else if (subcommand == "rm" || subcommand == "remove") {
+        // Handle --force flag and safety confirmation
+        bool hasForce = false;
+        for (const auto& arg : modifiedArgs) {
+            if (arg == "--force") {
+                hasForce = true;
+                break;
+            }
+        }
+        
+        if (!hasForce && modifiedArgs.size() >= 2) {
+            std::string profileName = modifiedArgs[1];
+            std::cout << ui::colorize("⚠️  Warning: This will permanently delete profile '" + profileName + "' and all its keys!", ui::Colors::BRIGHT_RED) << "\n";
+            std::cout << "Type 'yes' to confirm: ";
+            
+            std::string confirmation;
+            std::getline(std::cin, confirmation);
+            
+            if (confirmation != "yes") {
+                std::cout << ui::colorize("❌ Operation cancelled.", ui::Colors::YELLOW) << "\n";
+                return 1;
+            }
+        }
+        
+        // Add --profile flag to convert "ak profile rm name" to "ak rm --profile name"
+        std::vector<std::string> rmArgs = {"ak", "--profile"};
+        if (modifiedArgs.size() >= 2) {
+            rmArgs.push_back(modifiedArgs[1]);
+        }
+        return cmd_rm(cfg, rmArgs);
+    } else {
+        core::error(cfg, "Unknown profile command: " + subcommand);
+    }
+    
+    return 1;
+}
+
 
 } // namespace commands
 } // namespace ak

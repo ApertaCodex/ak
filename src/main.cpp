@@ -83,7 +83,12 @@ int main(int argc, char** argv) {
         {"-v", commands::cmd_version},
         {"backend", commands::cmd_backend},
         
-        // Secret management
+        // Namespaced commands (canonical)
+        {"secret", commands::cmd_secret},
+        {"profile", commands::cmd_profile},
+        {"service", commands::cmd_service},
+        
+        // Legacy/Alias commands (backward compatibility)
         {"add", commands::cmd_add},
         {"set", commands::cmd_set},
         {"get", commands::cmd_get},
@@ -93,12 +98,13 @@ int main(int argc, char** argv) {
         {"cp", commands::cmd_cp},
         {"purge", commands::cmd_purge},
         
-        // Profile management
+        // Profile management (legacy aliases)
         {"save", commands::cmd_save},
         {"load", commands::cmd_load},
         {"unload", commands::cmd_unload},
         {"profiles", commands::cmd_profiles},
         {"env", commands::cmd_env},
+        {"duplicate", commands::cmd_duplicate},
         
         // Export/Import
         {"export", commands::cmd_export},
@@ -116,12 +122,7 @@ int main(int argc, char** argv) {
         {"install-shell", commands::cmd_install_shell},
         {"uninstall", commands::cmd_uninstall},
         {"completion", commands::cmd_completion},
-        
-        // Service Management
-        {"service", commands::cmd_service},
-        
-        // Profile Management Extensions
-        {"duplicate", commands::cmd_duplicate},
+        {"serve", commands::cmd_serve},
         
         // Internal commands for shell integration auto-loading
         {"_internal_get_dir_profiles", commands::cmd_internal_get_dir_profiles},
