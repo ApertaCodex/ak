@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Version is managed by the build system
-set(AK_VERSION "4.9.0")
+set(AK_VERSION "4.10.0")
 project(ak VERSION ${AK_VERSION} LANGUAGES CXX)
 
 # C++ Standard
@@ -92,6 +92,7 @@ if(BUILD_GUI)
         src/gui/gui.cpp
         src/gui/mainwindow.cpp
         src/gui/widgets/keymanager.cpp
+        src/gui/widgets/servicehelpers.cpp
         src/gui/widgets/servicetester.cpp
         src/gui/widgets/profilemanager.cpp
         src/gui/widgets/servicemanager.cpp
@@ -99,6 +100,7 @@ if(BUILD_GUI)
         src/gui/widgets/common/dialogs.cpp
         include/gui/mainwindow.hpp
         include/gui/widgets/keymanager.hpp
+        include/gui/widgets/servicehelpers.hpp
         include/gui/widgets/servicetester.hpp
         include/gui/widgets/profilemanager.hpp
         include/gui/widgets/servicemanager.hpp
