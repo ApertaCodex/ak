@@ -10,21 +10,15 @@ _ak() {
     _arguments -C \
         '(-h --help)'{-h,--help}'[Show help information]' \
         '(-v --version)'{-v,--version}'[Show version information]' \
-        '--verbose[Enable verbose output]' \
-        '--quiet[Suppress non-error output]' \
-        '--config[Specify config file]:config file:_files -g "*.conf"' \
-        '--profile[Specify profile]:profile:_ak_profiles' \
+        '--json[Output in JSON format]' \
         '1: :_ak_commands' \
         '*:: :->args' && return 0
     
     case $state in
         args)
             case $words[1] in
-                config)
-                    _ak_config
-                    ;;
-                key)
-                    _ak_key
+                secret)
+                    _ak_secret
                     ;;
                 profile)
                     _ak_profile
@@ -32,8 +26,20 @@ _ak() {
                 service)
                     _ak_service
                     ;;
-                vault)
-                    _ak_vault
+                get|cp|rm)
+                    _ak_keys
+                    ;;
+                load)
+                    _ak_profiles_and_keys
+                    ;;
+                save|unload|duplicate)
+                    _ak_profiles
+                    ;;
+                set|add)
+                    _ak_keys
+                    ;;
+                test)
+                    _ak_test_completions
                     ;;
             esac
             ;;
@@ -43,71 +49,75 @@ _ak() {
 _ak_commands() {
     local commands
     commands=(
-        'config:Manage configuration settings'
-        'key:Key management operations'
+        # Main namespaced commands
+        'secret:Secret/API key management'
         'profile:Profile management'
-        'service:Service configuration'
-        'vault:Vault operations'
+        'service:Service configuration and testing'
+        
+        # Legacy/alias commands
+        'add:Add a new secret (alias for secret add)'
+        'set:Set a secret value (alias for secret set)'
+        'get:Get a secret value (alias for secret get)'
+        'ls:List secrets (alias for secret ls)'
+        'rm:Remove a secret (alias for secret rm)'
+        'search:Search secrets (alias for secret search)'
+        'cp:Copy secret to clipboard (alias for secret cp)'
+        
+        # Profile management (legacy aliases)
+        'save:Save current profile'
+        'load:Load profile or individual key'
+        'unload:Unload profile'
+        'profiles:List available profiles'
+        'duplicate:Duplicate a profile'
+        
+        # Utilities
+        'test:Test API connections'
+        'doctor:Diagnose configuration issues'
+        'audit:View audit log'
+        'export:Export data'
+        'import:Import data'
+        'migrate:Migrate data'
+        
+        # System
+        'install-shell:Install shell integration'
+        'uninstall:Uninstall ak'
+        'completion:Generate completion scripts'
+        'serve:Start HTTP server'
+        'gui:Launch GUI interface'
+        
+        # Info
         'help:Show help information'
         'version:Show version information'
+        'welcome:Show welcome message'
     )
     _describe 'commands' commands
 }
 
-_ak_config() {
-    local config_commands
-    config_commands=(
-        'init:Initialize configuration'
-        'list:List all configuration values'
-        'show:Show current configuration'
-        'set:Set configuration value'
-        'get:Get configuration value'
-        'reset:Reset configuration to defaults'
-        'doctor:Diagnose configuration issues'
+_ak_secret() {
+    local secret_commands
+    secret_commands=(
+        'add:Add a new secret'
+        'set:Set a secret value'
+        'get:Get a secret value'
+        'ls:List all secrets'
+        'rm:Remove a secret'
+        'search:Search secrets by name pattern'
+        'cp:Copy secret to clipboard'
     )
     
     if (( CURRENT == 2 )); then
-        _describe 'config commands' config_commands
+        _describe 'secret commands' secret_commands
     else
         case $words[2] in
-            set|get)
-                _ak_config_keys
+            get|rm|cp|set)
+                _ak_keys
                 ;;
-        esac
-    fi
-}
-
-_ak_key() {
-    local key_commands
-    key_commands=(
-        'generate:Generate a new key'
-        'import:Import key from file'
-        'export:Export key to file'
-        'list:List all keys'
-        'show:Show key details'
-        'delete:Delete a key'
-        'sign:Sign data with key'
-        'verify:Verify signature'
-        'encrypt:Encrypt data'
-        'decrypt:Decrypt data'
-    )
-    
-    if (( CURRENT == 2 )); then
-        _describe 'key commands' key_commands
-    else
-        case $words[2] in
-            generate)
-                _arguments \
-                    '--name[Key name]:name:' \
-                    '--type[Key type]:type:(rsa ecdsa ed25519 aes)' \
-                    '--size[Key size]:size:(2048 3072 4096 256 384 521)' \
-                    '--output[Output file]:file:_files'
+            add)
+                # For add, can suggest existing keys or allow new ones
+                _ak_keys
                 ;;
-            show|delete|export)
-                _ak_key_names
-                ;;
-            import|sign|verify|encrypt|decrypt)
-                _files
+            search)
+                # For search, just allow any pattern
                 ;;
         esac
     fi
@@ -160,30 +170,41 @@ _ak_service() {
     fi
 }
 
-_ak_vault() {
-    local vault_commands
-    vault_commands=(
-        'create:Create new vault'
-        'open:Open vault'
-        'close:Close vault'
-        'lock:Lock vault'
-        'unlock:Unlock vault'
-        'status:Show vault status'
-        'backup:Backup vault'
-        'restore:Restore vault'
+_ak_test_completions() {
+    local test_args
+    test_args=(
+        '--fail-fast:Stop on first failure'
+        '--json:Output in JSON format'  
+        '--quiet:Suppress output'
+        '-p:Specify profile'
+        '--profile:Specify profile'
     )
     
-    if (( CURRENT == 2 )); then
-        _describe 'vault commands' vault_commands
+    if [[ $words[CURRENT-1] == "-p" || $words[CURRENT-1] == "--profile" ]]; then
+        _ak_profiles
     else
-        case $words[2] in
-            backup)
-                _files
-                ;;
-            restore)
-                _files
-                ;;
-        esac
+        local services profiles keys
+        services=(
+            'openai:OpenAI API'
+            'anthropic:Anthropic Claude API'
+            'google:Google APIs'
+            'github:GitHub API'
+            'gitlab:GitLab API'
+            'bitbucket:Bitbucket API'
+            'azure:Microsoft Azure APIs'
+            'aws:Amazon Web Services APIs'
+            'gcp:Google Cloud Platform APIs'
+            'digitalocean:DigitalOcean API'
+            'linode:Linode API'
+            'vultr:Vultr API'
+            'hetzner:Hetzner Cloud API'
+        )
+        
+        _alternative \
+            'services:services:_describe "services" services' \
+            'profiles:profiles:_ak_profiles' \
+            'keys:keys:_ak_keys' \
+            'options:options:_describe "options" test_args'
     fi
 }
 
@@ -191,42 +212,48 @@ _ak_vault() {
 _ak_profiles() {
     local profiles
     if (( $+commands[ak] )); then
-        profiles=(${(f)"$(ak profile list --names-only 2>/dev/null)"})
+        profiles=(${(f)"$(ak profiles 2>/dev/null | grep -v "Available profiles:" | grep -v "^$" | sed 's/^[[:space:]]*//')"})
         _describe 'profiles' profiles
     fi
 }
 
-_ak_key_names() {
+_ak_keys() {
     local keys
     if (( $+commands[ak] )); then
-        keys=(${(f)"$(ak key list --names-only 2>/dev/null)"})
+        # Try JSON output first, fall back to plain text
+        keys=(${(f)"$(ak secret ls --json 2>/dev/null | grep -o '"name":"[^"]*"' | cut -d'"' -f4 2>/dev/null || ak secret ls 2>/dev/null | awk '{print $1}' | grep -v "Available\|Total\|📂" | grep -v "^$")"})
         _describe 'keys' keys
+    fi
+}
+
+_ak_profiles_and_keys() {
+    local profiles keys combined
+    if (( $+commands[ak] )); then
+        profiles=(${(f)"$(ak profiles 2>/dev/null | grep -v "Available profiles:" | grep -v "^$" | sed 's/^[[:space:]]*//')"})
+        keys=(${(f)"$(ak secret ls --json 2>/dev/null | grep -o '"name":"[^"]*"' | cut -d'"' -f4 2>/dev/null || ak secret ls 2>/dev/null | awk '{print $1}' | grep -v "Available\|Total\|📂" | grep -v "^$")"})
+        combined=($profiles $keys)
+        _describe 'profiles and keys' combined
     fi
 }
 
 _ak_services() {
     local services
-    if (( $+commands[ak] )); then
-        services=(${(f)"$(ak service list --names-only 2>/dev/null)"})
-        _describe 'services' services
-    fi
-}
-
-_ak_config_keys() {
-    local config_keys
-    config_keys=(
-        'storage.backend:Storage backend type'
-        'storage.path:Storage path'
-        'crypto.algorithm:Default crypto algorithm'
-        'crypto.key_size:Default key size'
-        'security.timeout:Security timeout'
-        'security.auto_lock:Auto lock enabled'
-        'ui.theme:UI theme'
-        'ui.language:UI language'
-        'logging.level:Logging level'
-        'logging.file:Log file path'
+    services=(
+        'openai:OpenAI API'
+        'anthropic:Anthropic Claude API'
+        'google:Google APIs'
+        'github:GitHub API'
+        'gitlab:GitLab API'
+        'bitbucket:Bitbucket API'
+        'azure:Microsoft Azure APIs'
+        'aws:Amazon Web Services APIs'
+        'gcp:Google Cloud Platform APIs'
+        'digitalocean:DigitalOcean API'
+        'linode:Linode API'
+        'vultr:Vultr API'
+        'hetzner:Hetzner Cloud API'
     )
-    _describe 'config keys' config_keys
+    _describe 'services' services
 }
 
 # Completion for ak-gui

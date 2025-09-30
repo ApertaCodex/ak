@@ -4,127 +4,182 @@
 # This file provides bash completion for the ak command-line tool
 
 _ak_completion() {
-    local cur prev opts subcommands
+    local cur prev opts
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     
-    # Main commands
-    subcommands="config key profile service vault help version"
+    # Main commands (from main.cpp)
+    local main_commands="welcome help version backend secret profile service add set get ls rm search cp purge save load unload profiles env duplicate export import migrate run guard test doctor audit install-shell uninstall completion serve gui"
     
-    # Global options
-    global_opts="--help --version --verbose --quiet --config --profile"
-    
-    # Config subcommands
-    config_commands="init list show set get reset doctor"
-    
-    # Key subcommands  
-    key_commands="generate import export list show delete sign verify encrypt decrypt"
+    # Secret subcommands
+    local secret_subcommands="add set get ls rm search cp"
     
     # Profile subcommands
-    profile_commands="create list show activate delete export import"
+    local profile_subcommands="create list show activate delete export import"
     
     # Service subcommands
-    service_commands="list add remove test configure"
+    local service_subcommands="list add remove test configure"
     
-    # Vault subcommands
-    vault_commands="create open close lock unlock status backup restore"
+    # Global options
+    local global_opts="--help --version --json"
 
-    # Complete based on previous word
-    case "${prev}" in
-        ak)
-            COMPREPLY=( $(compgen -W "${subcommands} ${global_opts}" -- ${cur}) )
-            return 0
-            ;;
-        config)
-            COMPREPLY=( $(compgen -W "${config_commands}" -- ${cur}) )
-            return 0
-            ;;
-        key)
-            COMPREPLY=( $(compgen -W "${key_commands}" -- ${cur}) )
-            return 0
-            ;;
-        profile)
-            COMPREPLY=( $(compgen -W "${profile_commands}" -- ${cur}) )
-            return 0
-            ;;
-        service)
-            COMPREPLY=( $(compgen -W "${service_commands}" -- ${cur}) )
-            return 0
-            ;;
-        vault)
-            COMPREPLY=( $(compgen -W "${vault_commands}" -- ${cur}) )
-            return 0
-            ;;
-        --config)
-            # Complete with config file paths
-            COMPREPLY=( $(compgen -f -X '!*.conf' -- ${cur}) )
-            return 0
-            ;;
-        --profile)
-            # Complete with available profiles (if ak is available)
-            if command -v ak >/dev/null 2>&1; then
-                local profiles
-                profiles=$(ak profile list --names-only 2>/dev/null)
-                COMPREPLY=( $(compgen -W "${profiles}" -- ${cur}) )
-            fi
-            return 0
-            ;;
-        generate)
-            local key_types="rsa ecdsa ed25519 aes"
-            COMPREPLY=( $(compgen -W "${key_types} --name --type --size --output" -- ${cur}) )
-            return 0
-            ;;
-        --type)
-            local types="rsa ecdsa ed25519 aes"
-            COMPREPLY=( $(compgen -W "${types}" -- ${cur}) )
-            return 0
-            ;;
-        --size)
-            local sizes="2048 3072 4096 256 384 521"
-            COMPREPLY=( $(compgen -W "${sizes}" -- ${cur}) )
-            return 0
-            ;;
-        import|export)
-            # Complete with file paths
-            COMPREPLY=( $(compgen -f -- ${cur}) )
-            return 0
-            ;;
-        *)
-            # Complete with global options if no match
-            COMPREPLY=( $(compgen -W "${global_opts}" -- ${cur}) )
-            return 0
-            ;;
-    esac
+    # Helper function to get available keys/variables
+    _get_keys() {
+        if command -v ak >/dev/null 2>&1; then
+            ak secret ls --json 2>/dev/null | grep -o '"name":"[^"]*"' | cut -d'"' -f4 2>/dev/null || ak secret ls 2>/dev/null | awk '{print $1}' | grep -v "Available\|Total\|📂" | grep -v "^$"
+        fi
+    }
     
-    # Handle multi-level completions
-    case "${COMP_WORDS[1]}" in
-        config)
-            case "${COMP_WORDS[2]}" in
-                set|get)
-                    # Config keys
-                    local config_keys="storage.backend crypto.algorithm security.timeout ui.theme"
-                    COMPREPLY=( $(compgen -W "${config_keys}" -- ${cur}) )
+    # Helper function to get available profiles
+    _get_profiles() {
+        if command -v ak >/dev/null 2>&1; then
+            ak profiles 2>/dev/null | grep -v "Available profiles:" | grep -v "^$" | sed 's/^[[:space:]]*//'
+        fi
+    }
+
+    # Complete based on position and previous words
+    case "${COMP_CWORD}" in
+        1)
+            # First argument - main commands
+            COMPREPLY=( $(compgen -W "${main_commands} ${global_opts}" -- ${cur}) )
+            return 0
+            ;;
+        2)
+            # Second argument - subcommands or arguments
+            case "${COMP_WORDS[1]}" in
+                secret)
+                    COMPREPLY=( $(compgen -W "${secret_subcommands}" -- ${cur}) )
+                    return 0
+                    ;;
+                profile)
+                    COMPREPLY=( $(compgen -W "${profile_subcommands}" -- ${cur}) )
+                    return 0
+                    ;;
+                service)
+                    COMPREPLY=( $(compgen -W "${service_subcommands}" -- ${cur}) )
+                    return 0
+                    ;;
+                get|cp|rm)
+                    # Commands that take key names
+                    COMPREPLY=( $(compgen -W "$(_get_keys)" -- ${cur}) )
+                    return 0
+                    ;;
+                load)
+                    # Load can take either profiles or individual keys
+                    local profiles keys
+                    profiles=$(_get_profiles)
+                    keys=$(_get_keys)
+                    COMPREPLY=( $(compgen -W "${profiles} ${keys}" -- ${cur}) )
+                    return 0
+                    ;;
+                save)
+                    # Save takes profile name, then optionally key names
+                    COMPREPLY=( $(compgen -W "$(_get_profiles)" -- ${cur}) )
+                    return 0
+                    ;;
+                unload|duplicate)
+                    # Commands that take profile names
+                    COMPREPLY=( $(compgen -W "$(_get_profiles)" -- ${cur}) )
+                    return 0
+                    ;;
+                set|add)
+                    # These can complete with existing keys or allow new ones
+                    COMPREPLY=( $(compgen -W "$(_get_keys)" -- ${cur}) )
+                    return 0
+                    ;;
+                test)
+                    # Test can take service names or profile names with -p flag
+                    local services="openai anthropic google github gitlab bitbucket azure aws gcp digitalocean linode vultr hetzner"
+                    local profiles keys
+                    profiles=$(_get_profiles)
+                    keys=$(_get_keys)
+                    COMPREPLY=( $(compgen -W "${services} ${profiles} ${keys} -p --profile --fail-fast --json --quiet" -- ${cur}) )
+                    return 0
                     ;;
             esac
             ;;
-        key)
-            case "${COMP_WORDS[2]}" in
-                show|delete|export)
-                    # Complete with key names if available
-                    if command -v ak >/dev/null 2>&1; then
-                        local keys
-                        keys=$(ak key list --names-only 2>/dev/null)
-                        COMPREPLY=( $(compgen -W "${keys}" -- ${cur}) )
+        3)
+            # Third argument
+            case "${COMP_WORDS[1]}" in
+                secret)
+                    case "${COMP_WORDS[2]}" in
+                        get|cp|rm|set)
+                            COMPREPLY=( $(compgen -W "$(_get_keys)" -- ${cur}) )
+                            return 0
+                            ;;
+                        add)
+                            # For add, third argument could be a key name
+                            COMPREPLY=( $(compgen -W "$(_get_keys)" -- ${cur}) )
+                            return 0
+                            ;;
+                    esac
+                    ;;
+                profile)
+                    case "${COMP_WORDS[2]}" in
+                        show|activate|delete|export)
+                            COMPREPLY=( $(compgen -W "$(_get_profiles)" -- ${cur}) )
+                            return 0
+                            ;;
+                    esac
+                    ;;
+                save)
+                    # Third argument for save can be key names
+                    COMPREPLY=( $(compgen -W "$(_get_keys)" -- ${cur}) )
+                    return 0
+                    ;;
+                load)
+                    # Third argument for load could be --persist
+                    COMPREPLY=( $(compgen -W "--persist" -- ${cur}) )
+                    return 0
+                    ;;
+                cp)
+                    # Third argument for cp could be --clear
+                    COMPREPLY=( $(compgen -W "--clear" -- ${cur}) )
+                    return 0
+                    ;;
+                test)
+                    # Handle test with -p flag
+                    if [[ "${COMP_WORDS[2]}" == "-p" || "${COMP_WORDS[2]}" == "--profile" ]]; then
+                        COMPREPLY=( $(compgen -W "$(_get_profiles)" -- ${cur}) )
+                        return 0
                     fi
                     ;;
-                sign|verify|encrypt|decrypt)
-                    # Complete with files and keys
-                    COMPREPLY=( $(compgen -f -- ${cur}) )
+            esac
+            ;;
+        *)
+            # Fourth argument and beyond
+            case "${COMP_WORDS[1]}" in
+                save)
+                    # Additional key names for save command
+                    COMPREPLY=( $(compgen -W "$(_get_keys)" -- ${cur}) )
+                    return 0
+                    ;;
+                secret)
+                    case "${COMP_WORDS[2]}" in
+                        cp)
+                            # Handle --clear flag for secret cp
+                            if [[ "${prev}" == "--clear" ]]; then
+                                COMPREPLY=( $(compgen -W "10s 20s 30s 60s 120s" -- ${cur}) )
+                                return 0
+                            fi
+                            ;;
+                    esac
+                    ;;
+                cp)
+                    # Handle --clear flag for cp
+                    if [[ "${prev}" == "--clear" ]]; then
+                        COMPREPLY=( $(compgen -W "10s 20s 30s 60s 120s" -- ${cur}) )
+                        return 0
+                    fi
                     ;;
             esac
             ;;
     esac
+
+    # Default completion
+    COMPREPLY=( $(compgen -W "${global_opts}" -- ${cur}) )
+    return 0
 }
 
 # Register the completion function
@@ -144,7 +199,7 @@ if command -v ak-gui >/dev/null 2>&1; then
             --profile)
                 if command -v ak >/dev/null 2>&1; then
                     local profiles
-                    profiles=$(ak profile list --names-only 2>/dev/null)
+                    profiles=$(ak profiles 2>/dev/null | grep -v "Available profiles:" | grep -v "^$" | sed 's/^[[:space:]]*//')
                     COMPREPLY=( $(compgen -W "${profiles}" -- ${cur}) )
                 fi
                 return 0

@@ -38,13 +38,13 @@ RequestExecutionLevel admin
 !insertmacro MUI_LANGUAGE "English"
 
 ; Version Information
-VIProductVersion "4.8.0.0"
+VIProductVersion "4.9.0.0"
 VIAddVersionKey "ProductName" "AK API Key Manager"
 VIAddVersionKey "CompanyName" "AK Development Team"
 VIAddVersionKey "LegalCopyright" "© 2025 AK Development Team"
 VIAddVersionKey "FileDescription" "AK API Key Manager Installer"
-VIAddVersionKey "FileVersion" "4.8.0"
-VIAddVersionKey "ProductVersion" "4.8.0"
+VIAddVersionKey "FileVersion" "4.9.0"
+VIAddVersionKey "ProductVersion" "4.9.0"
 
 ; Create icon from PNG if needed
 Function .onInit
@@ -94,7 +94,7 @@ Section "Install"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AK" "InstallLocation" "$INSTDIR"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AK" "DisplayIcon" "$INSTDIR\icons\logo.png"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AK" "Publisher" "AK Development Team"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AK" "DisplayVersion" "4.8.0"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AK" "DisplayVersion" "4.9.0"
   
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   IntFmt $0 "0x%08X" $0
