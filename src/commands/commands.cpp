@@ -1384,6 +1384,7 @@ namespace ak
         {
             std::vector<std::string> servicesToTest;
             bool failFast = std::find(args.begin(), args.end(), "--fail-fast") != args.end();
+            bool debugMode = std::find(args.begin(), args.end(), "--debug") != args.end();
             // Note: jsonOutput and quiet flags are parsed but functionality uses cfg.json directly
             // These variables are kept for potential future use
             (void)(std::find(args.begin(), args.end(), "--json") != args.end() || cfg.json); // jsonOutput - suppressed unused warning
@@ -1404,7 +1405,11 @@ namespace ak
                         i++; // Skip next argument
                     }
                 }
-                else if (args[i] != "--fail-fast" && args[i] != "--all" && args[i] != "--json" && args[i] != "--quiet")
+                else if (args[i] == "--debug")
+                {
+                    debugMode = true;
+                }
+                else if (args[i] != "--fail-fast" && args[i] != "--all" && args[i] != "--json" && args[i] != "--quiet" && args[i] != "--debug")
                 {
                     // Determine if this is a key name or service name
                     std::string arg = args[i];
@@ -1581,7 +1586,51 @@ namespace ak
                 core::working(cfg, "Testing " + std::to_string(servicesToTest.size()) + " API connections...");
             }
 
-            auto results = services::run_tests_parallel(cfg, servicesToTest, failFast);
+            auto results = services::run_tests_parallel(cfg, servicesToTest, failFast, profileName, debugMode);
+
+            auto printDebugInfo = [&](const std::string &indent, const services::TestResult &res) {
+                if (!debugMode)
+                {
+                    return;
+                }
+
+                if (!res.curl_command.empty())
+                {
+                    std::cout << indent << ui::colorize("curl:", ui::Colors::DIM) << " " << res.curl_command << "\n";
+                }
+
+                if (res.http_status != 0 || res.exit_code != 0)
+                {
+                    std::ostringstream statusLine;
+                    if (res.http_status != 0)
+                    {
+                        statusLine << "HTTP " << res.http_status;
+                    }
+                    if (res.exit_code != 0)
+                    {
+                        if (!statusLine.str().empty())
+                        {
+                            statusLine << " | ";
+                        }
+                        statusLine << "curl exit " << res.exit_code;
+                    }
+                    if (!statusLine.str().empty())
+                    {
+                        std::cout << indent << ui::colorize("status:", ui::Colors::DIM) << " " << statusLine.str() << "\n";
+                    }
+                }
+
+                if (!res.response_snippet.empty())
+                {
+                    std::cout << indent << ui::colorize("response:", ui::Colors::DIM) << "\n";
+                    std::istringstream iss(res.response_snippet);
+                    std::string line;
+                    while (std::getline(iss, line))
+                    {
+                        std::cout << indent << "  " << line << "\n";
+                    }
+                }
+            };
 
             // Output results
             if (cfg.json)
@@ -1668,6 +1717,8 @@ namespace ak
                             std::cout << ui::colorize("❌", ui::Colors::BRIGHT_RED) << "\n\n";
                             std::cout << ui::colorize("❌ " + serviceName + " API: " + (result.error_message.empty() ? "Test failed" : result.error_message), ui::Colors::BRIGHT_RED) << "\n";
                         }
+
+                        printDebugInfo("    ", result);
                     }
                     else
                     {
@@ -1765,6 +1816,9 @@ namespace ak
                         {
                             std::cout << ui::colorize("❌", ui::Colors::BRIGHT_RED) << "\n";
                         }
+
+                        std::string childIndent = isLast ? "    " : "│   ";
+                        printDebugInfo(childIndent, result);
                     }
                 }
 
@@ -1789,6 +1843,10 @@ namespace ak
                     else
                     {
                         std::cout << ui::colorize("📊 Results: " + std::to_string(passed) + " passed, " + std::to_string(failed) + " failed", ui::Colors::BRIGHT_BLUE) << "\n";
+                        if (!debugMode)
+                        {
+                            std::cout << ui::colorize("💡 Tip: re-run with '--debug' for detailed curl diagnostics.", ui::Colors::DIM) << "\n";
+                        }
                     }
                 }
             }

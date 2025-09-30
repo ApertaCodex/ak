@@ -4,6 +4,7 @@
 
 #include "core/config.hpp"
 #include "services/services.hpp"
+#include "gui/widgets/common/secureinput.hpp"
 #include <QWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -19,6 +20,7 @@
 #include <QStringList>
 #include <QComboBox>
 #include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QCheckBox>
 #include <QDialog>
 #include <QFormLayout>
@@ -40,15 +42,18 @@ public:
     services::Service getService() const;
     void setService(const services::Service &service);
     bool isBuiltIn() const;
+    QString getDetectedApiKeyValue() const;
 
 private slots:
     void validateInput();
     void onTestableChanged(bool testable);
+    void onAuthTypeChanged(int index);
+    void onTestMethodChanged(int index);
+    void importFromCurl();
 
 private:
     void setupUi();
     void updateUi();
-    
     QFormLayout *formLayout;
     QLineEdit *nameEdit;
     QLineEdit *keyNameEdit;
@@ -56,10 +61,18 @@ private:
     QLineEdit *testEndpointEdit;
     QComboBox *testMethodCombo;
     QLineEdit *testHeadersEdit;
+    QPlainTextEdit *testBodyEdit;
     QCheckBox *testableCheckBox;
     QDialogButtonBox *buttonBox;
     QCheckBox *builtInCheckBox;
-    
+    QComboBox *authTypeCombo;
+    QLineEdit *authParameterEdit;
+    QLineEdit *authPrefixEdit;
+    SecureInputWidget *apiKeyValueEdit;
+    QPushButton *importCurlButton;
+    QString detectedApiKeyValue;
+    QString lastCurlCommand;
+
     services::Service currentService;
 };
 

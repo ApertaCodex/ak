@@ -3,6 +3,7 @@
 #include "gui/widgets/keymanager.hpp"
 #include "gui/widgets/common/dialogs.hpp"
 #include "gui/widgets/common/secureinput.hpp"
+#include "gui/widgets/servicehelpers.hpp"
 #include "storage/vault.hpp"
 #include "services/services.hpp"
 #include "core/config.hpp"
@@ -556,7 +557,7 @@ void KeyManagerWidget::selectKey(const QString &keyName)
 
 void KeyManagerWidget::addKey()
 {
-    KeyEditDialog dialog(this);
+    KeyEditDialog dialog(config, this);
     if (dialog.exec() == QDialog::Accepted) {
         QString name = dialog.getKeyName();
         QString value = dialog.getKeyValue();
@@ -588,7 +589,7 @@ void KeyManagerWidget::editKey()
     
     if (!valueItem) return;
     
-    KeyEditDialog dialog(name, valueItem->getActualValue(), service, this);
+    KeyEditDialog dialog(config, name, valueItem->getActualValue(), service, this);
     if (dialog.exec() == QDialog::Accepted) {
         QString newValue = dialog.getKeyValue();
         
@@ -811,9 +812,11 @@ void KeyManagerWidget::testAllKeys()
     statusLabel->setStyleSheet("color: #0066cc; font-size: 12px;");
     
     // Run tests
-    QTimer::singleShot(100, [this, configuredServices]() {
+    std::string profileName = currentProfile.toStdString();
+
+    QTimer::singleShot(100, [this, configuredServices, profileName]() {
         try {
-            auto results = ak::services::run_tests_parallel(config, configuredServices, false);
+            auto results = ak::services::run_tests_parallel(config, configuredServices, false, profileName, false);
             
             // Update status for each service
             for (const auto& result : results) {
@@ -857,42 +860,7 @@ void KeyManagerWidget::testAllKeys()
 
 QString KeyManagerWidget::getServiceCode(const QString &displayName)
 {
-    static const QMap<QString, QString> serviceCodes = {
-        {"OpenAI", "openai"},
-        {"Anthropic", "anthropic"},
-        {"Google", "gemini"},
-        {"Gemini", "gemini"},
-        {"Azure", "azure_openai"},
-        {"AWS", "aws"},
-        {"GitHub", "github"},
-        {"Slack", "slack"},
-        {"Discord", "discord"},
-        {"Stripe", "stripe"},
-        {"Twilio", "twilio"},
-        {"SendGrid", "sendgrid"},
-        {"Mailgun", "mailgun"},
-        {"Cloudflare", "cloudflare"},
-        {"Vercel", "vercel"},
-        {"Netlify", "netlify"},
-        {"Heroku", "heroku"},
-        {"Groq", "groq"},
-        {"Mistral", "mistral"},
-        {"Cohere", "cohere"},
-        {"Brave", "brave"},
-        {"DeepSeek", "deepseek"},
-        {"Exa", "exa"},
-        {"Fireworks", "fireworks"},
-        {"Hugging Face", "huggingface"},
-        {"OpenRouter", "openrouter"},
-        {"Perplexity", "perplexity"},
-        {"SambaNova", "sambanova"},
-        {"Tavily", "tavily"},
-        {"Together AI", "together"},
-        {"xAI", "xai"}
-    };
-    
-    auto it = serviceCodes.find(displayName);
-    return it != serviceCodes.end() ? it.value() : "";
+    return serviceCodeForDisplay(displayName);
 }
 
 } // namespace widgets

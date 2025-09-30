@@ -9,9 +9,46 @@
 #include <exception>
 #include <fstream>
 #include <iterator>
+#include <iomanip>
 
 // Include cpp-httplib header
 #include "httplib.h"
+
+namespace {
+
+std::string escapeJson(const std::string& value) {
+    std::ostringstream oss;
+    for (char c : value) {
+        switch (c) {
+        case '\\':
+            oss << "\\\\";
+            break;
+        case '\"':
+            oss << "\\\"";
+            break;
+        case '\n':
+            oss << "\\n";
+            break;
+        case '\r':
+            oss << "\\r";
+            break;
+        case '\t':
+            oss << "\\t";
+            break;
+        default:
+            if (static_cast<unsigned char>(c) < 0x20) {
+                oss << "\\u" << std::hex << std::setw(4) << std::setfill('0')
+                    << static_cast<int>(static_cast<unsigned char>(c)) << std::dec;
+            } else {
+                oss << c;
+            }
+            break;
+        }
+    }
+    return oss.str();
+}
+
+}
 
 namespace ak {
 namespace http {
@@ -272,13 +309,17 @@ void Server::handleGetServices(const void* /*req*/, void* res) {
             first = false;
             
             json << "{"
-                 << "\"name\":\"" << service.name << "\","
-                 << "\"keyName\":\"" << service.keyName << "\","
-                 << "\"description\":\"" << service.description << "\","
-                 << "\"testEndpoint\":\"" << service.testEndpoint << "\","
-                 << "\"testMethod\":\"" << service.testMethod << "\","
-                 << "\"testHeaders\":\"" << service.testHeaders << "\","
-                 << "\"authMethod\":\"" << service.authMethod << "\","
+                 << "\"name\":\"" << escapeJson(service.name) << "\","
+                 << "\"keyName\":\"" << escapeJson(service.keyName) << "\","
+                 << "\"description\":\"" << escapeJson(service.description) << "\","
+                 << "\"testEndpoint\":\"" << escapeJson(service.testEndpoint) << "\","
+                 << "\"testMethod\":\"" << escapeJson(service.testMethod) << "\","
+                 << "\"testHeaders\":\"" << escapeJson(service.testHeaders) << "\","
+                 << "\"authMethod\":\"" << escapeJson(service.authMethod) << "\","
+                 << "\"authLocation\":\"" << escapeJson(service.authLocation) << "\","
+                 << "\"authParameter\":\"" << escapeJson(service.authParameter) << "\","
+                 << "\"authPrefix\":\"" << escapeJson(service.authPrefix) << "\","
+                 << "\"testBody\":\"" << escapeJson(service.testBody) << "\","
                  << "\"testable\":" << (service.testable ? "true" : "false") << ","
                  << "\"isBuiltIn\":" << (service.isBuiltIn ? "true" : "false")
                  << "}";
@@ -761,7 +802,17 @@ void Server::handlePostService(const void* req, void* res) {
         std::string body = request.body;
         
         // Parse JSON body for service creation
-        // Expected format: {"name": "service_name", "keyName": "API_KEY", "description": "desc", "testEndpoint": "url", "testMethod": "GET", "authMethod": "Bearer"}
+        // Expected format: {
+        //   "name": "service_name",
+        //   "keyName": "API_KEY",
+        //   "description": "desc",
+        //   "testEndpoint": "url",
+        //   "testMethod": "GET",
+        //   "authMethod": "Bearer",
+        //   "authLocation": "header",
+        //   "authParameter": "Authorization",
+        //   "authPrefix": "Bearer "
+        // }
         size_t namePos = body.find("\"name\":");
         size_t keyPos = body.find("\"keyName\":");
         
@@ -787,6 +838,10 @@ void Server::handlePostService(const void* req, void* res) {
         std::string testEndpoint = extractField("testEndpoint", false);
         std::string testMethod = extractField("testMethod", false);
         std::string authMethod = extractField("authMethod", false);
+        std::string authLocation = extractField("authLocation", false);
+        std::string authParameter = extractField("authParameter", false);
+        std::string authPrefix = extractField("authPrefix", false);
+        std::string testBody = extractField("testBody", false);
         
         if (name.empty() || keyName.empty()) {
             response.status = 400;
@@ -797,9 +852,11 @@ void Server::handlePostService(const void* req, void* res) {
         // Set defaults
         if (testMethod.empty()) testMethod = "GET";
         if (authMethod.empty()) authMethod = "Bearer";
+        if (authLocation.empty()) authLocation = "header";
         
         // Create service
-        services::Service service(name, keyName, description, testEndpoint, testMethod, "", authMethod, !testEndpoint.empty(), false);
+        services::Service service(name, keyName, description, testEndpoint, testMethod, "", authMethod,
+                                  !testEndpoint.empty(), false, authLocation, authParameter, authPrefix, testBody);
         services::addService(config_, service);
         
         response.status = 201;
@@ -856,6 +913,18 @@ void Server::handlePutService(const void* req, void* res) {
         
         std::string authMethod = extractField("authMethod");
         if (!authMethod.empty()) service.authMethod = authMethod;
+
+        std::string authLocation = extractField("authLocation");
+        if (!authLocation.empty()) service.authLocation = authLocation;
+
+        std::string authParameter = extractField("authParameter");
+        if (!authParameter.empty()) service.authParameter = authParameter;
+
+        std::string authPrefix = extractField("authPrefix");
+        if (!authPrefix.empty()) service.authPrefix = authPrefix;
+
+        std::string testBody = extractField("testBody");
+        if (!testBody.empty()) service.testBody = testBody;
         
         if (service.keyName.empty()) {
             response.status = 400;
@@ -999,7 +1068,7 @@ void Server::handleTestServices(const void* req, void* res) {
         }
         
         // Run tests
-        auto results = services::run_tests_parallel(config_, services, failFast, profileName);
+        auto results = services::run_tests_parallel(config_, services, failFast, profileName, false);
         
         std::ostringstream json;
         json << "{\"results\":[";
@@ -1115,13 +1184,13 @@ void Server::handleGetProfileKeysUnmasked(const void* req, void* res) {
 
 std::string Server::jsonError(const std::string& message, int code) {
     std::ostringstream json;
-    json << "{\"error\":\"" << message << "\",\"code\":" << code << "}";
+    json << "{\"error\":\"" << escapeJson(message) << "\",\"code\":" << code << "}";
     return json.str();
 }
 
 std::string Server::jsonSuccess(const std::string& message) {
     std::ostringstream json;
-    json << "{\"success\":true,\"message\":\"" << message << "\"}";
+    json << "{\"success\":true,\"message\":\"" << escapeJson(message) << "\"}";
     return json.str();
 }
 

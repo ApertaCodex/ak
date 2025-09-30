@@ -113,18 +113,18 @@ TEST(DetectConfiguredServicesFunction, ReturnedServicesShouldBeTestable) {
 
 TEST(CurlOkFunction, ShouldHandleBasicCurlOperations) {
     // Test with a simple operation that should work
-    auto result = curl_ok("--version");
-    
-    // This might fail if curl isn't available, but shouldn't crash
-    // We mainly want to test that the function can be called
-    ASSERT_TRUE(result.first == true || result.first == false);
+    auto exec = curl_ok("--version", false);
+
+    // This might fail if curl isn't available, but the call itself should succeed
+    EXPECT_TRUE(exec.command.find("curl") != std::string::npos);
+    SUCCEED();
 }
 
 TEST(RunTestsParallelFunction, ShouldHandleEmptyServiceList) {
     ak::core::Config cfg;
     std::vector<std::string> emptyServices;
     
-    auto results = run_tests_parallel(cfg, emptyServices, false);
+    auto results = run_tests_parallel(cfg, emptyServices, false, "", false);
     
     ASSERT_TRUE(results.empty());
 }
@@ -133,7 +133,7 @@ TEST(RunTestsParallelFunction, ShouldReturnResultsForAllProvidedServices) {
     ak::core::Config cfg;
     std::vector<std::string> services = {"openai", "anthropic"};
     
-    auto results = run_tests_parallel(cfg, services, false);
+    auto results = run_tests_parallel(cfg, services, false, "", false);
     
     ASSERT_EQ(results.size(), 2u);
     
@@ -152,8 +152,8 @@ TEST(RunTestsParallelFunction, ShouldRespectFailFastFlag) {
     std::vector<std::string> services = {"openai", "anthropic", "groq"};
     
     // Test both fail_fast modes
-    auto results1 = run_tests_parallel(cfg, services, true);
-    auto results2 = run_tests_parallel(cfg, services, false);
+    auto results1 = run_tests_parallel(cfg, services, true, "", false);
+    auto results2 = run_tests_parallel(cfg, services, false, "", false);
     
     // Both should return some results (exact behavior depends on service availability)
     ASSERT_LE(results1.size(), services.size());

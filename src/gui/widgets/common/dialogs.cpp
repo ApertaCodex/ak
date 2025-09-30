@@ -2,7 +2,9 @@
 
 #include "gui/widgets/common/dialogs.hpp"
 #include "gui/widgets/common/secureinput.hpp"
+#include "gui/widgets/servicemanager.hpp"
 #include "services/services.hpp"
+#include <algorithm>
 #include <QApplication>
 #include <QMessageBox>
 #include <QFileDialog>
@@ -60,28 +62,29 @@ void BaseDialog::setValid(bool valid)
 }
 
 // KeyEditDialog Implementation
-KeyEditDialog::KeyEditDialog(QWidget *parent)
-    : BaseDialog("Add New Key", parent), nameEdit(nullptr), valueEdit(nullptr), 
-      serviceCombo(nullptr), editMode(false)
+KeyEditDialog::KeyEditDialog(const core::Config& cfg, QWidget *parent)
+    : BaseDialog("Add New Key", parent), nameEdit(nullptr), valueEdit(nullptr),
+      serviceCombo(nullptr), pendingServiceId(), config(cfg), editMode(false)
 {
     setupUi();
 }
 
-KeyEditDialog::KeyEditDialog(const QString &keyName, const QString &keyValue, 
+KeyEditDialog::KeyEditDialog(const core::Config& cfg, const QString &keyName, const QString &keyValue,
                            const QString &service, QWidget *parent)
     : BaseDialog("Edit Key", parent), nameEdit(nullptr), valueEdit(nullptr),
-      serviceCombo(nullptr), editMode(true)
+      serviceCombo(nullptr), pendingServiceId(), config(cfg), editMode(true)
 {
     setupUi();
-    
+
     nameEdit->setText(keyName);
     valueEdit->setText(keyValue);
-    
-    int serviceIndex = serviceCombo->findText(service);
-    if (serviceIndex >= 0) {
-        serviceCombo->setCurrentIndex(serviceIndex);
+
+    int serviceIndex = serviceCombo->findData(service);
+    if (serviceIndex < 0) {
+        serviceIndex = 0;
     }
-    
+    serviceCombo->setCurrentIndex(serviceIndex);
+
     // In edit mode, don't allow changing the name
     nameEdit->setReadOnly(true);
 }
@@ -96,6 +99,7 @@ void KeyEditDialog::setupUi()
     
     serviceCombo = new QComboBox(this);
     populateServices();
+    connect(serviceCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &KeyEditDialog::onServiceChanged);
     
     addFormRow("Key Name:", nameEdit);
     addFormRow("Key Value:", valueEdit);
@@ -116,33 +120,7 @@ void KeyEditDialog::setupUi()
 
 void KeyEditDialog::populateServices()
 {
-    serviceCombo->addItem("Custom", "custom");
-    
-    // Get known services from the services module
-    auto knownServices = ak::services::getKnownServiceKeys();
-    QStringList services;
-    for (const auto& service : knownServices) {
-        services << QString::fromStdString(service);
-    }
-    services.sort();
-    
-    for (const QString& service : services) {
-        QString displayName = service;
-        // Convert snake_case to Title Case
-        displayName = displayName.replace('_', ' ');
-        QStringList parts = displayName.split(' ');
-        for (QString& part : parts) {
-            if (!part.isEmpty()) {
-                part[0] = part[0].toUpper();
-                for (int i = 1; i < part.length(); ++i) {
-                    part[i] = part[i].toLower();
-                }
-            }
-        }
-        displayName = parts.join(' ');
-        
-        serviceCombo->addItem(displayName, service.toLower());
-    }
+    refreshServiceList();
 }
 
 QString KeyEditDialog::getKeyName() const
@@ -157,7 +135,15 @@ QString KeyEditDialog::getKeyValue() const
 
 QString KeyEditDialog::getService() const
 {
-    return serviceCombo->currentData().toString();
+    QVariant data = serviceCombo->currentData();
+    if (data.isValid()) {
+        QString value = data.toString();
+        if (value == "__add_new__") {
+            return QString();
+        }
+        return value;
+    }
+    return QString();
 }
 
 void KeyEditDialog::validateInput()
@@ -172,6 +158,124 @@ void KeyEditDialog::validateInput()
     }
     
     setValid(valid);
+}
+
+void KeyEditDialog::refreshServiceList()
+{
+    bool blocked = serviceCombo->blockSignals(true);
+    serviceCombo->clear();
+    availableServices.clear();
+
+    serviceCombo->addItem(QStringLiteral("Auto-detect from key name"), QString());
+
+    try {
+        auto services = ak::services::loadAllServices(config);
+        for (const auto& [name, service] : services) {
+            availableServices.push_back(service);
+        }
+    } catch (const std::exception&) {
+        // Ignore loading errors and leave list minimal
+    }
+
+    std::sort(availableServices.begin(), availableServices.end(), [this](const services::Service& a, const services::Service& b) {
+        return displayNameForService(a).localeAwareCompare(displayNameForService(b)) < 0;
+    });
+
+    for (const auto& service : availableServices) {
+        QString id = QString::fromStdString(service.name);
+        QString label = displayNameForService(service);
+        serviceCombo->addItem(label, id);
+    }
+
+    serviceCombo->insertSeparator(serviceCombo->count());
+    serviceCombo->addItem(QStringLiteral("Add new service…"), QStringLiteral("__add_new__"));
+
+    serviceCombo->blockSignals(blocked);
+}
+
+QString KeyEditDialog::displayNameForService(const services::Service &service) const
+{
+    if (!service.description.empty()) {
+        return QString::fromStdString(service.description);
+    }
+
+    QString base = QString::fromStdString(service.name);
+    base.replace('_', ' ');
+    base.replace('-', ' ');
+    QStringList parts = base.split(' ', Qt::SkipEmptyParts);
+    for (QString& part : parts) {
+        if (!part.isEmpty()) {
+            part[0] = part[0].toUpper();
+            for (int i = 1; i < part.length(); ++i) {
+                part[i] = part[i].toLower();
+            }
+        }
+    }
+    return parts.join(' ');
+}
+
+void KeyEditDialog::onServiceChanged(int index)
+{
+    QString value = serviceCombo->itemData(index).toString();
+    if (value == QStringLiteral("__add_new__")) {
+        if (!handleNewServiceFlow()) {
+            serviceCombo->blockSignals(true);
+            serviceCombo->setCurrentIndex(0);
+            serviceCombo->blockSignals(false);
+        }
+    }
+}
+
+bool KeyEditDialog::handleNewServiceFlow()
+{
+    ServiceEditorDialog dialog;
+
+    services::Service seed;
+    seed.isBuiltIn = false;
+    QString keyName = nameEdit->text().trimmed();
+    if (!keyName.isEmpty()) {
+        seed.keyName = keyName.toUpper().toStdString();
+        QString simplified = keyName.toLower();
+        simplified.replace("_api_key", "");
+        simplified.replace("api_key", "");
+        simplified.replace('_', ' ');
+        simplified = simplified.trimmed().replace(' ', '_');
+        if (!simplified.isEmpty()) {
+            seed.name = simplified.toStdString();
+        }
+    }
+    dialog.setService(seed);
+
+    if (dialog.exec() != QDialog::Accepted) {
+        return false;
+    }
+
+    services::Service newService = dialog.getService();
+    newService.isBuiltIn = false;
+
+    try {
+        services::addService(config, newService);
+    } catch (const std::exception& e) {
+        QMessageBox::critical(this, "Service Creation Failed", QString::fromStdString(e.what()));
+        return false;
+    }
+
+    pendingServiceId = QString::fromStdString(newService.name);
+    refreshServiceList();
+
+    int index = serviceCombo->findData(pendingServiceId);
+    if (index >= 0) {
+        serviceCombo->blockSignals(true);
+        serviceCombo->setCurrentIndex(index);
+        serviceCombo->blockSignals(false);
+    }
+
+    QString detectedValue = dialog.getDetectedApiKeyValue();
+    if (!detectedValue.isEmpty() && valueEdit->text().isEmpty()) {
+        valueEdit->setText(detectedValue);
+    }
+
+    return true;
 }
 
 // ProfileCreateDialog Implementation

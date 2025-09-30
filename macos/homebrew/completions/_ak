@@ -26,17 +26,26 @@ _ak() {
                 service)
                     _ak_service
                     ;;
+                guard)
+                    _ak_guard
+                    ;;
                 get|cp|rm)
                     _ak_keys
                     ;;
                 load)
                     _ak_profiles_and_keys
                     ;;
-                save|unload|duplicate)
+                save|unload|duplicate|profiles)
                     _ak_profiles
                     ;;
                 set|add)
                     _ak_keys
+                    ;;
+                env)
+                    _ak_env
+                    ;;
+                purge)
+                    _ak_purge
                     ;;
                 test)
                     _ak_test_completions
@@ -53,6 +62,7 @@ _ak_commands() {
         'secret:Secret/API key management'
         'profile:Profile management'
         'service:Service configuration and testing'
+        'guard:Shell guard controls'
         
         # Legacy/alias commands
         'add:Add a new secret (alias for secret add)'
@@ -69,6 +79,7 @@ _ak_commands() {
         'unload:Unload profile'
         'profiles:List available profiles'
         'duplicate:Duplicate a profile'
+        'env:Print export commands for a profile'
         
         # Utilities
         'test:Test API connections'
@@ -77,6 +88,7 @@ _ak_commands() {
         'export:Export data'
         'import:Import data'
         'migrate:Migrate data'
+        'run:Run custom tasks'
         
         # System
         'install-shell:Install shell integration'
@@ -84,6 +96,8 @@ _ak_commands() {
         'completion:Generate completion scripts'
         'serve:Start HTTP server'
         'gui:Launch GUI interface'
+        'backend:Show active storage backend'
+        'purge:Permanently delete stored data'
         
         # Info
         'help:Show help information'
@@ -126,48 +140,104 @@ _ak_secret() {
 _ak_profile() {
     local profile_commands
     profile_commands=(
-        'create:Create new profile'
-        'list:List all profiles'
-        'show:Show profile details'
-        'activate:Activate profile'
-        'delete:Delete profile'
-        'export:Export profile'
-        'import:Import profile'
+        'save:Save secrets to a profile'
+        'load:Load a profile into the shell'
+        'unload:Unload profile variables'
+        'ls:List profiles'
+        'list:Alias for ls'
+        'duplicate:Duplicate a profile'
+        'rm:Remove a profile'
+        'remove:Alias for rm'
     )
-    
+
     if (( CURRENT == 2 )); then
         _describe 'profile commands' profile_commands
-    else
-        case $words[2] in
-            show|activate|delete|export)
-                _ak_profiles
-                ;;
-            import)
-                _files
-                ;;
-        esac
+        return
     fi
+
+    case $words[2] in
+        save)
+            if (( CURRENT == 3 )); then
+                _ak_profiles
+            else
+                _ak_keys
+            fi
+            ;;
+        load|unload)
+            (( CURRENT == 3 )) && _ak_profiles
+            ;;
+        duplicate)
+            (( CURRENT == 3 )) && _ak_profiles
+            ;;
+        rm|remove)
+            (( CURRENT == 3 )) && _ak_profiles
+            ;;
+        ls|list)
+            ;;
+    esac
 }
 
 _ak_service() {
     local service_commands
     service_commands=(
-        'list:List available services'
-        'add:Add new service'
-        'remove:Remove service'
-        'test:Test service connection'
-        'configure:Configure service'
+        'ls:List available services'
+        'list:Alias for ls'
+        'add:Add a new custom service'
+        'show:Show service details'
+        'edit:Edit a custom service'
+        'rm:Remove a custom service'
+        'remove:Alias for rm'
+        'delete:Alias for rm'
     )
-    
+
     if (( CURRENT == 2 )); then
         _describe 'service commands' service_commands
-    else
-        case $words[2] in
-            remove|test|configure)
-                _ak_services
-                ;;
-        esac
+        return
     fi
+
+    case $words[2] in
+        show|edit|rm|remove|delete)
+            _ak_services
+            ;;
+    esac
+}
+
+_ak_guard() {
+    local guard_commands
+    guard_commands=(
+        'enable:Enable shell guard'
+        'disable:Disable shell guard'
+        'status:Show guard status'
+    )
+
+    if (( CURRENT == 2 )); then
+        _describe 'guard commands' guard_commands
+        return
+    fi
+}
+
+_ak_env() {
+    local env_options
+    env_options=(
+        '--profile:Profile to export'
+    )
+
+    if [[ $words[CURRENT-1] == "--profile" ]]; then
+        _ak_profiles
+        return
+    fi
+
+    _describe 'env options' env_options
+}
+
+_ak_purge() {
+    local purge_options
+    purge_options=(
+        '--no-backup:Skip creating a backup before deleting'
+        '--force:Bypass interactive confirmation'
+    )
+
+    _describe 'purge options' purge_options
 }
 
 _ak_test_completions() {
@@ -178,6 +248,7 @@ _ak_test_completions() {
         '--quiet:Suppress output'
         '-p:Specify profile'
         '--profile:Specify profile'
+        '--debug:Show full curl command and response details'
     )
     
     if [[ $words[CURRENT-1] == "-p" || $words[CURRENT-1] == "--profile" ]]; then

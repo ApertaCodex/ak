@@ -2,6 +2,8 @@
 
 #ifdef BUILD_GUI
 
+#include "core/config.hpp"
+#include "services/services.hpp"
 #include <QDialog>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -15,6 +17,7 @@
 #include <QProgressBar>
 #include <QString>
 #include <QStringList>
+#include <vector>
 
 namespace ak {
 namespace gui {
@@ -49,8 +52,8 @@ class KeyEditDialog : public BaseDialog
     Q_OBJECT
 
 public:
-    explicit KeyEditDialog(QWidget *parent = nullptr);
-    KeyEditDialog(const QString &keyName, const QString &keyValue, 
+    explicit KeyEditDialog(const core::Config& cfg, QWidget *parent = nullptr);
+    KeyEditDialog(const core::Config& cfg, const QString &keyName, const QString &keyValue,
                   const QString &service, QWidget *parent = nullptr);
 
     QString getKeyName() const;
@@ -59,14 +62,21 @@ public:
 
 private slots:
     void validateInput();
+    void onServiceChanged(int index);
 
 private:
     void setupUi();
     void populateServices();
+    void refreshServiceList();
+    bool handleNewServiceFlow();
+    QString displayNameForService(const services::Service &service) const;
 
     QLineEdit *nameEdit;
     SecureInputWidget *valueEdit;
     QComboBox *serviceCombo;
+    QString pendingServiceId;
+    const core::Config& config;
+    std::vector<services::Service> availableServices;
     bool editMode;
 };
 
