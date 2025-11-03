@@ -1,0 +1,610 @@
+name: Release AK
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+env:
+  BUILD_TYPE: Release
+  ARTIFACT_NAME: ak
+  DISTRIBUTIONS: "noble jammy focal plucky"
+
+jobs:
+  detect_version_bump:
+    name: Detect Version Bump Type
+    runs-on: ubuntu-22.04
+    outputs:
+      bump_type: ${{ steps.detect.outputs.bump_type }}
+      current_version: ${{ steps.version.outputs.current }}
+      new_version: ${{ steps.version.outputs.new }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: version
+        run: |
+          CURRENT=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT"
+
+      - name: Detect bump type from commit messages
+        id: detect
+        if: github.event_name == 'push'
+        run: |
+          # Check last commit message for version bump indicators
+          LAST_COMMIT=$(git log -1 --pretty=%B)
+          BUMP_TYPE="patch"  # default
+          
+          if echo "$LAST_COMMIT" | grep -qiE "\[major\]|major version|breaking"; then
+            BUMP_TYPE="major"
+          elif echo "$LAST_COMMIT" | grep -qiE "\[minor\]|minor version|feature"; then
+            BUMP_TYPE="minor"
+          elif echo "$LAST_COMMIT" | grep -qiE "\[patch\]|patch version|fix|bug"; then
+            BUMP_TYPE="patch"
+          fi
+          
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "Detected bump type: $BUMP_TYPE"
+
+      - name: Use manual bump type
+        id: detect
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          BUMP_TYPE="${{ github.event.inputs.version_bump }}"
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "Using manual bump type: $BUMP_TYPE"
+
+      - name: Calculate new version
+        id: version
+        run: |
+          CURRENT="${{ steps.version.outputs.current }}"
+          BUMP_TYPE="${{ steps.detect.outputs.bump_type }}"
+          
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          
+          case "$BUMP_TYPE" in
+            major)
+              NEW_MAJOR=$((MAJOR + 1))
+              NEW_VERSION="${NEW_MAJOR}.0.0"
+              ;;
+            minor)
+              NEW_MINOR=$((MINOR + 1))
+              NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
+              ;;
+            patch)
+              NEW_PATCH=$((PATCH + 1))
+              NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+              ;;
+          esac
+          
+          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+
+  bump_version:
+    name: Bump Version
+    runs-on: ubuntu-22.04
+    needs: detect_version_bump
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+
+      - name: Bump version
+        run: |
+          BUMP_TYPE="${{ needs.detect_version_bump.outputs.bump_type }}"
+          mkdir -p build
+          cd build
+          cmake ..
+          cmake --build . --target "bump-$BUMP_TYPE"
+
+      - name: Get new version
+        id: new_version
+        run: |
+          NEW_VERSION=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Bumped to version: $NEW_VERSION"
+
+      - name: Commit version bump
+        run: |
+          git add -A
+          git diff --cached --quiet || git commit -m "?? Bump version to ${{ steps.new_version.outputs.version }}"
+          git push origin main
+
+  build_linux:
+    name: Build Linux (${{ matrix.distribution }})
+    runs-on: ubuntu-22.04
+    needs: [detect_version_bump, bump_version]
+    if: always() && (needs.bump_version.result == 'success' || needs.bump_version.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        distribution: [noble, jammy, focal, plucky]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake ninja-build pkg-config \
+            libssl-dev zlib1g-dev \
+            dpkg-dev fakeroot devscripts debhelper \
+            qt6-base-dev qt6-base-dev-tools
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+
+      - name: Build
+        run: cmake --build build --config ${BUILD_TYPE} -j$(nproc)
+
+      - name: Build Debian package
+        run: |
+          VERSION=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          
+          # Build the binary first
+          cmake --build build --config ${BUILD_TYPE} -j$(nproc)
+          
+          # Create dist directory
+          mkdir -p dist
+          
+          # Build .deb package using Makefile
+          VERSION=$VERSION make package-deb || {
+            echo "Make package-deb failed, trying alternative method..."
+            # Fallback: create .deb manually
+            mkdir -p pkg/deb/ak_${VERSION}_amd64/DEBIAN
+            mkdir -p pkg/deb/ak_${VERSION}_amd64/usr/bin
+            cp build/ak pkg/deb/ak_${VERSION}_amd64/usr/bin/ak
+            chmod 0755 pkg/deb/ak_${VERSION}_amd64/usr/bin/ak
+            
+            cat > pkg/deb/ak_${VERSION}_amd64/DEBIAN/control <<EOF
+          Package: ak
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: ApertaCodex <developers@apertacodex.ai>
+          Depends: gpg, coreutils, bash, curl
+          Description: ak ? secure API key manager (CLI, C++)
+          EOF
+            
+            dpkg-deb --build pkg/deb/ak_${VERSION}_amd64 dist/ak_${VERSION}_amd64.deb
+          }
+          
+          # Create tarball
+          if [ ! -e dist/*.tar.gz ]; then
+            tar czf dist/${{ env.ARTIFACT_NAME }}-linux-${{ matrix.distribution }}-x86_64.tar.gz -C build ${{ env.ARTIFACT_NAME }} || true
+          fi
+          
+          ls -lah dist/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.distribution }}
+          path: dist/*
+          retention-days: 30
+
+  build_windows:
+    name: Build Windows
+    runs-on: windows-2022
+    needs: [detect_version_bump, bump_version]
+    if: always() && (needs.bump_version.result == 'success' || needs.bump_version.result == 'skipped')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add MSVC & CMake
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure (CMake + Ninja)
+        shell: bash
+        run: |
+          choco install ninja -y
+          cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config ${BUILD_TYPE} -j 4
+
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Package (CPack NSIS)
+        shell: bash
+        run: cmake --build build --target package
+
+      - name: Stage & Zip
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [ -f "build/${{ env.ARTIFACT_NAME }}.exe" ]; then
+            cp "build/${{ env.ARTIFACT_NAME }}.exe" dist/
+          else
+            find build -maxdepth 2 -name "*.exe" -exec cp {} dist/ \;
+          fi
+          7z a -tzip "dist/${{ env.ARTIFACT_NAME }}-windows-x86_64.zip" ./dist/*.exe
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+          retention-days: 30
+
+  build_macos:
+    name: Build macOS
+    runs-on: macos-13
+    needs: [detect_version_bump, bump_version]
+    if: always() && (needs.bump_version.result == 'success' || needs.bump_version.result == 'skipped')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install deps
+        run: |
+          brew update
+          brew install cmake ninja
+          brew install qt@6
+          export CMAKE_PREFIX_PATH="$(brew --prefix qt@6)"
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+            -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
+
+      - name: Build
+        run: cmake --build build --config ${BUILD_TYPE} -j 3
+
+      - name: Package with CPack
+        run: |
+          cmake --build build --target package || true
+          mkdir -p dist
+          cp build/*.dmg dist/ 2>/dev/null || true
+          cp build/*.tar.gz dist/ 2>/dev/null || true
+          if [ ! -e dist/*.tar.gz ]; then
+            tar czf dist/${{ env.ARTIFACT_NAME }}-macos-universal.tar.gz -C build ${{ env.ARTIFACT_NAME }} || true
+          fi
+          ls -lah dist
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*
+          retention-days: 30
+
+  publish_apt_repo:
+    name: Publish APT Repository
+    runs-on: ubuntu-22.04
+    needs: [build_linux]
+    if: always()
+    permissions:
+      contents: write
+      pages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download all Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: linux-artifacts
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev gnupg
+
+      - name: Setup GPG key
+        if: ${{ secrets.AK_REPO_GPG_PRIVKEY != '' && secrets.AK_REPO_GPG_PASSPHRASE != '' }}
+        env:
+          GPG_PRIV: ${{ secrets.AK_REPO_GPG_PRIVKEY }}
+          GPG_PASS: ${{ secrets.AK_REPO_GPG_PASSPHRASE }}
+        run: |
+          echo "$GPG_PRIV" | base64 -d > privkey.asc
+          gpg --batch --import privkey.asc
+          rm -f privkey.asc
+
+      - name: Update APT repository
+        run: |
+          VERSION=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          
+          # Find .deb file (use any available)
+          DEB_FILE=$(find linux-artifacts -name "*.deb" | head -1)
+          
+          if [ -z "$DEB_FILE" ]; then
+            echo "No .deb file found, skipping APT repo update"
+            exit 0
+          fi
+          
+          echo "Using .deb file: $DEB_FILE"
+          
+          # Copy to pool
+          mkdir -p ak-apt-repo/pool/main
+          cp "$DEB_FILE" ak-apt-repo/pool/main/
+          
+          # Process each distribution
+          for DIST in noble jammy focal plucky stable; do
+            echo "Processing distribution: $DIST"
+            
+            # Create distribution directories
+            mkdir -p "ak-apt-repo/dists/$DIST/main/binary-amd64"
+            
+            # Generate Packages file
+            cd ak-apt-repo
+            dpkg-scanpackages --multiversion pool/main /dev/null > "dists/$DIST/main/binary-amd64/Packages" 2>/dev/null || \
+              dpkg-scanpackages pool/main /dev/null > "dists/$DIST/main/binary-amd64/Packages"
+            gzip -fk "dists/$DIST/main/binary-amd64/Packages"
+            cd ..
+            
+            # Get file sizes and checksums
+            PACKAGES_SIZE=$(stat -c%s "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages")
+            PACKAGES_GZ_SIZE=$(stat -c%s "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages.gz")
+            PACKAGES_MD5=$(md5sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages" | cut -d' ' -f1)
+            PACKAGES_GZ_MD5=$(md5sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages.gz" | cut -d' ' -f1)
+            PACKAGES_SHA1=$(sha1sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages" | cut -d' ' -f1)
+            PACKAGES_GZ_SHA1=$(sha1sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages.gz" | cut -d' ' -f1)
+            PACKAGES_SHA256=$(sha256sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages" | cut -d' ' -f1)
+            PACKAGES_GZ_SHA256=$(sha256sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages.gz" | cut -d' ' -f1)
+            
+            # Generate Release file
+            cat > "ak-apt-repo/dists/$DIST/Release" <<EOF
+          Archive: $DIST
+          Codename: $DIST
+          Components: main
+          Date: $(date -u +"%a, %d %b %Y %H:%M:%S +0000")
+          Description: AK API Key Manager Repository
+          Label: AK Repository
+          Origin: AK
+          Suite: $DIST
+          Version: 1.0
+          Architectures: amd64
+          MD5Sum:
+           $PACKAGES_MD5 $PACKAGES_SIZE main/binary-amd64/Packages
+           $PACKAGES_GZ_MD5 $PACKAGES_GZ_SIZE main/binary-amd64/Packages.gz
+          SHA1:
+           $PACKAGES_SHA1 $PACKAGES_SIZE main/binary-amd64/Packages
+           $PACKAGES_GZ_SHA1 $PACKAGES_GZ_SIZE main/binary-amd64/Packages.gz
+          SHA256:
+           $PACKAGES_SHA256 $PACKAGES_SIZE main/binary-amd64/Packages
+           $PACKAGES_GZ_SHA256 $PACKAGES_GZ_SIZE main/binary-amd64/Packages.gz
+          EOF
+            
+            # Sign Release file if GPG key is available
+            if [ -n "${GPG_PASS:-}" ] && command -v gpg >/dev/null 2>&1; then
+              cd "ak-apt-repo/dists/$DIST"
+              echo "$GPG_PASS" | gpg --batch --yes --passphrase-fd 0 --clearsign -o InRelease Release 2>/dev/null || true
+              echo "$GPG_PASS" | gpg --batch --yes --passphrase-fd 0 --armor --detach-sig -o Release.gpg Release 2>/dev/null || true
+              cd ../..
+            fi
+          done
+          
+          # Use CMake script for stable distribution (it's more robust)
+          mkdir -p build
+          cd build
+          cmake .. -DDISTRIBUTION=stable
+          cmake -DPROJECT_DIR=.. -P ../cmake/apt_publish.cmake || echo "CMake apt_publish failed, using manual method"
+          cd ..
+
+      - name: Commit and push APT repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ak-apt-repo/
+          git commit -m "?? Update APT repository for version ${{ needs.detect_version_bump.outputs.new_version }}" || echo "No changes to commit"
+          git push origin main
+
+  publish_ppa:
+    name: Publish to Launchpad PPA
+    runs-on: ubuntu-22.04
+    needs: [build_linux]
+    if: always() && secrets.DEBSIGN_KEYID != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        distribution: [noble, jammy, focal, plucky]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-${{ matrix.distribution }}
+          path: dist
+
+      - name: Setup GPG
+        env:
+          GPG_KEY: ${{ secrets.DEBSIGN_KEYID }}
+        run: |
+          # Import GPG key if available
+          if [ -n "${{ secrets.GPG_PRIVATE_KEY }}" ]; then
+            echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 -d | gpg --import
+          fi
+
+      - name: Build and upload to PPA
+        env:
+          DEBSIGN_KEYID: ${{ secrets.DEBSIGN_KEYID }}
+        run: |
+          VERSION=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          SERIES="${{ matrix.distribution }}"
+          
+          # Use the multi-distribution script if available
+          if [ -f "./publish-ppa-multi.sh" ]; then
+            chmod +x ./publish-ppa-multi.sh
+            # This script handles multiple distributions, but we'll call it per distribution
+            export DEBSIGN_KEYID="${{ secrets.DEBSIGN_KEYID }}"
+            bash -c "./build-and-upload-ppa.sh $SERIES"
+          else
+            echo "PPA upload script not found, skipping..."
+          fi
+
+  create_release:
+    name: Create GitHub Release
+    runs-on: ubuntu-22.04
+    needs: [build_linux, build_windows, build_macos, publish_apt_repo]
+    if: always()
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Release version: $VERSION"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: collected
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          body: |
+            ## Release v${{ steps.version.outputs.version }}
+            
+            ### Installation
+            
+            **Linux (APT):**
+            ```bash
+            curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash
+            sudo apt install ak
+            ```
+            
+            **macOS (Homebrew):**
+            ```bash
+            brew tap apertacodex/ak https://github.com/apertacodex/ak.git
+            brew install ak
+            ```
+            
+            **Windows:**
+            Download the installer from the assets below.
+            
+            ### Distributions Supported
+            - Ubuntu 24.04 (noble)
+            - Ubuntu 22.04 (jammy)
+            - Ubuntu 20.04 (focal)
+            - Ubuntu 25.04 (plucky)
+          files: |
+            collected/**/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update_homebrew:
+    name: Update Homebrew Formula
+    runs-on: ubuntu-latest
+    needs: [create_release]
+    if: always()
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download macOS artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          mkdir -p dl
+          gh release download "$TAG" --pattern "*macos*.tar.gz" --dir dl || echo "No macOS artifact found"
+
+      - name: Update Formula
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          FILE=$(ls dl/*.tar.gz 2>/dev/null | head -1)
+          
+          if [ -z "$FILE" ]; then
+            echo "No macOS artifact found, skipping formula update"
+            exit 0
+          fi
+          
+          SHA=$(shasum -a 256 "$FILE" | awk '{print $1}')
+          URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/$(basename "$FILE")"
+          
+          # Update Formula/ak.rb
+          sed -i.bak \
+            -e "s|^  url .*|  url \"$URL\"|" \
+            -e "s|^  sha256 .*|  sha256 \"$SHA\"|" \
+            -e "s|^  version .*|  version \"$VERSION\"|" \
+            Formula/ak.rb
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/ak.rb
+          git commit -m "chore(brew): bump to v$VERSION" || echo "No changes"
+          git push origin main
