@@ -19,6 +19,9 @@ struct Config {
     bool json = false;
     bool forcePlain = false;     // AK_DISABLE_GPG
     std::string presetPassphrase; // AK_PASSPHRASE
+    // Passphrase remembered for the current process once collected interactively
+    mutable std::string sessionPassphrase;
+    mutable bool sessionPassphraseValid = false;
     std::string auditLogPath;
     std::string instanceId;
     std::string persistDir;

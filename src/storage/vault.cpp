@@ -8,14 +8,173 @@
 #include <algorithm>
 #include <unordered_set>
 #include <filesystem>
+#include <optional>
+#include <mutex>
+#include <random>
+#include <system_error>
+#include <stdexcept>
 #ifdef __unix__
 #include <sys/stat.h>
+#endif
+
+#ifdef BUILD_GUI
+#include <QApplication>
+#include <QInputDialog>
+#include <QLineEdit>
 #endif
 
 namespace ak {
 namespace storage {
 
 namespace fs = std::filesystem;
+
+namespace {
+
+std::mutex g_passphraseMutex;
+
+std::string randomHex(size_t length) {
+    static std::mutex rngMutex;
+    static std::mt19937 rng(std::random_device{}());
+    std::lock_guard<std::mutex> lock(rngMutex);
+    std::uniform_int_distribution<int> dist(0, 15);
+    static const char* digits = "0123456789abcdef";
+    std::string result;
+    result.reserve(length);
+    for (size_t i = 0; i < length; ++i) {
+        result.push_back(digits[dist(rng)]);
+    }
+    return result;
+}
+
+class ScopedPassphraseFile {
+public:
+    ScopedPassphraseFile(const core::Config& cfg, const std::string& passphrase) {
+        fs::path dir(cfg.configDir);
+        std::error_code ec;
+        fs::create_directories(dir, ec);
+
+        fs::path candidate = dir / (".ak-pass-" + randomHex(32));
+        std::ofstream pf(candidate, std::ios::trunc | std::ios::binary);
+        if (!pf.is_open()) {
+            throw std::runtime_error("Unable to create temporary passphrase file");
+        }
+        pf << passphrase;
+        pf.close();
+#ifdef __unix__
+        ::chmod(candidate.c_str(), 0600);
+#endif
+        path_ = candidate.string();
+    }
+
+    ~ScopedPassphraseFile() {
+        cleanup();
+    }
+
+    ScopedPassphraseFile(const ScopedPassphraseFile&) = delete;
+    ScopedPassphraseFile& operator=(const ScopedPassphraseFile&) = delete;
+
+    const std::string& path() const {
+        return path_;
+    }
+
+    void cleanup() {
+        if (!path_.empty()) {
+            std::error_code ec;
+            fs::remove(path_, ec);
+            path_.clear();
+        }
+    }
+
+private:
+    std::string path_;
+};
+
+#ifdef BUILD_GUI
+std::optional<std::string> promptForPassphraseGui(const std::string& message) {
+    if (QApplication::instance() == nullptr) {
+        return std::nullopt;
+    }
+
+    bool ok = false;
+    QString body = QString::fromStdString(message);
+    QString value = QInputDialog::getText(
+        QApplication::activeWindow(),
+        QStringLiteral("Unlock Secure Storage"),
+        body,
+        QLineEdit::Password,
+        QString(),
+        &ok
+    );
+
+    if (!ok) {
+        return std::nullopt;
+    }
+
+    return value.toStdString();
+}
+#endif
+
+std::optional<std::string> promptForPassphraseCli(const std::string& message) {
+    std::string prompt = message;
+    if (!prompt.empty() && prompt.back() != ' ') {
+        prompt += ' ';
+    }
+    std::string value = system::promptSecret(prompt);
+    return value;
+}
+
+std::optional<std::string> promptForPassphrase(const std::string& guiMessage, const std::string& cliMessage) {
+#ifdef BUILD_GUI
+    if (auto guiResult = promptForPassphraseGui(guiMessage); guiResult.has_value()) {
+        return guiResult;
+    }
+#endif
+    return promptForPassphraseCli(cliMessage);
+}
+
+std::optional<std::string> acquireSessionPassphrase(const core::Config& cfg, const std::string& contextMessage) {
+    if (!cfg.presetPassphrase.empty()) {
+        return cfg.presetPassphrase;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(g_passphraseMutex);
+        if (cfg.sessionPassphraseValid) {
+            return cfg.sessionPassphrase;
+        }
+    }
+
+    std::string baseMessage = contextMessage.empty()
+        ? std::string("Enter the passphrase for your secure storage.")
+        : contextMessage;
+
+    std::string guiMessage = baseMessage + "\n\nThe passphrase will be cached until you quit AK.";
+    std::string cliMessage = baseMessage + " (cached for this session)";
+
+    auto passphrase = promptForPassphrase(guiMessage, cliMessage);
+    if (!passphrase.has_value()) {
+        return std::nullopt;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(g_passphraseMutex);
+        cfg.sessionPassphrase = *passphrase;
+        cfg.sessionPassphraseValid = true;
+    }
+
+    return passphrase;
+}
+
+void invalidateSessionPassphrase(const core::Config& cfg) {
+    if (!cfg.presetPassphrase.empty()) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(g_passphraseMutex);
+    cfg.sessionPassphrase.clear();
+    cfg.sessionPassphraseValid = false;
+}
+
+} // namespace
 
 // Vault operations
 core::KeyStore loadVault(const core::Config& cfg) {
@@ -30,26 +189,36 @@ core::KeyStore loadVault(const core::Config& cfg) {
         cfg.vaultPath.substr(cfg.vaultPath.size() - 4) == ".gpg") {
         
         int rc = 0;
-        if (!cfg.presetPassphrase.empty()) {
-            auto pfile = fs::path(cfg.configDir) / ".pass.tmp";
-            {
-                std::ofstream pf(pfile, std::ios::trunc);
-                pf << cfg.presetPassphrase;
-                pf.close();
+        auto passphrase = acquireSessionPassphrase(cfg, "Enter the passphrase to unlock your vault.");
+        if (!passphrase.has_value()) {
+#ifdef BUILD_GUI
+            if (QApplication::instance()) {
+                throw std::runtime_error("Vault unlock cancelled");
             }
-#ifdef __unix__
-            ::chmod(pfile.c_str(), 0600);
 #endif
-            std::string cmd = "gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file '" + 
-                             pfile.string() + "' --decrypt '" + cfg.vaultPath + "' 2>/dev/null";
-            data = system::runCmdCapture(cmd, &rc);
-            fs::remove(pfile);
-        } else {
-            data = system::runCmdCapture("gpg --quiet --decrypt '" + cfg.vaultPath + "' 2>/dev/null", &rc);
+            std::cerr << "⚠️  Vault unlock cancelled\n";
+            return ks;
         }
-        
+
+        try {
+            ScopedPassphraseFile passFile(cfg, *passphrase);
+            std::string cmd = "gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file '" +
+                              passFile.path() + "' --decrypt '" + cfg.vaultPath + "' 2>/dev/null";
+            data = system::runCmdCapture(cmd, &rc);
+        } catch (const std::exception& e) {
+            std::cerr << "⚠️  " << e.what() << "\n";
+            return ks;
+        }
+
         if (rc != 0) {
-            std::cerr << "⚠️  Failed to decrypt vault\n";
+            invalidateSessionPassphrase(cfg);
+            std::string message = "Failed to decrypt vault (incorrect passphrase)";
+#ifdef BUILD_GUI
+            if (QApplication::instance()) {
+                throw std::runtime_error(message);
+            }
+#endif
+            std::cerr << "⚠️  " << message << "\n";
             return ks;
         }
     } else {
@@ -92,33 +261,28 @@ void saveVault(const core::Config& cfg, const core::KeyStore& ks) {
         cfg.vaultPath.size() > 4 && 
         cfg.vaultPath.substr(cfg.vaultPath.size() - 4) == ".gpg") {
         
-        std::string cmd;
-        std::string passFile;
-        
-        if (!cfg.presetPassphrase.empty()) {
-            passFile = (fs::path(cfg.configDir) / ".pass.tmp").string();
-            {
-                std::ofstream pf(passFile, std::ios::trunc);
-                pf << cfg.presetPassphrase;
-                pf.close();
-            }
-#ifdef __unix__
-            ::chmod(passFile.c_str(), 0600);
-#endif
-            cmd = "gpg --batch --yes -o '" + cfg.vaultPath + 
-                  "' --pinentry-mode loopback --passphrase-file '" + passFile + 
-                  "' --symmetric --cipher-algo AES256 '" + tmp.string() + "'";
-        } else {
-            cmd = "gpg --yes -o '" + cfg.vaultPath + 
-                  "' --symmetric --cipher-algo AES256 '" + tmp.string() + "'";
+        auto passphrase = acquireSessionPassphrase(cfg, "Confirm the passphrase to update your vault.");
+        if (!passphrase.has_value()) {
+            fs::remove(tmp);
+            throw std::runtime_error("Vault encryption cancelled");
         }
-        
-        int rc = ::system(cmd.c_str());
-        if (!passFile.empty()) {
-            fs::remove(passFile);
+
+        int rc = 0;
+        try {
+            ScopedPassphraseFile passFile(cfg, *passphrase);
+            std::string cmd = "gpg --batch --yes -o '" + cfg.vaultPath +
+                              "' --pinentry-mode loopback --passphrase-file '" + passFile.path() +
+                              "' --symmetric --cipher-algo AES256 '" + tmp.string() + "'";
+            rc = ::system(cmd.c_str());
+        } catch (...) {
+            fs::remove(tmp);
+            invalidateSessionPassphrase(cfg);
+            throw;
         }
         
         if (rc != 0) {
+            fs::remove(tmp);
+            invalidateSessionPassphrase(cfg);
             throw std::runtime_error("Failed to encrypt vault with gpg");
         }
         
@@ -370,26 +534,42 @@ std::map<std::string, std::string> loadProfileKeys(const core::Config& cfg, cons
         path.extension() == ".gpg") {
         
         int rc = 0;
-        if (!cfg.presetPassphrase.empty()) {
-            auto pfile = fs::path(cfg.configDir) / ".pass.tmp";
-            {
-                std::ofstream pf(pfile, std::ios::trunc);
-                pf << cfg.presetPassphrase;
-                pf.close();
+        std::string promptMessage = "Enter the passphrase to unlock profile '" + profileName + "'.";
+        auto passphrase = acquireSessionPassphrase(cfg, promptMessage);
+        if (!passphrase.has_value()) {
+#ifdef BUILD_GUI
+            if (QApplication::instance()) {
+                throw std::runtime_error("Profile unlock cancelled");
             }
-#ifdef __unix__
-            ::chmod(pfile.c_str(), 0600);
 #endif
-            std::string cmd = "gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file '" +
-                             pfile.string() + "' --decrypt '" + path.string() + "' 2>/dev/null";
-            data = system::runCmdCapture(cmd, &rc);
-            fs::remove(pfile);
-        } else {
-            data = system::runCmdCapture("gpg --quiet --decrypt '" + path.string() + "' 2>/dev/null", &rc);
+            std::cerr << "⚠️  Profile unlock cancelled for " << profileName << "\n";
+            return keys;
         }
-        
+
+        try {
+            ScopedPassphraseFile passFile(cfg, *passphrase);
+            std::string cmd = "gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file '" +
+                              passFile.path() + "' --decrypt '" + path.string() + "' 2>/dev/null";
+            data = system::runCmdCapture(cmd, &rc);
+        } catch (const std::exception& e) {
+#ifdef BUILD_GUI
+            if (QApplication::instance()) {
+                throw;
+            }
+#endif
+            std::cerr << "⚠️  " << e.what() << "\n";
+            return keys;
+        }
+
         if (rc != 0) {
-            std::cerr << "⚠️  Failed to decrypt profile keys for " << profileName << "\n";
+            invalidateSessionPassphrase(cfg);
+            std::string message = "Failed to decrypt profile keys for '" + profileName + "' (incorrect passphrase)";
+#ifdef BUILD_GUI
+            if (QApplication::instance()) {
+                throw std::runtime_error(message);
+            }
+#endif
+            std::cerr << "⚠️  " << message << "\n";
             return keys;
         }
     } else {
@@ -430,33 +610,28 @@ void saveProfileKeys(const core::Config& cfg, const std::string& profileName, co
     }
     
     if (cfg.gpgAvailable && !cfg.forcePlain && path.extension() == ".gpg") {
-        std::string cmd;
-        std::string passFile;
-        
-        if (!cfg.presetPassphrase.empty()) {
-            passFile = (fs::path(cfg.configDir) / ".pass.tmp").string();
-            {
-                std::ofstream pf(passFile, std::ios::trunc);
-                pf << cfg.presetPassphrase;
-                pf.close();
-            }
-#ifdef __unix__
-            ::chmod(passFile.c_str(), 0600);
-#endif
-            cmd = "gpg --batch --yes -o '" + path.string() +
-                  "' --pinentry-mode loopback --passphrase-file '" + passFile +
-                  "' --symmetric --cipher-algo AES256 '" + tmp.string() + "'";
-        } else {
-            cmd = "gpg --yes -o '" + path.string() +
-                  "' --symmetric --cipher-algo AES256 '" + tmp.string() + "'";
+        auto passphrase = acquireSessionPassphrase(cfg, "Confirm the passphrase to update profile '" + profileName + "'.");
+        if (!passphrase.has_value()) {
+            fs::remove(tmp);
+            throw std::runtime_error("Profile encryption cancelled");
         }
-        
-        int rc = ::system(cmd.c_str());
-        if (!passFile.empty()) {
-            fs::remove(passFile);
+
+        int rc = 0;
+        try {
+            ScopedPassphraseFile passFile(cfg, *passphrase);
+            std::string cmd = "gpg --batch --yes -o '" + path.string() +
+                              "' --pinentry-mode loopback --passphrase-file '" + passFile.path() +
+                              "' --symmetric --cipher-algo AES256 '" + tmp.string() + "'";
+            rc = ::system(cmd.c_str());
+        } catch (...) {
+            fs::remove(tmp);
+            invalidateSessionPassphrase(cfg);
+            throw;
         }
         
         if (rc != 0) {
+            fs::remove(tmp);
+            invalidateSessionPassphrase(cfg);
             throw std::runtime_error("Failed to encrypt profile keys with gpg");
         }
         

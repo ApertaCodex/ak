@@ -10,7 +10,6 @@
 #include <QFileDialog>
 #include <QStandardPaths>
 #include <QRegularExpression>
-#include <QRegularExpressionValidator>
 
 namespace ak {
 namespace gui {
@@ -93,6 +92,7 @@ void KeyEditDialog::setupUi()
 {
     nameEdit = new QLineEdit(this);
     nameEdit->setPlaceholderText("Enter key name (e.g., OPENAI_API_KEY)");
+    connect(nameEdit, &QLineEdit::textEdited, this, &KeyEditDialog::onNameEdited);
     
     valueEdit = new SecureInputWidget(this);
     valueEdit->setPlaceholderText("Enter key value");
@@ -110,10 +110,6 @@ void KeyEditDialog::setupUi()
     // Connect validation
     connect(nameEdit, &QLineEdit::textChanged, this, &KeyEditDialog::validateInput);
     connect(valueEdit, &SecureInputWidget::textChanged, this, &KeyEditDialog::validateInput);
-    
-    // Set name field validator
-    QRegularExpression nameRegex("^[A-Z][A-Z0-9_]*$");
-    nameEdit->setValidator(new QRegularExpressionValidator(nameRegex, this));
     
     validateInput();
 }
@@ -158,6 +154,32 @@ void KeyEditDialog::validateInput()
     }
     
     setValid(valid);
+}
+
+void KeyEditDialog::onNameEdited(const QString &text)
+{
+    QString normalized;
+    normalized.reserve(text.size());
+
+    for (int i = 0; i < text.size(); ++i) {
+        QChar ch = text.at(i).toUpper();
+        if (ch.isLetterOrNumber() || ch == '_') {
+            normalized.append(ch);
+        } else if (ch == '-' || ch == ' ') {
+            normalized.append('_');
+        }
+        // Ignore other characters
+    }
+
+    if (normalized == text) {
+        return;
+    }
+
+    int cursorPos = nameEdit->cursorPosition();
+    nameEdit->blockSignals(true);
+    nameEdit->setText(normalized);
+    nameEdit->blockSignals(false);
+    nameEdit->setCursorPosition(std::min(cursorPos, normalized.size()));
 }
 
 void KeyEditDialog::refreshServiceList()

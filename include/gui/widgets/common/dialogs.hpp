@@ -62,6 +62,7 @@ public:
 
 private slots:
     void validateInput();
+    void onNameEdited(const QString &text);
     void onServiceChanged(int index);
 
 private:
