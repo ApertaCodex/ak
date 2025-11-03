@@ -99,6 +99,8 @@ private:
     const core::Config& config;
     QString currentProfile;
     std::map<std::string, std::string> profileKeys;
+    std::map<QString, std::map<std::string, std::string>> cachedProfileKeys; // Cache loaded keys to avoid repeated GPG prompts
+    bool keysModified; // Track if keys have been modified since last load
     
     // UI components
     QVBoxLayout *mainLayout;

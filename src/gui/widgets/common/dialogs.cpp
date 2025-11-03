@@ -111,9 +111,25 @@ void KeyEditDialog::setupUi()
     connect(nameEdit, &QLineEdit::textChanged, this, &KeyEditDialog::validateInput);
     connect(valueEdit, &SecureInputWidget::textChanged, this, &KeyEditDialog::validateInput);
     
-    // Set name field validator
-    QRegularExpression nameRegex("^[A-Z][A-Z0-9_]*$");
+    // Set name field validator - allow lowercase/uppercase/numbers/underscores
+    // The actual validation happens in validateInput() which converts to uppercase
+    QRegularExpression nameRegex("^[A-Za-z][A-Za-z0-9_]*$");
     nameEdit->setValidator(new QRegularExpressionValidator(nameRegex, this));
+    
+    // Convert to uppercase as user types (but allow lowercase input)
+    connect(nameEdit, &QLineEdit::textChanged, [this](const QString &text) {
+        if (!text.isEmpty() && !editMode) {
+            // Convert to uppercase but preserve cursor position
+            int cursorPos = nameEdit->cursorPosition();
+            QString upper = text.toUpper();
+            if (upper != text) {
+                nameEdit->blockSignals(true);
+                nameEdit->setText(upper);
+                nameEdit->setCursorPosition(qMin(cursorPos, upper.length()));
+                nameEdit->blockSignals(false);
+            }
+        }
+    });
     
     validateInput();
 }
