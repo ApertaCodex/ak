@@ -561,6 +561,8 @@ void ProfileManagerWidget::updateProfileDetails(const QString &profileName)
     profileNameLabel->setText(QString("Profile: %1").arg(profileName));
 
     try {
+        // Use readProfile which only reads the profile file (not encrypted keys)
+        // This avoids triggering GPG passphrase prompts when just viewing profile details
         auto keys = ak::storage::readProfile(config, profileName.toStdString());
         keyCountLabel->setText(QString("%1 keys").arg(keys.size()));
 
