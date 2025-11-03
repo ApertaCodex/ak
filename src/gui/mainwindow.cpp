@@ -109,9 +109,8 @@ void MainWindow::setupTabs()
     connect(profileManagerWidget, &widgets::ProfileManagerWidget::statusMessage,
             this, &MainWindow::onStatusMessage);
     
-    // Connect ProfileManager to KeyManager for profile synchronization
-    connect(profileManagerWidget, &widgets::ProfileManagerWidget::profileSelectionChanged,
-            keyManagerWidget, &widgets::KeyManagerWidget::setCurrentProfile);
+    // Don't automatically sync profile selection to avoid unnecessary GPG passphrase prompts
+    // Users can manually switch profiles in KeyManager when needed
     
     // Refresh KeyManager's profile list when profiles are created/deleted
     connect(profileManagerWidget, &widgets::ProfileManagerWidget::statusMessage,

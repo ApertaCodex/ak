@@ -69,7 +69,7 @@ KeyManagerWidget::KeyManagerWidget(const core::Config& config, QWidget *parent)
       toggleVisibilityButton(nullptr), refreshButton(nullptr), statusLabel(nullptr),
       table(nullptr), contextMenu(nullptr), addAction(nullptr), editAction(nullptr),
       deleteAction(nullptr), copyNameAction(nullptr), copyValueAction(nullptr),
-      toggleVisibilityAction(nullptr), globalVisibilityState(true)
+      toggleVisibilityAction(nullptr), globalVisibilityState(true), isDirty(false)
 {
     // Ensure default profile exists
     ak::storage::ensureDefaultProfile(config);
@@ -276,10 +276,12 @@ void KeyManagerWidget::loadProfileKeys(const QString &profileName)
 {
     try {
         profileKeys = ak::storage::loadProfileKeys(config, profileName.toStdString());
+        isDirty = false; // Reset dirty flag after loading
         emit statusMessage(QString("Loaded %1 keys from profile '%2'").arg(profileKeys.size()).arg(profileName));
     } catch (const std::exception& e) {
         showError(QString("Failed to load keys from profile '%1': %2").arg(profileName).arg(e.what()));
         profileKeys.clear(); // Empty keys on error
+        isDirty = false;
     }
 }
 
@@ -329,8 +331,8 @@ void KeyManagerWidget::refreshProfileList()
 void KeyManagerWidget::onProfileChanged(const QString &profileName)
 {
     if (profileName != currentProfile) {
-        // Save current profile keys before switching
-        if (!currentProfile.isEmpty()) {
+        // Save current profile keys only if they were modified
+        if (isDirty && !currentProfile.isEmpty()) {
             saveProfileKeys(currentProfile);
         }
         
@@ -435,7 +437,7 @@ void KeyManagerWidget::addKeyToTable(const QString &name, const QString &value, 
     table->setItem(row, ColumnTestStatus, testStatusItem);
     
     // Actions column - make it clickable for context menu
-    QPushButton *actionsButton = new QPushButton("⚙️");
+    QPushButton *actionsButton = new QPushButton("??");
     actionsButton->setToolTip("Click for actions");
     actionsButton->setMaximumSize(30, 25);
     connect(actionsButton, &QPushButton::clicked, [this, row, actionsButton]() {
@@ -570,6 +572,7 @@ void KeyManagerWidget::addKey()
         
         // Add to profile keys
         profileKeys[name.toStdString()] = value.toStdString();
+        isDirty = true; // Mark as modified
         saveKeys();
         updateTable();
         selectKey(name);
@@ -595,6 +598,7 @@ void KeyManagerWidget::editKey()
         
         // Update keystore
         profileKeys[name.toStdString()] = newValue.toStdString();
+        isDirty = true; // Mark as modified
         saveKeys();
         
         // Update table item
@@ -620,6 +624,7 @@ void KeyManagerWidget::deleteKey()
         
         // Remove from keystore
         profileKeys.erase(name.toStdString());
+        isDirty = true; // Mark as modified
         saveKeys();
         updateTable();
         
@@ -748,15 +753,15 @@ void KeyManagerWidget::testSelectedKey()
             auto result = ak::services::test_one(config, serviceCode.toStdString());
             
             if (result.ok) {
-                updateTestStatus(keyName, true, QString("✓ %1ms").arg(result.duration.count()));
+                updateTestStatus(keyName, true, QString("? %1ms").arg(result.duration.count()));
                 showSuccess(QString("%1 test passed! (%2ms)").arg(serviceName).arg(result.duration.count()));
             } else {
                 QString error = result.error_message.empty() ? "Test failed" : QString::fromStdString(result.error_message);
-                updateTestStatus(keyName, false, "✗ " + error);
+                updateTestStatus(keyName, false, "? " + error);
                 showError(QString("%1 test failed: %2").arg(serviceName).arg(error));
             }
         } catch (const std::exception& e) {
-            updateTestStatus(keyName, false, QString("✗ %1").arg(e.what()));
+            updateTestStatus(keyName, false, QString("? %1").arg(e.what()));
             showError(QString("%1 test failed: %2").arg(serviceName).arg(e.what()));
         }
         
@@ -773,7 +778,7 @@ void KeyManagerWidget::updateTestStatus(const QString &keyName, bool success, co
                 statusItem->setText(message);
                 if (success) {
                     statusItem->setForeground(QBrush(QColor(0, 170, 0))); // Green
-                } else if (message.startsWith("✗")) {
+                } else if (message.startsWith("?")) {
                     statusItem->setForeground(QBrush(QColor(204, 68, 68))); // Red
                 } else {
                     statusItem->setForeground(QBrush(QColor(102, 102, 102))); // Gray for testing
@@ -828,10 +833,10 @@ void KeyManagerWidget::testAllKeys()
                     
                     if (serviceCode.toStdString() == result.service) {
                         if (result.ok) {
-                            updateTestStatus(keyName, true, QString("✓ %1ms").arg(result.duration.count()));
+                            updateTestStatus(keyName, true, QString("? %1ms").arg(result.duration.count()));
                         } else {
                             QString error = result.error_message.empty() ? "Failed" : QString::fromStdString(result.error_message);
-                            updateTestStatus(keyName, false, "✗ " + error);
+                            updateTestStatus(keyName, false, "? " + error);
                         }
                     }
                 }

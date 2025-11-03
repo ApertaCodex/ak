@@ -99,6 +99,7 @@ private:
     const core::Config& config;
     QString currentProfile;
     std::map<std::string, std::string> profileKeys;
+    bool isDirty; // Track if keys have been modified
     
     // UI components
     QVBoxLayout *mainLayout;

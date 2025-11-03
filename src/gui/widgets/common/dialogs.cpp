@@ -111,8 +111,8 @@ void KeyEditDialog::setupUi()
     connect(nameEdit, &QLineEdit::textChanged, this, &KeyEditDialog::validateInput);
     connect(valueEdit, &SecureInputWidget::textChanged, this, &KeyEditDialog::validateInput);
     
-    // Set name field validator
-    QRegularExpression nameRegex("^[A-Z][A-Z0-9_]*$");
+    // Set name field validator - allow alphanumeric and underscore, will convert to uppercase on submit
+    QRegularExpression nameRegex("^[A-Za-z][A-Za-z0-9_]*$");
     nameEdit->setValidator(new QRegularExpressionValidator(nameRegex, this));
     
     validateInput();
@@ -151,10 +151,10 @@ void KeyEditDialog::validateInput()
     bool valid = !nameEdit->text().trimmed().isEmpty() && 
                  !valueEdit->text().isEmpty();
     
-    // Additional name validation
+    // Additional name validation - check for valid variable name pattern (case-insensitive)
     if (valid && !editMode) {
         QString name = nameEdit->text().trimmed();
-        valid = name.length() > 0 && name.contains(QRegularExpression("^[A-Z][A-Z0-9_]*$"));
+        valid = name.length() > 0 && name.contains(QRegularExpression("^[A-Za-z][A-Za-z0-9_]*$"));
     }
     
     setValid(valid);
