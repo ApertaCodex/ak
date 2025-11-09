@@ -137,6 +137,10 @@ bool containsCaseInsensitive(const std::string& haystack, const std::string& nee
 void applyAuth(const Service& service, const std::string& apiKey,
                std::string& curlArgs, std::string& endpoint)
 {
+    // Special-case: Ollama typically runs locally and does not require auth
+    if (service.name == "ollama") {
+        return;
+    }
     std::string parameter = service.authParameter.empty() ?
         (service.authLocation == "header" ? "Authorization" : "api_key") :
         service.authParameter;
@@ -237,6 +241,8 @@ const std::map<std::string, Service> DEFAULT_SERVICES = {
     {"tavily", {"tavily", "TAVILY_API_KEY", "Tavily Search", "https://api.tavily.com/search", "POST", "", "Bearer", true, true}},
     {"together", {"together", "TOGETHER_API_KEY", "Together AI", "https://api.together.xyz/v1/models", "GET", "", "Bearer", true, true}},
     {"xai", {"xai", "XAI_API_KEY", "xAI Grok", "https://api.x.ai/v1/models", "GET", "", "Bearer", true, true}},
+    {"ollama", {"ollama", "OLLAMA_API_KEY", "Ollama (local)", "http://localhost:11434/api/chat", "POST",
+        "-H 'Content-Type: application/json'", "", true, true}},
     // Cloud providers
     {"aws", {"aws", "AWS_ACCESS_KEY_ID", "Amazon Web Services", "", "GET", "", "AWS Signature", false, true}},
     {"gcp", {"gcp", "GOOGLE_APPLICATION_CREDENTIALS", "Google Cloud Platform", "", "GET", "", "OAuth2", false, true}},
@@ -643,11 +649,15 @@ TestResult test_one(const core::Config& cfg, const std::string& service, const s
                                 // Add the endpoint
                                 curlArgs += " " + endpoint;
 
-                                if (!serviceObj.testBody.empty()) {
+                                if (!serviceObj.testBody.empty() || serviceObj.name == "ollama") {
                                     if (!containsCaseInsensitive(serviceObj.testHeaders, "content-type")) {
                                         curlArgs += " -H 'Content-Type: application/json'";
                                     }
-                                    curlArgs += " --data '" + escapeSingleQuotes(serviceObj.testBody) + "'";
+                                    std::string body = serviceObj.testBody;
+                                    if (body.empty() && serviceObj.name == "ollama") {
+                                        body = "{\"model\":\"llama3\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"stream\":false}";
+                                    }
+                                    curlArgs += " --data '" + escapeSingleQuotes(body) + "'";
                                 }
 
                                 auto curl_result = curl_ok(curlArgs, debugEnabled);

@@ -369,24 +369,26 @@ std::map<std::string, std::string> loadProfileKeys(const core::Config& cfg, cons
     if (cfg.gpgAvailable && !cfg.forcePlain &&
         path.extension() == ".gpg") {
         
-        int rc = 0;
-        if (!cfg.presetPassphrase.empty()) {
-            auto pfile = fs::path(cfg.configDir) / ".pass.tmp";
-            {
-                std::ofstream pf(pfile, std::ios::trunc);
-                pf << cfg.presetPassphrase;
-                pf.close();
-            }
-#ifdef __unix__
-            ::chmod(pfile.c_str(), 0600);
-#endif
-            std::string cmd = "gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file '" +
-                             pfile.string() + "' --decrypt '" + path.string() + "' 2>/dev/null";
-            data = system::runCmdCapture(cmd, &rc);
-            fs::remove(pfile);
-        } else {
-            data = system::runCmdCapture("gpg --quiet --decrypt '" + path.string() + "' 2>/dev/null", &rc);
+        // If file is encrypted, we need a passphrase - return empty if not provided
+        if (cfg.presetPassphrase.empty()) {
+            // Silently return empty map - don't try interactive decryption in non-interactive contexts
+            return keys;
         }
+        
+        int rc = 0;
+        auto pfile = fs::path(cfg.configDir) / ".pass.tmp";
+        {
+            std::ofstream pf(pfile, std::ios::trunc);
+            pf << cfg.presetPassphrase;
+            pf.close();
+        }
+#ifdef __unix__
+        ::chmod(pfile.c_str(), 0600);
+#endif
+        std::string cmd = "gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file '" +
+                         pfile.string() + "' --decrypt '" + path.string() + "' 2>/dev/null";
+        data = system::runCmdCapture(cmd, &rc);
+        fs::remove(pfile);
         
         if (rc != 0) {
             std::cerr << "⚠️  Failed to decrypt profile keys for " << profileName << "\n";

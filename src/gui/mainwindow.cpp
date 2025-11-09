@@ -15,7 +15,7 @@ namespace gui {
 
 MainWindow::MainWindow(const core::Config& cfg, QWidget *parent)
     : QMainWindow(parent), config(cfg), tabWidget(nullptr),
-      keyManagerWidget(nullptr), profileManagerWidget(nullptr),
+      keyManagerWidget(nullptr),
       serviceManagerWidget(nullptr), settingsTab(nullptr), exitAction(nullptr), aboutAction(nullptr),
       helpAction(nullptr)
 {
@@ -98,32 +98,11 @@ void MainWindow::setupStatusBar()
 
 void MainWindow::setupTabs()
 {
-    // Key Manager Tab
+    // Key Manager Tab (now includes profile management)
     keyManagerWidget = new widgets::KeyManagerWidget(config, this);
     connect(keyManagerWidget, &widgets::KeyManagerWidget::statusMessage,
             this, &MainWindow::onStatusMessage);
     tabWidget->addTab(keyManagerWidget, "Key Manager");
-
-    // Profile Manager Tab
-    profileManagerWidget = new widgets::ProfileManagerWidget(config, this);
-    connect(profileManagerWidget, &widgets::ProfileManagerWidget::statusMessage,
-            this, &MainWindow::onStatusMessage);
-    
-    // Connect ProfileManager to KeyManager for profile synchronization
-    connect(profileManagerWidget, &widgets::ProfileManagerWidget::profileSelectionChanged,
-            keyManagerWidget, &widgets::KeyManagerWidget::setCurrentProfile);
-    
-    // Refresh KeyManager's profile list when profiles are created/deleted
-    connect(profileManagerWidget, &widgets::ProfileManagerWidget::statusMessage,
-            [this](const QString &message) {
-                // Refresh profile list in KeyManager when profiles are created/deleted
-                if (message.contains("created") || message.contains("deleted") ||
-                    message.contains("renamed") || message.contains("imported")) {
-                    keyManagerWidget->refreshProfileList();
-                }
-            });
-    
-    tabWidget->addTab(profileManagerWidget, "Profile Manager");
 
     // Service Manager Tab
     serviceManagerWidget = new widgets::ServiceManagerWidget(config, this);
