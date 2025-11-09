@@ -34,9 +34,9 @@ jobs:
     name: Detect Version Bump Type
     runs-on: ubuntu-22.04
     outputs:
-      bump_type: ${{ steps.detect.outputs.bump_type }}
-      current_version: ${{ steps.version.outputs.current }}
-      new_version: ${{ steps.version.outputs.new }}
+      bump_type: ${{ steps.detect_bump.outputs.bump_type }}
+      current_version: ${{ steps.get_version.outputs.current }}
+      new_version: ${{ steps.calc_version.outputs.new }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,14 +44,14 @@ jobs:
           fetch-depth: 0
 
       - name: Get current version
-        id: version
+        id: get_version
         run: |
           CURRENT=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
           echo "Current version: $CURRENT"
 
       - name: Detect bump type from commit messages
-        id: detect
+        id: detect_bump
         if: github.event_name == 'push'
         run: |
           # Check last commit message for version bump indicators
@@ -71,7 +71,7 @@ jobs:
           echo "Detected bump type: $BUMP_TYPE"
 
       - name: Use manual bump type
-        id: detect
+        id: detect_bump
         if: github.event_name == 'workflow_dispatch'
         run: |
           BUMP_TYPE="${{ github.event.inputs.version_bump }}"
@@ -79,10 +79,10 @@ jobs:
           echo "Using manual bump type: $BUMP_TYPE"
 
       - name: Calculate new version
-        id: version
+        id: calc_version
         run: |
-          CURRENT="${{ steps.version.outputs.current }}"
-          BUMP_TYPE="${{ steps.detect.outputs.bump_type }}"
+          CURRENT="${{ steps.get_version.outputs.current }}"
+          BUMP_TYPE="${{ steps.detect_bump.outputs.bump_type }}"
           
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
           
