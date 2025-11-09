@@ -928,7 +928,7 @@ void ServiceManagerWidget::setupToolbar()
     
     // Action buttons
     addButton = new QPushButton("Add Service");
-    addButton->setIcon(QIcon(":/icons/add.png"));
+    addButton->setIcon(QIcon::fromTheme("list-add", QIcon(":/icons/add.svg")));
     connect(addButton, &QPushButton::clicked, this, &ServiceManagerWidget::addService);
     toolbarLayout->addWidget(addButton);
     

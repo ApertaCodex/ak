@@ -17,6 +17,7 @@
 #include <QProgressBar>
 #include <QString>
 #include <QStringList>
+#include <QCheckBox>
 #include <vector>
 
 namespace ak {
@@ -78,6 +79,29 @@ private:
     const core::Config& config;
     std::vector<services::Service> availableServices;
     bool editMode;
+};
+
+class PassphrasePromptDialog : public BaseDialog
+{
+    Q_OBJECT
+
+public:
+    PassphrasePromptDialog(bool requireConfirmation, bool allowRemember, QWidget *parent = nullptr);
+
+    QString passphrase() const;
+    bool rememberForSession() const;
+
+private slots:
+    void validateInput();
+
+private:
+    void setupUi(bool requireConfirmation, bool allowRemember);
+
+    SecureInputWidget *passphraseEdit;
+    SecureInputWidget *confirmEdit;
+    QCheckBox *rememberCheck;
+    QLabel *warningLabel;
+    bool requireConfirmation;
 };
 
 // Profile Create Dialog

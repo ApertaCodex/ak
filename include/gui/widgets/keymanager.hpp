@@ -17,6 +17,15 @@
 #include <QString>
 #include <QStringList>
 #include <QComboBox>
+#include <QThread>
+#include <QMutex>
+#include <QInputDialog>
+#include <QFileDialog>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QTextStream>
+#include <fstream>
 
 namespace ak {
 namespace gui {
@@ -24,6 +33,53 @@ namespace widgets {
 
 // Forward declarations
 class SecureInputWidget;
+
+// Worker class for loading profile keys in background thread
+class ProfileKeysLoaderWorker : public QObject
+{
+    Q_OBJECT
+
+public:
+    ProfileKeysLoaderWorker(const core::Config& config, const QString& profileName, const QString& passphrase, QObject *parent = nullptr);
+    
+public slots:
+    void loadKeys();
+
+signals:
+    void keysLoaded(const QString& profileName, const std::map<std::string, std::string>& keys);
+    void loadFailed(const QString& profileName, const QString& error);
+
+private:
+    core::Config config;
+    QString profileName;
+    std::string passphrase;
+};
+
+// Worker class for saving profile keys in background thread
+class ProfileKeysSaverWorker : public QObject
+{
+    Q_OBJECT
+
+public:
+    ProfileKeysSaverWorker(const core::Config& config,
+                           const QString& profileName,
+                           const std::map<std::string, std::string>& keys,
+                           const QString& passphrase,
+                           QObject *parent = nullptr);
+
+public slots:
+    void saveKeys();
+
+signals:
+    void saveCompleted(const QString& profileName);
+    void saveFailed(const QString& profileName, const QString& error);
+
+private:
+    core::Config config;
+    QString profileName;
+    std::map<std::string, std::string> keysToSave;
+    std::string passphrase;
+};
 
 // Custom table item for masked values
 class MaskedTableItem : public QTableWidgetItem
@@ -49,6 +105,7 @@ class KeyManagerWidget : public QWidget
 
 public:
     explicit KeyManagerWidget(const core::Config& config, QWidget *parent = nullptr);
+    ~KeyManagerWidget() override;
     
     // Public interface
     void refreshKeys();
@@ -73,6 +130,17 @@ private slots:
     void onTableItemChanged(QTableWidgetItem *item);
     void onSelectionChanged();
     void onProfileChanged(const QString &profileName);
+    void onKeysLoaded(const QString& profileName, const std::map<std::string, std::string>& keys);
+    void onKeysLoadFailed(const QString& profileName, const QString& error);
+    void onKeysSaved(const QString& profileName);
+    void onKeysSaveFailed(const QString& profileName, const QString& error);
+    // Profile management actions
+    void createProfile();
+    void deleteProfile();
+    void renameProfile();
+    void duplicateProfile();
+    void importProfile();
+    void exportProfile();
 
 private:
     void setupUi();
@@ -94,6 +162,15 @@ private:
     bool validateKeyName(const QString &name);
     void showError(const QString &message);
     void showSuccess(const QString &message);
+    void updateButtonStates();
+    QString currentPassphrase() const;
+    bool ensurePassphrase(bool requireConfirmation, QString &outPassphrase);
+    void setCurrentPassphrase(const QString &passphrase, bool remember);
+    void clearPassphrase();
+    bool validateProfileName(const QString &name);
+    
+    void cleanupLoadThread(bool waitForFinish = true);
+    void cleanupSaveThread(bool waitForFinish = true);
     
     // Configuration and data
     const core::Config& config;
@@ -101,6 +178,11 @@ private:
     std::map<std::string, std::string> profileKeys;
     std::map<QString, std::map<std::string, std::string>> cachedProfileKeys; // Cache loaded keys to avoid repeated GPG prompts
     bool keysModified; // Track if keys have been modified since last load
+    bool loadingInProgress;
+    bool savingInProgress;
+    QString sessionPassphrase;
+    QString rememberedPassphrase;
+    bool rememberPassphrase;
     
     // UI components
     QVBoxLayout *mainLayout;
@@ -108,6 +190,8 @@ private:
     
     // Toolbar components
     QComboBox *profileCombo;
+    QPushButton *profileActionsButton;  // Menu button for profile actions
+    QMenu *profileActionsMenu;  // Menu for profile management actions
     QLineEdit *searchEdit;
     QPushButton *addButton;
     QPushButton *editButton;
@@ -144,6 +228,12 @@ private:
     // State
     bool globalVisibilityState;
     QString currentFilter;
+    
+    // Background loading/saving
+    QThread *loadKeysThread;
+    ProfileKeysLoaderWorker *loadKeysWorker;
+    QThread *saveKeysThread;
+    ProfileKeysSaverWorker *saveKeysWorker;
 };
 
 } // namespace widgets

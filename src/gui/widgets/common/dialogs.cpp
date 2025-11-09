@@ -81,12 +81,103 @@ KeyEditDialog::KeyEditDialog(const core::Config& cfg, const QString &keyName, co
 
     int serviceIndex = serviceCombo->findData(service);
     if (serviceIndex < 0) {
-        serviceIndex = 0;
+        serviceIndex = serviceCombo->findText(service, Qt::MatchFixedString);
+        if (serviceIndex < 0) {
+            for (int i = 0; i < serviceCombo->count(); ++i) {
+                if (serviceCombo->itemText(i).compare(service, Qt::CaseInsensitive) == 0) {
+                    serviceIndex = i;
+                    break;
+                }
+            }
+            if (serviceIndex < 0) {
+                serviceIndex = 0;
+            }
+        }
     }
     serviceCombo->setCurrentIndex(serviceIndex);
 
     // In edit mode, don't allow changing the name
     nameEdit->setReadOnly(true);
+}
+
+PassphrasePromptDialog::PassphrasePromptDialog(bool requireConfirmation, bool allowRemember, QWidget *parent)
+    : BaseDialog(requireConfirmation ? "Set Passphrase" : "Enter Passphrase", parent),
+      passphraseEdit(nullptr), confirmEdit(nullptr), rememberCheck(nullptr), warningLabel(nullptr),
+      requireConfirmation(requireConfirmation)
+{
+    setupUi(requireConfirmation, allowRemember);
+    validateInput();
+}
+
+void PassphrasePromptDialog::setupUi(bool requireConfirmation, bool allowRemember)
+{
+    QLabel *infoLabel = new QLabel("Enter the passphrase that protects your encrypted keys.", this);
+    infoLabel->setWordWrap(true);
+    addWidget(infoLabel);
+
+    passphraseEdit = new SecureInputWidget(this);
+    passphraseEdit->setPlaceholderText("Passphrase");
+    addFormRow("Passphrase:", passphraseEdit);
+
+    confirmEdit = nullptr;
+    if (requireConfirmation) {
+        confirmEdit = new SecureInputWidget(this);
+        confirmEdit->setPlaceholderText("Confirm passphrase");
+        addFormRow("Confirm:", confirmEdit);
+        connect(confirmEdit, &SecureInputWidget::textChanged, this, &PassphrasePromptDialog::validateInput);
+    }
+
+    connect(passphraseEdit, &SecureInputWidget::textChanged, this, &PassphrasePromptDialog::validateInput);
+
+    rememberCheck = nullptr;
+    if (allowRemember) {
+        rememberCheck = new QCheckBox("Remember passphrase until I quit", this);
+        rememberCheck->setChecked(true);
+        addWidget(rememberCheck);
+    }
+
+    warningLabel = new QLabel(this);
+    warningLabel->setStyleSheet("color: #cc6600; font-size: 12px;");
+    warningLabel->setVisible(false);
+    addWidget(warningLabel);
+
+    setupButtons(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+}
+
+QString PassphrasePromptDialog::passphrase() const
+{
+    return passphraseEdit ? passphraseEdit->text() : QString();
+}
+
+bool PassphrasePromptDialog::rememberForSession() const
+{
+    return rememberCheck ? rememberCheck->isChecked() : false;
+}
+
+void PassphrasePromptDialog::validateInput()
+{
+    QString pass = passphraseEdit ? passphraseEdit->text() : QString();
+    QString confirm = confirmEdit ? confirmEdit->text() : QString();
+
+    bool ok = !pass.isEmpty();
+    if (ok && requireConfirmation) {
+        ok = (pass == confirm);
+    }
+
+    bool weak = pass.length() < 12;
+    if (weak && !pass.isEmpty()) {
+        warningLabel->setText("Passphrase looks weak. Consider using at least 12 characters.");
+        warningLabel->setVisible(true);
+    } else {
+        warningLabel->setVisible(false);
+    }
+
+    if (confirmEdit) {
+        bool match = (pass == confirm);
+        confirmEdit->setValid(match || confirm.isEmpty());
+    }
+
+    setValid(ok);
 }
 
 void KeyEditDialog::setupUi()

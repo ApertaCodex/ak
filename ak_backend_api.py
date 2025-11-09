@@ -5,20 +5,23 @@ Provides REST API endpoints to access the same data files used by the AK CLI.
 This allows the web interface to show real data instead of localStorage mock data.
 """
 
-import os
-import sys
-import json
 import base64
+import logging
+import os
 import subprocess
 import tempfile
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-import logging
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+# Enable DEBUG logging if AK_DEBUG environment variable is set
+log_level = logging.DEBUG if os.getenv("AK_DEBUG", "").lower() in ("1", "true", "yes") else logging.INFO
+logging.basicConfig(
+    level=log_level,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -616,6 +619,6 @@ if __name__ == "__main__":
     print("🚀 AK Backend API Server starting...")
     print(f"📁 Config directory: {config.config_dir}")
     print(f"🔐 GPG available: {config.gpg_available}")
-    print(f"🌐 Server will be available at: http://localhost:5000")
+    print("🌐 Server will be available at: http://localhost:5000")
 
     app.run(host="0.0.0.0", port=5000, debug=True)

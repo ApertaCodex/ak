@@ -79,6 +79,8 @@ if(BUILD_GUI)
     
     # Find Qt 6 components - require minimum 6.4.0 for compatibility
     find_package(Qt6 6.4.0 REQUIRED COMPONENTS Core Widgets)
+    # SVG is optional; when unavailable, we still build/tests pass (fallback icons)
+    find_package(Qt6 COMPONENTS Svg QUIET)
     
     # Enable Qt 6 MOC (Meta-Object Compiler) globally
     set(CMAKE_AUTOMOC ON)
@@ -87,7 +89,7 @@ if(BUILD_GUI)
     
     message(STATUS "Qt6 found: Building with GUI support")
     
-    # Add GUI sources and headers for AUTOMOC discovery
+    # Add GUI sources and headers for AUTOMOC/AUTORCC discovery
     set(GUI_SOURCES
         src/gui/gui.cpp
         src/gui/mainwindow.cpp
@@ -98,6 +100,7 @@ if(BUILD_GUI)
         src/gui/widgets/servicemanager.cpp
         src/gui/widgets/common/secureinput.cpp
         src/gui/widgets/common/dialogs.cpp
+        resources/icons.qrc
         include/gui/mainwindow.hpp
         include/gui/widgets/keymanager.hpp
         include/gui/widgets/servicehelpers.hpp
@@ -122,6 +125,12 @@ add_executable(ak
 # Link Qt6 libraries if GUI is enabled
 if(BUILD_GUI)
     target_link_libraries(ak Qt6::Core Qt6::Widgets)
+    if(TARGET Qt6::Svg)
+        target_link_libraries(ak Qt6::Svg)
+        target_compile_definitions(ak PRIVATE HAVE_QT6_SVG)
+    else()
+        message(STATUS "Qt6::Svg not found - using fallback icons")
+    endif()
     target_include_directories(ak PRIVATE include/gui)
     target_compile_definitions(ak PRIVATE BUILD_GUI)
 endif()
@@ -182,13 +191,11 @@ if(BUILD_TESTS)
     add_executable(ak_tests
         ${TEST_SOURCES}
         ${CORE_SOURCES}
-        ${GUI_SOURCES}
     )
     
-    # Link Qt6 to tests if GUI enabled
+    # Link Qt6 Core to tests only (no Widgets to avoid GUI deps in unit tests)
     if(BUILD_GUI)
-        target_link_libraries(ak_tests Qt6::Core Qt6::Widgets)
-        target_compile_definitions(ak_tests PRIVATE BUILD_GUI)
+        target_link_libraries(ak_tests Qt6::Core)
     endif()
     
     # Pass version to test target

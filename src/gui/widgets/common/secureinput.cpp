@@ -3,6 +3,8 @@
 #include "gui/widgets/common/secureinput.hpp"
 #include <QApplication>
 #include <QStyle>
+#include <QIcon>
+#include <QSize>
 
 namespace ak {
 namespace gui {
@@ -28,6 +30,7 @@ void SecureInputWidget::setupUi()
     
     toggleButton = new QPushButton(this);
     toggleButton->setFixedSize(24, 24);
+    toggleButton->setIconSize(QSize(18, 18));
     toggleButton->setFlat(true);
     toggleButton->setCursor(Qt::PointingHandCursor);
     toggleButton->setToolTip("Toggle visibility");
@@ -105,11 +108,13 @@ void SecureInputWidget::updateVisibility()
 {
     if (masked) {
         lineEdit->setEchoMode(QLineEdit::Password);
-        toggleButton->setText("👁");
+        toggleButton->setIcon(QIcon::fromTheme("view-visible", QIcon(":/icons/eye.svg")));
+        toggleButton->setText("");
         toggleButton->setToolTip("Show value");
     } else {
         lineEdit->setEchoMode(QLineEdit::Normal);
-        toggleButton->setText("🙈");
+        toggleButton->setIcon(QIcon::fromTheme("view-hidden", QIcon(":/icons/eye-off.svg")));
+        toggleButton->setText("");
         toggleButton->setToolTip("Hide value");
     }
 }
