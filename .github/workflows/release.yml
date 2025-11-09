@@ -245,24 +245,20 @@ jobs:
       - name: Add MSVC & CMake
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Install Qt6
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.7.0'
-          modules: 'qtbase'
-          arch: 'win64_msvc2019_64'
-        id: qt
-
-      - name: Install build tools
+      - name: Install build tools and Qt6
         shell: bash
         run: |
           choco install ninja -y
+          choco install qt6 --version=6.7.0 -y
 
       - name: Configure (CMake + Ninja)
         shell: bash
-        env:
-          CMAKE_PREFIX_PATH: ${{ steps.qt.outputs.QT_PREFIX }}
         run: |
+          # Find Qt6 installation
+          QT_PATH=$(find "C:/Program Files" -type d -name "Qt*" -path "*/6.*/msvc2019_64" 2>/dev/null | head -1 || echo "")
+          if [ -n "$QT_PATH" ]; then
+            export CMAKE_PREFIX_PATH="$QT_PATH"
+          fi
           cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
 
       - name: Build
