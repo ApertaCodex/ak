@@ -126,14 +126,14 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential
+          sudo apt-get install -y cmake build-essential qt6-base-dev qt6-base-dev-tools
 
       - name: Bump version
         run: |
           BUMP_TYPE="${{ needs.detect_version_bump.outputs.bump_type }}"
           mkdir -p build
           cd build
-          cmake ..
+          cmake .. -DCMAKE_BUILD_TYPE=Release
           cmake --build . --target "bump-$BUMP_TYPE"
 
       - name: Get new version
