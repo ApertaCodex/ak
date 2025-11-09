@@ -242,24 +242,24 @@ jobs:
       - name: Add MSVC & CMake
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.0'
+          modules: 'qtbase'
+          arch: 'win64_msvc2019_64'
+
       - name: Install build tools
         shell: bash
         run: |
           choco install ninja -y
 
-      - name: Install Qt6 via vcpkg
-        shell: bash
-        run: |
-          git clone https://github.com/Microsoft/vcpkg.git C:/vcpkg
-          C:/vcpkg/bootstrap-vcpkg.bat
-          C:/vcpkg/vcpkg install qt6-base[core]:x64-windows
-
       - name: Configure (CMake + Ninja)
         shell: bash
+        env:
+          CMAKE_PREFIX_PATH: ${{ env.QT_PREFIX }}
         run: |
-          cmake -S . -B build -G "Ninja" \
-            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
 
       - name: Build
         shell: bash
