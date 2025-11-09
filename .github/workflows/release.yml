@@ -51,7 +51,7 @@ jobs:
           echo "Current version: $CURRENT"
 
       - name: Detect bump type from commit messages
-        id: detect_bump
+        id: detect_bump_push
         if: github.event_name == 'push'
         run: |
           # Check last commit message for version bump indicators
@@ -71,12 +71,21 @@ jobs:
           echo "Detected bump type: $BUMP_TYPE"
 
       - name: Use manual bump type
-        id: detect_bump
+        id: detect_bump_manual
         if: github.event_name == 'workflow_dispatch'
         run: |
           BUMP_TYPE="${{ github.event.inputs.version_bump }}"
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
           echo "Using manual bump type: $BUMP_TYPE"
+
+      - name: Set bump type output
+        id: detect_bump
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "bump_type=${{ steps.detect_bump_push.outputs.bump_type }}" >> $GITHUB_OUTPUT
+          else
+            echo "bump_type=${{ steps.detect_bump_manual.outputs.bump_type }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Calculate new version
         id: calc_version
