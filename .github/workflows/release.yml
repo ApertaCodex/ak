@@ -339,7 +339,7 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-22.04
     needs: [build_linux, build_windows, build_macos]
-    if: always()
+    if: always() && (needs.build_linux.result == 'success' || needs.build_linux.result == 'failure')
     permissions:
       contents: write
     steps:
