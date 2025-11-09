@@ -248,6 +248,7 @@ jobs:
           version: '6.7.0'
           modules: 'qtbase'
           arch: 'win64_msvc2019_64'
+        id: qt
 
       - name: Install build tools
         shell: bash
@@ -257,7 +258,7 @@ jobs:
       - name: Configure (CMake + Ninja)
         shell: bash
         env:
-          CMAKE_PREFIX_PATH: ${{ env.QT_PREFIX }}
+          CMAKE_PREFIX_PATH: ${{ steps.qt.outputs.QT_PREFIX }}
         run: |
           cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
 
