@@ -322,181 +322,10 @@ jobs:
           path: dist/*
           retention-days: 30
 
-  publish_apt_repo:
-    name: Publish APT Repository
-    runs-on: ubuntu-22.04
-    needs: [build_linux]
-    if: always()
-    permissions:
-      contents: write
-      pages: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download all Linux artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: linux-artifacts
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y dpkg-dev gnupg
-
-      - name: Setup GPG key
-        if: ${{ secrets.AK_REPO_GPG_PRIVKEY != '' && secrets.AK_REPO_GPG_PASSPHRASE != '' }}
-        env:
-          GPG_PRIV: ${{ secrets.AK_REPO_GPG_PRIVKEY }}
-          GPG_PASS: ${{ secrets.AK_REPO_GPG_PASSPHRASE }}
-        run: |
-          echo "$GPG_PRIV" | base64 -d > privkey.asc
-          gpg --batch --import privkey.asc
-          rm -f privkey.asc
-
-      - name: Update APT repository
-        run: |
-          VERSION=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
-          
-          # Find .deb file (use any available)
-          DEB_FILE=$(find linux-artifacts -name "*.deb" | head -1)
-          
-          if [ -z "$DEB_FILE" ]; then
-            echo "No .deb file found, skipping APT repo update"
-            exit 0
-          fi
-          
-          echo "Using .deb file: $DEB_FILE"
-          
-          # Copy to pool
-          mkdir -p ak-apt-repo/pool/main
-          cp "$DEB_FILE" ak-apt-repo/pool/main/
-          
-          # Process each distribution
-          for DIST in noble jammy focal plucky stable; do
-            echo "Processing distribution: $DIST"
-            
-            # Create distribution directories
-            mkdir -p "ak-apt-repo/dists/$DIST/main/binary-amd64"
-            
-            # Generate Packages file
-            cd ak-apt-repo
-            dpkg-scanpackages --multiversion pool/main /dev/null > "dists/$DIST/main/binary-amd64/Packages" 2>/dev/null || \
-              dpkg-scanpackages pool/main /dev/null > "dists/$DIST/main/binary-amd64/Packages"
-            gzip -fk "dists/$DIST/main/binary-amd64/Packages"
-            cd ..
-            
-            # Get file sizes and checksums
-            PACKAGES_SIZE=$(stat -c%s "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages")
-            PACKAGES_GZ_SIZE=$(stat -c%s "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages.gz")
-            PACKAGES_MD5=$(md5sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages" | cut -d' ' -f1)
-            PACKAGES_GZ_MD5=$(md5sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages.gz" | cut -d' ' -f1)
-            PACKAGES_SHA1=$(sha1sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages" | cut -d' ' -f1)
-            PACKAGES_GZ_SHA1=$(sha1sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages.gz" | cut -d' ' -f1)
-            PACKAGES_SHA256=$(sha256sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages" | cut -d' ' -f1)
-            PACKAGES_GZ_SHA256=$(sha256sum "ak-apt-repo/dists/$DIST/main/binary-amd64/Packages.gz" | cut -d' ' -f1)
-            
-            # Generate Release file
-            cat > "ak-apt-repo/dists/$DIST/Release" <<EOF
-          Archive: $DIST
-          Codename: $DIST
-          Components: main
-          Date: $(date -u +"%a, %d %b %Y %H:%M:%S +0000")
-          Description: AK API Key Manager Repository
-          Label: AK Repository
-          Origin: AK
-          Suite: $DIST
-          Version: 1.0
-          Architectures: amd64
-          MD5Sum:
-           $PACKAGES_MD5 $PACKAGES_SIZE main/binary-amd64/Packages
-           $PACKAGES_GZ_MD5 $PACKAGES_GZ_SIZE main/binary-amd64/Packages.gz
-          SHA1:
-           $PACKAGES_SHA1 $PACKAGES_SIZE main/binary-amd64/Packages
-           $PACKAGES_GZ_SHA1 $PACKAGES_GZ_SIZE main/binary-amd64/Packages.gz
-          SHA256:
-           $PACKAGES_SHA256 $PACKAGES_SIZE main/binary-amd64/Packages
-           $PACKAGES_GZ_SHA256 $PACKAGES_GZ_SIZE main/binary-amd64/Packages.gz
-          EOF
-            
-            # Sign Release file if GPG key is available
-            if [ -n "${GPG_PASS:-}" ] && command -v gpg >/dev/null 2>&1; then
-              cd "ak-apt-repo/dists/$DIST"
-              echo "$GPG_PASS" | gpg --batch --yes --passphrase-fd 0 --clearsign -o InRelease Release 2>/dev/null || true
-              echo "$GPG_PASS" | gpg --batch --yes --passphrase-fd 0 --armor --detach-sig -o Release.gpg Release 2>/dev/null || true
-              cd ../..
-            fi
-          done
-          
-          # Use CMake script for stable distribution (it's more robust)
-          mkdir -p build
-          cd build
-          cmake .. -DDISTRIBUTION=stable
-          cmake -DPROJECT_DIR=.. -P ../cmake/apt_publish.cmake || echo "CMake apt_publish failed, using manual method"
-          cd ..
-
-      - name: Commit and push APT repository
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add ak-apt-repo/
-          git commit -m "?? Update APT repository for version ${{ needs.detect_version_bump.outputs.new_version }}" || echo "No changes to commit"
-          git push origin main
-
-  publish_ppa:
-    name: Publish to Launchpad PPA
-    runs-on: ubuntu-22.04
-    needs: [build_linux]
-    if: always() && secrets.DEBSIGN_KEYID != ''
-    strategy:
-      fail-fast: false
-      matrix:
-        distribution: [noble, jammy, focal, plucky]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-${{ matrix.distribution }}
-          path: dist
-
-      - name: Setup GPG
-        env:
-          GPG_KEY: ${{ secrets.DEBSIGN_KEYID }}
-        run: |
-          # Import GPG key if available
-          if [ -n "${{ secrets.GPG_PRIVATE_KEY }}" ]; then
-            echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 -d | gpg --import
-          fi
-
-      - name: Build and upload to PPA
-        env:
-          DEBSIGN_KEYID: ${{ secrets.DEBSIGN_KEYID }}
-        run: |
-          VERSION=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
-          SERIES="${{ matrix.distribution }}"
-          
-          # Use the multi-distribution script if available
-          if [ -f "./publish-ppa-multi.sh" ]; then
-            chmod +x ./publish-ppa-multi.sh
-            # This script handles multiple distributions, but we'll call it per distribution
-            export DEBSIGN_KEYID="${{ secrets.DEBSIGN_KEYID }}"
-            bash -c "./build-and-upload-ppa.sh $SERIES"
-          else
-            echo "PPA upload script not found, skipping..."
-          fi
-
   create_release:
     name: Create GitHub Release
     runs-on: ubuntu-22.04
-    needs: [build_linux, build_windows, build_macos, publish_apt_repo]
+    needs: [build_linux, build_windows, build_macos]
     if: always()
     permissions:
       contents: write
@@ -528,12 +357,6 @@ jobs:
             
             ### Installation
             
-            **Linux (APT):**
-            ```bash
-            curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash
-            sudo apt install ak
-            ```
-            
             **macOS (Homebrew):**
             ```bash
             brew tap apertacodex/ak https://github.com/apertacodex/ak.git
@@ -543,11 +366,11 @@ jobs:
             **Windows:**
             Download the installer from the assets below.
             
-            ### Distributions Supported
-            - Ubuntu 24.04 (noble)
-            - Ubuntu 22.04 (jammy)
-            - Ubuntu 20.04 (focal)
-            - Ubuntu 25.04 (plucky)
+            **Linux:**
+            Download the .deb package from the assets below and install with:
+            ```bash
+            sudo dpkg -i ak_*.deb
+            ```
           files: |
             collected/**/*
           draft: false

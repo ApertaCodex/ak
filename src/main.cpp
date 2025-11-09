@@ -122,17 +122,13 @@ int main(int argc, char** argv) {
         {"install-shell", commands::cmd_install_shell},
         {"uninstall", commands::cmd_uninstall},
         {"completion", commands::cmd_completion},
-        {"serve", commands::cmd_serve},
         
         // Internal commands for shell integration auto-loading
         {"_internal_get_dir_profiles", commands::cmd_internal_get_dir_profiles},
         {"_internal_get_bundle", commands::cmd_internal_get_bundle},
         
         // GUI
-        {"gui", commands::cmd_gui},
-        
-        // HTTP Server
-        {"serve", commands::cmd_serve}
+        {"gui", commands::cmd_gui}
     };
     
     // Dispatch to appropriate command handler

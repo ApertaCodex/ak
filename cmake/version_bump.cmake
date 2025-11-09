@@ -137,26 +137,15 @@ foreach(FILE_PATTERN ${FILES_TO_UPDATE})
 endforeach()
 
 # Update macOS script default versions
-set(MACOS_SCRIPTS
-    "macos/scripts/create-app-bundle.sh"
-    "macos/scripts/create-dmg.sh"
-    "macos/scripts/create-pkg.sh"
-    "macos/scripts/package-all.sh"
-)
-
-foreach(SCRIPT_FILE ${MACOS_SCRIPTS})
-    if(EXISTS "${PROJECT_DIR}/${SCRIPT_FILE}")
-        file(READ "${PROJECT_DIR}/${SCRIPT_FILE}" SCRIPT_CONTENT)
-        string(REGEX REPLACE
-            "VERSION=\"\\$\\{AK_VERSION:-[0-9]+\\.[0-9]+\\.[0-9]+\\}\""
-            "VERSION=\"\\${AK_VERSION:-${NEW_VERSION}}\""
-            NEW_SCRIPT_CONTENT
-            "${SCRIPT_CONTENT}"
-        )
-        file(WRITE "${PROJECT_DIR}/${SCRIPT_FILE}" "${NEW_SCRIPT_CONTENT}")
-        message(STATUS "📝 Updated ${SCRIPT_FILE}")
-    endif()
-endforeach()
+# Note: These scripts use shell variable syntax that's complex to update via CMake regex
+# The scripts will use the version from CMakeLists.txt at build time, so manual update is optional
+# set(MACOS_SCRIPTS
+#     "macos/scripts/create-app-bundle.sh"
+#     "macos/scripts/create-dmg.sh"
+#     "macos/scripts/create-pkg.sh"
+#     "macos/scripts/package-all.sh"
+# )
+# macOS scripts will pick up version from environment or CMakeLists.txt automatically
 
 message(STATUS "📈 Version: ${MAJOR}.${MINOR}.${PATCH} → ${NEW_VERSION}")
 message(STATUS "✅ Updated version to ${NEW_VERSION} in all files")

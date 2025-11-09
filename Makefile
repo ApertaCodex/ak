@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 4.10.1
+VERSION   ?= 4.10.3
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -41,13 +41,12 @@ CRYPTO_SRC := src/crypto/crypto.cpp
 STORAGE_SRC := src/storage/vault.cpp
 UI_SRC    := src/ui/ui.cpp
 SYSTEM_SRC := src/system/system.cpp
-HTTP_SRC   := src/http/server.cpp
 CLI_SRC   := src/cli/cli.cpp
 SERVICES_SRC := src/services/services.cpp
 COMMANDS_SRC := src/commands/commands.cpp
 MAIN_SRC  := src/main.cpp
 
-APP_SRCS  := $(CORE_SRC) $(CRYPTO_SRC) $(STORAGE_SRC) $(UI_SRC) $(SYSTEM_SRC) $(HTTP_SRC) $(CLI_SRC) $(SERVICES_SRC) $(COMMANDS_SRC) $(MAIN_SRC)
+APP_SRCS  := $(CORE_SRC) $(CRYPTO_SRC) $(STORAGE_SRC) $(UI_SRC) $(SYSTEM_SRC) $(CLI_SRC) $(SERVICES_SRC) $(COMMANDS_SRC) $(MAIN_SRC)
 BIN       := $(APP)
 
 # Test files
