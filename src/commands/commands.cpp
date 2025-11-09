@@ -16,7 +16,12 @@
 #include <unordered_set>
 #include <filesystem>
 #include <cstdlib>
-#ifdef __unix__
+#ifdef _WIN32
+#include <io.h>
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define isatty _isatty
+#else
 #include <unistd.h>
 #endif
 
@@ -803,6 +808,10 @@ namespace ak
                 core::auditLog(cfg, "purge_all", {});
 
                 std::cout << ui::colorize("✅ Purge completed. All secrets and profiles have been deleted.", ui::Colors::BRIGHT_GREEN) << "\n";
+                if (deletedItems > 0)
+                {
+                    std::cout << ui::colorize("   Deleted " + std::to_string(deletedItems) + " item(s).", ui::Colors::DIM) << "\n";
+                }
                 if (!noBackup)
                 {
                     std::cout << ui::colorize("📦 Backup preserved at: " + cfg.configDir + "/backup-*", ui::Colors::BRIGHT_BLUE) << "\n";
