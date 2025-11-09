@@ -5,7 +5,6 @@
 #include "services/services.hpp"
 #include "ui/ui.hpp"
 #include "cli/cli.hpp"
-#include "http/server.hpp"
 #ifdef BUILD_GUI
 #include "gui/gui.hpp"
 #endif
@@ -2475,74 +2474,6 @@ namespace ak
             return 0;
         }
 
-        int cmd_serve(const core::Config &cfg, const std::vector<std::string> &args)
-        {
-            std::string host = "127.0.0.1";
-            uint16_t port = 8765;
-
-            // Parse arguments for host and port
-            for (size_t i = 1; i < args.size(); ++i)
-            {
-                if ((args[i] == "--host" || args[i] == "-h") && i + 1 < args.size())
-                {
-                    host = args[i + 1];
-                    ++i;
-                }
-                else if ((args[i] == "--port" || args[i] == "-p") && i + 1 < args.size())
-                {
-                    try
-                    {
-                        port = static_cast<uint16_t>(std::stoi(args[i + 1]));
-                    }
-                    catch (const std::exception &)
-                    {
-                        core::error(cfg, "Invalid port number: " + args[i + 1]);
-                        return 1;
-                    }
-                    ++i;
-                }
-                else if (args[i] == "--help")
-                {
-                    std::cout << ui::colorize("Usage: ak serve [OPTIONS]", ui::Colors::BRIGHT_WHITE) << "\n\n";
-                    std::cout << ui::colorize("OPTIONS:", ui::Colors::BRIGHT_CYAN) << "\n";
-                    std::cout << "  --host, -h HOST    Host to bind to (default: 127.0.0.1)\n";
-                    std::cout << "  --port, -p PORT    Port to listen on (default: 8765)\n";
-                    std::cout << "  --help             Show this help message\n\n";
-                    std::cout << ui::colorize("DESCRIPTION:", ui::Colors::BRIGHT_CYAN) << "\n";
-                    std::cout << "  Start an HTTP server that exposes AK functionality via REST API.\n";
-                    std::cout << "  This allows the web interface to communicate directly with the\n";
-                    std::cout << "  C++ backend without duplicating key management logic.\n\n";
-                    std::cout << ui::colorize("EXAMPLES:", ui::Colors::BRIGHT_CYAN) << "\n";
-                    std::cout << "  ak serve                     # Start server on 127.0.0.1:8765\n";
-                    std::cout << "  ak serve --port 3000         # Start server on port 3000\n";
-                    std::cout << "  ak serve --host 0.0.0.0      # Bind to all interfaces\n";
-                    return 0;
-                }
-            }
-
-            try
-            {
-                http::Server server(cfg);
-
-                std::cout << ui::colorize("🚀 Starting AK HTTP Server", ui::Colors::BRIGHT_GREEN) << "\n";
-                std::cout << ui::colorize("   Serving AK REST API endpoints", ui::Colors::WHITE) << "\n";
-                std::cout << ui::colorize("   Press Ctrl+C to stop", ui::Colors::DIM) << "\n\n";
-
-                if (!server.start(host, port))
-                {
-                    core::error(cfg, "Failed to start HTTP server on " + host + ":" + std::to_string(port));
-                    core::error(cfg, "Make sure the port is available and not blocked by firewall");
-                    return 1;
-                }
-            }
-            catch (const std::exception &e)
-            {
-                core::error(cfg, "HTTP Server error: " + std::string(e.what()));
-                return 1;
-            }
-
-            return 0;
-        }
         // Namespaced command handlers
 
         // cmd_secret - handles ak secret <subcommand>

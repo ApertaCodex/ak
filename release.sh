@@ -1,6 +1,7 @@
 #!/bin/bash
 # Automated Release Script for AK API Key Manager
-# Handles version bumping, building, APT repository updates, and publishing
+# Handles version bumping, building, and git commit
+# Note: GitHub Actions handles publishing, APT repository, and Homebrew updates
 
 set -e
 
@@ -41,6 +42,12 @@ fi
 
 cd build
 
+# Configure CMake if needed
+if [ ! -f "CMakeCache.txt" ]; then
+    echo -e "${BLUE}⚙️  Configuring CMake...${NC}"
+    cmake .. -DCMAKE_BUILD_TYPE=Release
+fi
+
 # Run the automated release process
 echo -e "${BLUE}🔄 Running automated release process...${NC}"
 echo ""
@@ -53,73 +60,29 @@ echo -e "${YELLOW}Step 2: Building${NC}"
 cmake --build . --target build-release
 
 echo ""
-echo -e "${YELLOW}Step 3: APT Repository Update${NC}"
-cmake --build . --target update-apt-repo
-
-echo ""
-echo -e "${YELLOW}Step 3b: Commit Repository Files${NC}"
-cd ..
-chmod +x ./commit-repos.sh
-./commit-repos.sh
-cd build
+echo -e "${YELLOW}Step 3: Running Tests${NC}"
+cmake --build . --target run_tests || echo -e "${YELLOW}⚠️  Tests failed, but continuing...${NC}"
 
 echo ""
 echo -e "${YELLOW}Step 4: Git Commit & Push${NC}"
-cmake --build . --target commit-and-push
+cd ..
+cmake --build build --target commit-and-push || {
+    echo -e "${YELLOW}⚠️  Git commit/push failed or no changes to commit${NC}"
+    echo -e "${YELLOW}   You may need to commit and push manually${NC}"
+}
 
 echo ""
-echo -e "${YELLOW}Step 5: PPA Upload${NC}"
-# Attempt to automatically detect GPG key ID if not set
-if [ -z "${DEBSIGN_KEYID}" ]; then
-    DETECTED_KEYID="$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}')"
-    if [ -n "${DETECTED_KEYID}" ]; then
-        export DEBSIGN_KEYID="${DETECTED_KEYID}"
-        echo -e "${GREEN}✅ Automatically detected GPG key ID: ${DEBSIGN_KEYID}${NC}"
-    else
-        echo -e "${RED}❌ Error: DEBSIGN_KEYID is not set and could not be automatically detected.${NC}"
-        echo -e "${RED}Please set it manually: export DEBSIGN_KEYID=YOUR_GPG_KEY_ID${NC}"
-        read -p "Continue with PPA upload anyway? (y/N): " -r
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "PPA upload skipped."
-            exit 0 # Exit successfully if PPA upload is skipped
-        fi
-    fi
-fi
-
-if [ -n "${DEBSIGN_KEYID}" ]; then
-    echo -e "${BLUE}⬆️  Uploading to PPA: ppa:apertacodex/ak (series: noble) with key ${DEBSIGN_KEYID}${NC}"
-    # Change to parent directory
-    cd ..
-    
-    # Use the new clean build and upload script
-    if ! ./build-and-upload-ppa.sh noble "${DEBSIGN_KEYID}" 2>&1 | tee build/ppa_upload_output.log; then
-        echo -e "${RED}❌ PPA upload failed. Check build/ppa_upload_output.log for details.${NC}"
-        cd build
-        exit 1
-    fi
-    
-    # Return to build directory
-    cd build
-    echo -e "${GREEN}✅ PPA upload initiated. Monitor build status at Launchpad.${NC}"
-else
-    echo -e "${RED}❌ PPA upload skipped due to missing GPG key ID.${NC}"
-fi
-
+echo -e "${GREEN}🎉 Release preparation completed!${NC}"
 echo ""
-echo -e "${GREEN}🎉 Release completed successfully!${NC}"
+echo -e "${BLUE}📦 Next steps:${NC}"
 echo ""
-echo -e "${BLUE}📦 Users can now install with:${NC}"
+echo -e "${YELLOW}1. GitHub Actions will automatically:${NC}"
+echo "   - Build binaries for Linux, macOS, and Windows"
+echo "   - Create GitHub release with artifacts"
+echo "   - Update Homebrew formula"
 echo ""
-echo -e "${YELLOW}Linux (APT):${NC}"
-echo "  curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash"
-echo "  sudo apt install ak"
+echo -e "${YELLOW}2. To trigger the release workflow:${NC}"
+echo "   - Push the version bump commit to main branch"
+echo "   - Or manually trigger the release workflow in GitHub Actions"
 echo ""
-echo -e "${YELLOW}macOS (Homebrew):${NC}"
-echo "  brew tap apertacodex/ak https://github.com/apertacodex/ak.git"
-echo "  brew install ak"
-echo ""
-echo -e "${GREEN}🤖 Homebrew formula will be automatically updated by GitHub Actions when you create a release.${NC}"
-echo ""
-echo -e "${BLUE}📍 GitHub Pages Repository: https://apertacodex.github.io/ak/ak-apt-repo${NC}"
-echo -e "${BLUE}📍 Launchpad PPA: https://launchpad.net/~apertacodex/+archive/ubuntu/ak${NC}"
-echo -e "${BLUE}📍 Homebrew Formula: https://github.com/apertacodex/ak/blob/main/Formula/ak.rb${NC}"
+echo -e "${GREEN}🤖 All publishing is handled automatically by GitHub Actions workflows.${NC}"

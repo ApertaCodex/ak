@@ -128,7 +128,6 @@ void cmd_help() {
     std::cout << "  " << ui::colorize("ak help", ui::Colors::BRIGHT_CYAN) << "                           Show this help message\n";
     std::cout << "  " << ui::colorize("ak version", ui::Colors::BRIGHT_CYAN) << "                        Show version information\n";
     std::cout << "  " << ui::colorize("ak backend", ui::Colors::BRIGHT_CYAN) << "                        Show backend information\n";
-    std::cout << "  " << ui::colorize("ak serve [--host HOST] [--port PORT]", ui::Colors::BRIGHT_CYAN) << "    Start HTTP server for web interface\n";
     std::cout << "  " << ui::colorize("ak purge [--no-backup] [--force]", ui::Colors::BRIGHT_CYAN) << "      Remove all secrets and profiles\n";
     std::cout << "  " << ui::colorize("ak install-shell", ui::Colors::BRIGHT_CYAN) << "                  Install shell integration\n";
     std::cout << "  " << ui::colorize("ak completion <shell>", ui::Colors::BRIGHT_CYAN) << "             Generate shell completion script\n\n";
@@ -161,7 +160,7 @@ _ak_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Main commands (namespaced + legacy)
-    local commands="secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit serve install-shell uninstall completion version backend help welcome"
+    local commands="secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome"
 
     # Handle multi-level completions
     case "${COMP_WORDS[1]}" in
@@ -282,7 +281,7 @@ _arguments -C \
   '(-v --version)'{-v,--version}'[Show version information]' \
   '--json[Enable JSON output]' \
   '--quiet[Minimal output for scripting]' \
-  '1:command:(secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit serve install-shell uninstall completion version backend help welcome gui)' \
+  '1:command:(secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome gui)' \
   '*::arg:->args'
 
 case $state in
@@ -394,11 +393,6 @@ case $state in
           '--format[Format]:format:(env dotenv json yaml)' '-f+[Format]:format:(env dotenv json yaml)' \
           '--output[Output file]:file:_files' '-o+[Output file]:file:_files'
         ;;
-      serve)
-        _arguments \
-          '--host[Bind host]:host name:_hosts' \
-          '--port[Port to listen on]:port number:'
-        ;;
     esac
   ;;
 esac
@@ -416,7 +410,7 @@ complete -c ak -l json -d "Enable JSON output"
 complete -c ak -l quiet -d "Minimal output for scripting"
 
 # Main commands (namespaced + legacy)
-complete -c ak -n "__fish_use_subcommand" -a "secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit serve install-shell uninstall completion version backend help welcome gui"
+complete -c ak -n "__fish_use_subcommand" -a "secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome gui"
 
 # Secret namespace
 complete -c ak -n "__fish_seen_subcommand_from secret; and not __fish_seen_subcommand_from add set get ls rm search cp" -a "add set get ls rm search cp" -d "Secret commands"
@@ -468,9 +462,6 @@ complete -c ak -n "__fish_seen_subcommand_from export" -s p -l profile -r -d "Pr
 complete -c ak -n "__fish_seen_subcommand_from export" -s f -l format -a "env dotenv json yaml" -d "Output format"
 complete -c ak -n "__fish_seen_subcommand_from export" -s o -l output -r -d "Output file"
 
-# serve options
-complete -c ak -n "__fish_seen_subcommand_from serve" -l host -r -d "Bind host (default 127.0.0.1)"
-complete -c ak -n "__fish_seen_subcommand_from serve" -l port -r -d "Port (default 8765)"
 )FISH";
 }
 
@@ -486,7 +477,7 @@ _ak_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Main commands (namespaced + legacy)
-    local commands="secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit serve install-shell uninstall completion version backend help welcome"
+    local commands="secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome"
 
     # Handle multi-level completions
     case "${COMP_WORDS[1]}" in
@@ -583,10 +574,6 @@ _ak_completion() {
             COMPREPLY=($(compgen -W "${services} --all --json --fail-fast --quiet" -- ${cur}))
             return 0
             ;;
-        serve)
-            COMPREPLY=($(compgen -W "--host -h --port -p --help" -- ${cur}))
-            return 0
-            ;;
         env)
             COMPREPLY=($(compgen -W "--profile -p" -- ${cur}))
             return 0
@@ -620,7 +607,7 @@ _arguments -C \
   '(-v --version)'{-v,--version}'[Show version information]' \
   '--json[Enable JSON output]' \
   '--quiet[Minimal output for scripting]' \
-  '1:command:(secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit serve install-shell uninstall completion version backend help welcome gui)' \
+  '1:command:(secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome gui)' \
   '*::arg:->args'
 
 case $state in
@@ -732,11 +719,6 @@ case $state in
           '--format[Format]:format:(env dotenv json yaml)' '-f+[Format]:format:(env dotenv json yaml)' \
           '--output[Output file]:file:_files' '-o+[Output file]:file:_files'
         ;;
-      serve)
-        _arguments \
-          '--host[Bind host]:host name:_hosts' \
-          '--port[Port to listen on]:port number:'
-        ;;
     esac
   ;;
 esac
@@ -755,7 +737,7 @@ complete -c ak -l json -d "Enable JSON output"
 complete -c ak -l quiet -d "Minimal output for scripting"
 
 # Main commands (namespaced + legacy)
-complete -c ak -n "__fish_use_subcommand" -a "secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit serve install-shell uninstall completion version backend help welcome gui"
+complete -c ak -n "__fish_use_subcommand" -a "secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome gui"
 
 # Secret namespace
 complete -c ak -n "__fish_seen_subcommand_from secret; and not __fish_seen_subcommand_from add set get ls rm search cp" -a "add set get ls rm search cp" -d "Secret commands"
@@ -807,9 +789,6 @@ complete -c ak -n "__fish_seen_subcommand_from export" -s p -l profile -r -d "Pr
 complete -c ak -n "__fish_seen_subcommand_from export" -s f -l format -a "env dotenv json yaml" -d "Output format"
 complete -c ak -n "__fish_seen_subcommand_from export" -s o -l output -r -d "Output file"
 
-# serve options
-complete -c ak -n "__fish_seen_subcommand_from serve" -l host -r -d "Bind host (default 127.0.0.1)"
-complete -c ak -n "__fish_seen_subcommand_from serve" -l port -r -d "Port (default 8765)"
 )FISH";
 }
 
