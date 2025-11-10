@@ -64,8 +64,6 @@ set(FILES_TO_UPDATE
     "Makefile:VERSION[ \t]*\\?=[ \t]*([0-9]+\\.[0-9]+\\.[0-9]+)"
     "Formula/ak.rb:version \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
     "macos/homebrew/generated/ak.rb:version \"([0-9]+\\.[0-9]+\\.[0-9]+)\""
-    "ak-apt-repo/index.html:Latest version: ([0-9]+\\.[0-9]+\\.[0-9]+)"
-    "ak-macos-repo/index.html:Latest version: ([0-9]+\\.[0-9]+\\.[0-9]+)"
     "README.md:- \\*\\*Version\\*\\*: ([0-9]+\\.[0-9]+\\.[0-9]+)"
     "README.md:ak_([0-9]+\\.[0-9]+\\.[0-9]+)_amd64.deb"
     "windows-installer.nsi:VIProductVersion \"([0-9]+\\.[0-9]+\\.[0-9]+)\\.0\""
@@ -94,10 +92,6 @@ foreach(FILE_PATTERN ${FILES_TO_UPDATE})
         elseif("${FILE_PATH}" MATCHES ".*\\.rb$")
             string(REGEX REPLACE "version \"[0-9]+\\.[0-9]+\\.[0-9]+\"" "version \"${NEW_VERSION}\"" NEW_FILE_CONTENT "${FILE_CONTENT}")
             string(REGEX REPLACE "/archive/v[0-9]+\\.[0-9]+\\.[0-9]+\\.tar\\.gz" "/archive/v${NEW_VERSION}.tar.gz" NEW_FILE_CONTENT "${NEW_FILE_CONTENT}")
-        elseif("${FILE_PATH}" STREQUAL "ak-apt-repo/index.html")
-            string(REGEX REPLACE "Latest version: [0-9]+\\.[0-9]+\\.[0-9]+" "Latest version: ${NEW_VERSION}" NEW_FILE_CONTENT "${FILE_CONTENT}")
-        elseif("${FILE_PATH}" STREQUAL "ak-macos-repo/index.html")
-            string(REGEX REPLACE "Latest version: [0-9]+\\.[0-9]+\\.[0-9]+" "Latest version: ${NEW_VERSION}" NEW_FILE_CONTENT "${FILE_CONTENT}")
         elseif("${FILE_PATH}" STREQUAL "README.md")
             string(REGEX REPLACE "- \\*\\*Version\\*\\*: [0-9]+\\.[0-9]+\\.[0-9]+"
                                   "- **Version**: ${NEW_VERSION}"
