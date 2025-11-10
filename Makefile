@@ -16,7 +16,7 @@
 #   make clean
 
 APP       ?= ak
-VERSION   ?= 4.10.3
+VERSION   ?= 4.10.4
 V_BUMP   ?= minor
 # Detect arch name for packages
 UNAME_M   := $(shell uname -m)
@@ -259,8 +259,8 @@ dist: package-deb package-rpm
 publish: publish-patch
 
 publish-apt:
-	@echo "📦 Updating APT repository..."
-	@cmake -DPROJECT_DIR=$(CURDIR) -P cmake/apt_publish.cmake
+	@echo "⚠️  APT repository publishing is now handled by GitHub Actions"
+	@echo "📦 See: https://github.com/ApertaCodex/ak/actions"
 
 # -------------------------
 # Launchpad PPA (multi-distribution)
@@ -280,17 +280,12 @@ publish-macos:
 	fi
 
 publish-ppa:
-	@echo "🚀 Publishing to Launchpad PPA..."
-	@chmod +x ./ppa-upload.sh || true
-	@sudo make clean || true
-	@sudo rm -rf obj-x86_64-linux-gnu/ build/ ak ak_tests obj/ pkg/ dist/ || true
-	@sudo chown -R $(USER):$(USER) debian/ .git/ || true
-	@PPA="$(PPA)" ./ppa-upload.sh
+	@echo "⚠️  PPA publishing is now handled by GitHub Actions"
+	@echo "📦 See: https://github.com/ApertaCodex/ak/actions"
 
 publish-ppa-single:
-	@echo "🚀 Publishing to Launchpad PPA $(PPA) (series=$(SERIES))..."
-	@chmod +x ./publish-ppa.sh || true
-	@PPA="$(PPA)" SERIES="$(SERIES)" ./publish-ppa.sh
+	@echo "⚠️  PPA publishing is now handled by GitHub Actions"
+	@echo "📦 See: https://github.com/ApertaCodex/ak/actions"
 
 publish-patch:
 	@$(MAKE) bump-patch build-release commit-and-push publish-apt
@@ -322,31 +317,25 @@ release:
 	esac
 
 release-patch:
-	@echo "🚀 Release: patch version bump + publish to all repositories..."
-	@$(MAKE) bump-patch build-release commit-and-push publish-all commit-repository-files
+	@echo "🚀 Release: patch version bump + build + commit + push..."
+	@echo "📦 Publishing is handled by GitHub Actions after push"
+	@$(MAKE) bump-patch build-release commit-and-push
 
 release-minor:
-	@echo "🚀 Release: minor version bump + publish to all repositories..."
-	@$(MAKE) bump-minor build-release commit-and-push publish-all commit-repository-files
+	@echo "🚀 Release: minor version bump + build + commit + push..."
+	@echo "📦 Publishing is handled by GitHub Actions after push"
+	@$(MAKE) bump-minor build-release commit-and-push
 
 release-major:
-	@echo "🚀 Release: major version bump + publish to all repositories..."
-	@$(MAKE) bump-major build-release commit-and-push publish-all commit-repository-files
+	@echo "🚀 Release: major version bump + build + commit + push..."
+	@echo "📦 Publishing is handled by GitHub Actions after push"
+	@$(MAKE) bump-major build-release commit-and-push
 
 publish-all:
-	@echo "📦 Publishing to all repositories..."
-	@echo "📦 1/3 Publishing to Launchpad PPA (needs clean working tree)..."
-	@$(MAKE) publish-ppa || (echo "⚠️  PPA publish failed - continuing with other targets"; true)
-	@echo "📦 2/3 Publishing to APT repository (GitHub Pages)..."
-	@$(MAKE) publish-apt
-	@echo "📦 3/3 Building macOS DMG packages..."
-	@$(MAKE) publish-macos || (echo "⚠️  macOS DMG build failed - continuing with other targets"; true)
-	@echo "✅ Published to all repositories"
-	@echo "📦 Distribution links:"
-	@echo "   - Launchpad PPA: https://launchpad.net/~apertacodex/+archive/ubuntu/ak"
-	@echo "   - APT Repository: https://apertacodex.github.io/ak/ak-apt-repo"
-	@echo "   - macOS Repository: https://apertacodex.github.io/ak/ak-macos-repo"
-	@echo "   - GitHub Release: https://github.com/ApertaCodex/ak/releases/tag/v$$(grep "^VERSION" Makefile | head -1 | cut -d'=' -f2 | tr -d ' ?')"
+	@echo "⚠️  Publishing is now handled by GitHub Actions"
+	@echo "📦 All packages are built and published automatically via CI/CD"
+	@echo "🔗 See: https://github.com/ApertaCodex/ak/actions"
+	@echo "📦 GitHub Releases: https://github.com/ApertaCodex/ak/releases"
 
 bump-patch:
 	@echo "🔄 Bumping patch version..."
@@ -363,16 +352,11 @@ bump-patch:
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
 	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" index.html; \
-	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?_amd64\.deb/ak_$$new_version\_amd64.deb/g" ak-apt-repo/index.html; \
-	sed -i "s/Latest version:[^<]*/Latest version: $$new_version/g" ak-apt-repo/index.html; \
-	sed -i "s/Latest version: [0-9]\+\.[0-9]\+\.[0-9]\+/Latest version: $$new_version/g" ak-macos-repo/index.html; \
-	sed -i "s/AK-[0-9]\+\.[0-9]\+\.[0-9]\+/AK-$$new_version/g" ak-macos-repo/index.html; \
 	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]\+\.[0-9]\+/- **Version**: $$new_version/" README.md; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" README.md; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" README.md; \
 	sed -i "s/version: \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version: \"$$new_version\"/" CITATION.cff; \
 	sed -i "s/\"version\": \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/\"version\": \"$$new_version\"/" codemeta.json; \
-	sed -i "s/- \*\*Version\*\*: \`\?[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?\`\?/- **Version**: \`$$new_version\`/" DEBIAN_PUBLISHING.md; \
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/MANUAL.md; \
 	sed -i "s/\"AK [0-9]\+\.[0-9]\+\.[0-9]\+\"/\"AK $$new_version\"/" docs/ak.1; \
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/ak.1; \
@@ -405,12 +389,9 @@ bump-minor:
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
 	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" index.html; \
-	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?_amd64\.deb/ak_$$new_version\_amd64.deb/g" ak-apt-repo/index.html; \
-	sed -i "s/Latest version:[^<]*/Latest version: $$new_version/g" ak-apt-repo/index.html; \
 	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]\+\.[0-9]\+/- **Version**: $$new_version/" README.md; \
 	sed -i "s/version: \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version: \"$$new_version\"/" CITATION.cff; \
 	sed -i "s/\"version\": \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/\"version\": \"$$new_version\"/" codemeta.json; \
-	sed -i "s/- \*\*Version\*\*: \`\?[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?\`\?/- **Version**: \`$$new_version\`/" DEBIAN_PUBLISHING.md; \
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/MANUAL.md; \
 	sed -i "s/\"AK [0-9]\+\.[0-9]\+\.[0-9]\+\"/\"AK $$new_version\"/" docs/ak.1; \
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/ak.1; \
@@ -442,14 +423,11 @@ bump-major:
 	sed -i "s/set(AK_VERSION \".*\"/set(AK_VERSION \"$$new_version\"/" CMakeLists.txt; \
 	sed -i "s/^ak (.*)/ak ($$new_version)/" debian/changelog; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" index.html; \
-	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?_amd64\.deb/ak_$$new_version\_amd64.deb/g" ak-apt-repo/index.html; \
-	sed -i "s/Latest version:[^<]*/Latest version: $$new_version/g" ak-apt-repo/index.html; \
-	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]\+\.[0-9]\+/- **Version**: $$new_version/" README.md; \
+	sed -i "s/- \*\*Version\*\*: [0-9]\+\.[0-9]+\.[0-9]\+/- **Version**: $$new_version/" README.md; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" README.md; \
 	sed -i "s/ak_[0-9]\+\.[0-9]\+\.[0-9]\+_amd64\.deb/ak_$$new_version\_amd64.deb/g" README.md; \
 	sed -i "s/version: \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version: \"$$new_version\"/" CITATION.cff; \
 	sed -i "s/\"version\": \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/\"version\": \"$$new_version\"/" codemeta.json; \
-	sed -i "s/- \*\*Version\*\*: \`\?[0-9]\+\.[0-9]\+\.[0-9]\+\(-[0-9]\+\)\?\`\?/- **Version**: \`$$new_version\`/" DEBIAN_PUBLISHING.md; \
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/MANUAL.md; \
 	sed -i "s/\"AK [0-9]\+\.[0-9]\+\.[0-9]\+\"/\"AK $$new_version\"/" docs/ak.1; \
 	sed -i "s/AK version [0-9]\+\.[0-9]\+\.[0-9]\+/AK version $$new_version/" docs/ak.1; \
@@ -491,14 +469,10 @@ commit-and-push:
 	@new_version=$$(grep "^VERSION" Makefile | head -1 | cut -d'=' -f2 | tr -d ' ?'); \
 	if ! git diff --quiet; then \
 		git add .gitignore Makefile CMakeLists.txt src/core/config.cpp debian/changelog debian/source/exclude \
-		        index.html ak-apt-repo/index.html ak-macos-repo/index.html \
-		        README.md CITATION.cff codemeta.json DEBIAN_PUBLISHING.md \
+		        index.html README.md CITATION.cff codemeta.json \
 		        docs/MANUAL.md docs/ak.1 install-ak.sh Formula/ak.rb release.sh \
-		        macos/homebrew/generated/ak.rb macos/scripts/*.sh; \
+		        macos/homebrew/generated/ak.rb macos/scripts/*.sh windows-installer.nsi; \
 		git rm --cached ak debian/files pkg/ dist/ ak_tests 2>/dev/null || true; \
-		git reset HEAD ak-apt-repo/pool/main/*.deb ak-apt-repo/dists/*/InRelease ak-apt-repo/dists/*/Release ak-apt-repo/dists/*/Release.gpg \
-		            ak-apt-repo/dists/*/main/binary-amd64/Packages* ak-macos-repo/packages/*.tar.xz \
-		            ak-macos-repo/packages/*.7z ak-macos-repo/packages/*.md 2>/dev/null || true; \
 		git commit -n -m "🚀 Release v$$new_version"; \
 		if git rev-parse -q --verify "refs/tags/v$$new_version" >/dev/null; then \
 			echo "🏷️  Tag v$$new_version already exists"; \
@@ -520,23 +494,8 @@ commit-and-push:
 	fi
 
 commit-repository-files:
-	@echo "📦 Committing repository files..."
-	@new_version=$$(grep "^VERSION" Makefile | head -1 | cut -d'=' -f2 | tr -d ' ?'); \
-	if ! git diff --quiet; then \
-		git add ak-apt-repo/ ak-macos-repo/ 2>/dev/null || true; \
-		if ! git diff --cached --quiet 2>/dev/null; then \
-			git commit -n -m "📦 Update repositories for v$$new_version"; \
-			if git remote get-url origin >/dev/null 2>&1; then \
-				echo "📤 Pushing repository updates..."; \
-				git push origin main; \
-			fi; \
-			echo "✅ Repository files committed and pushed"; \
-		else \
-			echo "📦 No repository changes to commit"; \
-		fi; \
-	else \
-		echo "📦 No repository changes to commit"; \
-	fi
+	@echo "⚠️  Repository publishing is now handled by GitHub Actions"
+	@echo "📦 No local repository files to commit"
 
 clean: clean-coverage
 	@rm -f $(BIN) $(TEST_BIN)
