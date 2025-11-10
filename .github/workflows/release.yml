@@ -373,6 +373,10 @@ jobs:
         with:
           path: collected
 
+      - name: Add install script to release
+        run: |
+          cp install-ak.sh collected/install-ak.sh || echo "install-ak.sh not found, skipping"
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -382,6 +386,11 @@ jobs:
             ## Release v${{ steps.version.outputs.version }}
             
             ### Installation
+            
+            **Quick Install (Linux/macOS):**
+            ```bash
+            curl -fsSL https://github.com/ApertaCodex/ak/releases/download/v${{ steps.version.outputs.version }}/install-ak.sh | bash
+            ```
             
             **macOS (Homebrew):**
             ```bash
