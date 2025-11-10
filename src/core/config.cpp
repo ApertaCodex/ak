@@ -17,7 +17,7 @@ namespace core {
 
 // Version information
 #ifndef AK_VERSION_STRING
-#define AK_VERSION_STRING "4.10.5"
+#define AK_VERSION_STRING "4.10.6"
 #endif
 const std::string AK_VERSION = AK_VERSION_STRING;
 
