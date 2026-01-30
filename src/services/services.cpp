@@ -217,7 +217,7 @@ std::string truncateForDisplay(const std::string& text, std::size_t maxLength = 
 
 // Default service definitions with full information
 const std::map<std::string, Service> DEFAULT_SERVICES = {
-    {"anthropic", {"anthropic", "ANTHROPIC_API_KEY", "Anthropic Claude AI", "https://api.anthropic.com/v1/messages", "POST", "", "Bearer", true, true}},
+    {"anthropic", {"anthropic", "ANTHROPIC_API_KEY", "Anthropic AI", "https://api.anthropic.com/v1/messages", "POST", "", "Bearer", true, true}},
     {"azure_openai", {"azure_openai", "AZURE_OPENAI_API_KEY", "Azure OpenAI Service", "", "GET", "", "Bearer", true, true}},
     {"brave", {"brave", "BRAVE_API_KEY", "Brave Search API", "https://api.search.brave.com/res/v1/web/search", "GET", "", "Bearer", true, true}},
     {"cohere", {"cohere", "COHERE_API_KEY", "Cohere AI", "https://api.cohere.ai/v1/models", "GET", "", "Bearer", true, true}},
@@ -571,7 +571,7 @@ TestResult test_one(const core::Config& cfg, const std::string& service, const s
             std::string apiKey = getServiceKey("ANTHROPIC_API_KEY");
             if (!apiKey.empty()) {
                 const std::string payload =
-                    "{\"model\":\"claude-3-haiku-20240307\",\"max_tokens\":32,\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}";
+                    "{\"model\":\"anthropic-haiku\",\"max_tokens\":32,\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}";
                 std::string args =
                     "-X POST "
                     "-H 'x-api-key: " + apiKey + "' "
