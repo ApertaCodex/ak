@@ -115,6 +115,8 @@ int main(int argc, char** argv) {
         {"run", commands::cmd_run},
         {"guard", commands::cmd_guard},
         {"test", commands::cmd_test},
+        {"generate", commands::cmd_generate},
+        {"refresh", commands::cmd_refresh},
         {"doctor", commands::cmd_doctor},
         {"audit", commands::cmd_audit},
         

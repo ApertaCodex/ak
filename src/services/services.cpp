@@ -263,6 +263,46 @@ const std::map<std::string, Service> DEFAULT_SERVICES = {
     {"netlify", {"netlify", "NETLIFY_AUTH_TOKEN", "Netlify", "https://api.netlify.com/api/v1/user", "GET", "", "Bearer", false, true}},
 };
 
+// API key creation page URLs per service
+static const std::map<std::string, std::string> SERVICE_GENERATE_URLS = {
+	{"anthropic",    "https://console.anthropic.com/settings/keys"},
+	{"azure_openai", "https://portal.azure.com/#blade/Microsoft_Azure_CognitiveServices/CognitiveServicesMenuBlade/ApiKeys"},
+	{"brave",        "https://brave.com/search/api/"},
+	{"cohere",       "https://dashboard.cohere.com/api-keys"},
+	{"deepseek",     "https://platform.deepseek.com/api_keys"},
+	{"exa",          "https://dashboard.exa.ai/api-keys"},
+	{"fireworks",    "https://fireworks.ai/account/api-keys"},
+	{"gemini",       "https://aistudio.google.com/app/apikey"},
+	{"groq",         "https://console.groq.com/keys"},
+	{"huggingface",  "https://huggingface.co/settings/tokens"},
+	{"inference",    "https://huggingface.co/settings/tokens"},
+	{"langchain",    "https://smith.langchain.com/settings"},
+	{"continue",     "https://app.continue.dev/settings"},
+	{"composio",     "https://app.composio.dev/settings"},
+	{"hyperbolic",   "https://app.hyperbolic.xyz/settings"},
+	{"logfire",      "https://logfire.pydantic.dev/"},
+	{"mistral",      "https://console.mistral.ai/api-keys"},
+	{"openai",       "https://platform.openai.com/api-keys"},
+	{"openrouter",   "https://openrouter.ai/settings/keys"},
+	{"perplexity",   "https://www.perplexity.ai/settings/api"},
+	{"sambanova",    "https://cloud.sambanova.ai/apis"},
+	{"tavily",       "https://app.tavily.com/home"},
+	{"together",     "https://api.together.xyz/settings/api-keys"},
+	{"xai",          "https://console.x.ai/"},
+	{"aws",          "https://console.aws.amazon.com/iam/home#/security_credentials"},
+	{"gcp",          "https://console.cloud.google.com/apis/credentials"},
+	{"azure",        "https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/RegisteredApps"},
+	{"github",       "https://github.com/settings/tokens/new"},
+	{"docker",       "https://hub.docker.com/settings/security"},
+	{"stripe",       "https://dashboard.stripe.com/apikeys"},
+	{"sendgrid",     "https://app.sendgrid.com/settings/api_keys"},
+	{"twilio",       "https://console.twilio.com/us1/account/keys-credentials/api-keys"},
+	{"slack",        "https://api.slack.com/apps"},
+	{"discord",      "https://discord.com/developers/applications"},
+	{"vercel",       "https://vercel.com/account/tokens"},
+	{"netlify",      "https://app.netlify.com/user/applications"},
+};
+
 // Legacy SERVICE_KEYS for backwards compatibility
 const std::map<std::string, std::string> SERVICE_KEYS = []() {
     std::map<std::string, std::string> keys;
@@ -729,7 +769,17 @@ std::map<std::string, Service> loadAllServices(const core::Config& cfg) {
     for (const auto& [name, service] : DEFAULT_SERVICES) {
         allServices[name] = service;
     }
-    
+
+    // Populate generate URLs for built-in services
+    for (auto& [name, service] : allServices) {
+        if (service.generateUrl.empty()) {
+            auto urlIt = SERVICE_GENERATE_URLS.find(name);
+            if (urlIt != SERVICE_GENERATE_URLS.end()) {
+                service.generateUrl = urlIt->second;
+            }
+        }
+    }
+
     // Load user-defined services
     std::string userServicesPath = cfg.configDir + "/user_services.txt";
     std::ifstream file(userServicesPath);
@@ -793,6 +843,8 @@ std::map<std::string, Service> loadAllServices(const core::Config& cfg) {
             currentService.authPrefix = value;
         } else if (key == "test_body") {
             currentService.testBody = unescapeMultiline(value);
+        } else if (key == "generate_url") {
+            currentService.generateUrl = value;
         } else if (key == "testable") {
             currentService.testable = (value == "true" || value == "1");
         }
@@ -837,6 +889,7 @@ void saveUserServices(const core::Config& cfg, const std::map<std::string, Servi
             file << "auth_parameter=" << service.authParameter << "\n";
             file << "auth_prefix=" << service.authPrefix << "\n";
             file << "test_body=" << escapeMultiline(service.testBody) << "\n";
+            file << "generate_url=" << service.generateUrl << "\n";
             file << "testable=" << (service.testable ? "true" : "false") << "\n";
             file << "\n";
         }
@@ -981,6 +1034,154 @@ TestResult testServiceWithKey(const Service& service, const std::string& apiKey)
     result.duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     
     return result;
+}
+
+std::string detectProviderFromKey(const std::string& apiKey) {
+    // OpenAI: sk-... or sk-proj-...
+    if (apiKey.substr(0, 3) == "sk-" && apiKey.size() > 20) {
+        // Could be OpenAI or Anthropic (sk-ant-...)
+        if (apiKey.substr(0, 7) == "sk-ant-") {
+            return "anthropic";
+        }
+        return "openai";
+    }
+    // Anthropic
+    if (apiKey.find("sk-ant-") == 0) {
+        return "anthropic";
+    }
+    // Groq: gsk_...
+    if (apiKey.substr(0, 4) == "gsk_") {
+        return "groq";
+    }
+    // Cohere: ...
+    if (apiKey.size() == 40 && apiKey.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") == std::string::npos) {
+        return "cohere";
+    }
+    // Mistral: ...
+    if (apiKey.find("mis") == 0 || apiKey.find("mist") == 0) {
+        return "mistral";
+    }
+    // Fireworks: fw_...
+    if (apiKey.substr(0, 3) == "fw_") {
+        return "fireworks";
+    }
+    // Together: ...
+    if (apiKey.size() == 64 && apiKey.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") == std::string::npos) {
+        return "together";
+    }
+    // OpenRouter: sk-or-...
+    if (apiKey.substr(0, 6) == "sk-or-") {
+        return "openrouter";
+    }
+    // Perplexity: pplx-...
+    if (apiKey.substr(0, 5) == "pplx-") {
+        return "perplexity";
+    }
+    // Tavily: tvly-...
+    if (apiKey.substr(0, 5) == "tvly-") {
+        return "tavily";
+    }
+    // xAI/Grok: xai-...
+    if (apiKey.substr(0, 4) == "xai-") {
+        return "xai";
+    }
+    // DeepSeek: sk-... already handled (falls to openai), but deepseek keys sometimes start with ds-
+    if (apiKey.substr(0, 3) == "ds-") {
+        return "deepseek";
+    }
+    // Hugging Face: hf_...
+    if (apiKey.substr(0, 3) == "hf_") {
+        return "huggingface";
+    }
+    // Exa: exa-...
+    if (apiKey.substr(0, 4) == "exa-") {
+        return "exa";
+    }
+    // Google/Gemini: AIza...
+    if (apiKey.substr(0, 4) == "AIza") {
+        return "gemini";
+    }
+    // Brave: BSA...
+    if (apiKey.substr(0, 3) == "BSA") {
+        return "brave";
+    }
+    // Stripe: sk_live_ or sk_test_
+    if (apiKey.substr(0, 8) == "sk_live_" || apiKey.substr(0, 8) == "sk_test_") {
+        return "stripe";
+    }
+    // SendGrid: SG.
+    if (apiKey.substr(0, 3) == "SG.") {
+        return "sendgrid";
+    }
+    // Vercel: ...
+    if (apiKey.find("vercel") != std::string::npos) {
+        return "vercel";
+    }
+    // GitHub: ghp_ or gho_ or ghs_ or ghr_ or github_pat_
+    if (apiKey.substr(0, 4) == "ghp_" || apiKey.substr(0, 4) == "gho_" ||
+        apiKey.substr(0, 4) == "ghs_" || apiKey.substr(0, 4) == "ghr_" ||
+        apiKey.substr(0, 11) == "github_pat_") {
+        return "github";
+    }
+    // Slack: xoxb- or xoxp- or xoxa-
+    if (apiKey.substr(0, 5) == "xoxb-" || apiKey.substr(0, 5) == "xoxp-" || apiKey.substr(0, 5) == "xoxa-") {
+        return "slack";
+    }
+    // Composio
+    if (apiKey.find("composio") != std::string::npos) {
+        return "composio";
+    }
+    // Hyperbolic
+    if (apiKey.find("hyp-") == 0) {
+        return "hyperbolic";
+    }
+    // SambaNova
+    if (apiKey.find("snova-") == 0 || apiKey.find("samba-") == 0) {
+        return "sambanova";
+    }
+    // LangChain: ls__... or lsv2_...
+    if (apiKey.substr(0, 4) == "ls__" || apiKey.substr(0, 5) == "lsv2_") {
+        return "langchain";
+    }
+
+    return ""; // Unknown provider
+}
+
+TestResult testInlineKey(const core::Config& cfg, const std::string& apiKey, const std::string& provider, bool /*debug*/) {
+    std::string resolvedProvider = provider;
+    if (resolvedProvider.empty()) {
+        resolvedProvider = detectProviderFromKey(apiKey);
+    }
+
+    TestResult result;
+    result.service = resolvedProvider.empty() ? "unknown" : resolvedProvider;
+    result.ok = false;
+
+    if (resolvedProvider.empty()) {
+        result.error_message = "Could not auto-detect provider from key. Specify with --provider=<name>";
+        return result;
+    }
+
+    // Look up the service definition
+    auto allServices = loadAllServices(cfg);
+    auto serviceIt = allServices.find(resolvedProvider);
+    if (serviceIt == allServices.end()) {
+        result.error_message = "Unknown provider '" + resolvedProvider + "'";
+        return result;
+    }
+
+    const Service& service = serviceIt->second;
+    if (!service.testable || service.testEndpoint.empty()) {
+        // For non-testable services, just confirm the key format looks valid
+        result.ok = !apiKey.empty();
+        if (!result.ok) {
+            result.error_message = "Empty API key";
+        }
+        return result;
+    }
+
+    // Test the key against the service endpoint
+    return testServiceWithKey(service, apiKey);
 }
 
 } // namespace services

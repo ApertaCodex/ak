@@ -1400,6 +1400,8 @@ namespace ak
 
             // Parse arguments for specific testing modes
             std::string profileName;
+            std::string inlineApiKey;
+            std::string providerOverride;
             std::vector<std::string> specificServices;
             std::vector<std::string> specificKeys;
 
@@ -1417,11 +1419,68 @@ namespace ak
                 {
                     debugMode = true;
                 }
+                else if (args[i].substr(0, 11) == "--provider=")
+                {
+                    providerOverride = args[i].substr(11);
+                }
+                else if (args[i] == "--provider")
+                {
+                    if (i + 1 < args.size())
+                    {
+                        providerOverride = args[i + 1];
+                        i++;
+                    }
+                }
                 else if (args[i] != "--fail-fast" && args[i] != "--all" && args[i] != "--json" && args[i] != "--quiet" && args[i] != "--debug")
                 {
-                    // Determine if this is a key name or service name
                     std::string arg = args[i];
-                    if (arg.find('_') != std::string::npos && std::all_of(arg.begin(), arg.end(),
+
+                    // Detect if this looks like an inline API key:
+                    // - 20+ chars long AND contains mixed case/digits/dashes/underscores/dots
+                    // - OR starts with a known key prefix (sk-, gsk_, hf_, tvly-, pplx-, etc.)
+                    bool looksLikeKey = false;
+                    if (arg.size() >= 20)
+                    {
+                        // Known key prefixes
+                        static const std::vector<std::string> keyPrefixes = {
+                            "sk-", "sk_", "gsk_", "hf_", "tvly-", "pplx-", "xai-", "fw_",
+                            "ds-", "exa-", "AIza", "BSA", "SG.", "ghp_", "gho_", "ghs_",
+                            "ghr_", "github_pat_", "xoxb-", "xoxp-", "xoxa-", "sk-ant-",
+                            "sk-or-", "ls__", "lsv2_", "snova-", "samba-", "hyp-"
+                        };
+
+                        for (const auto &prefix : keyPrefixes)
+                        {
+                            if (arg.substr(0, prefix.size()) == prefix)
+                            {
+                                looksLikeKey = true;
+                                break;
+                            }
+                        }
+
+                        // Also treat as key if it's long and contains dashes/underscores mixed with alphanum
+                        if (!looksLikeKey && arg.size() >= 30)
+                        {
+                            bool hasDashOrUnderscore = arg.find('-') != std::string::npos || arg.find('_') != std::string::npos;
+                            bool hasAlpha = false;
+                            bool hasDigit = false;
+                            for (char c : arg)
+                            {
+                                if (std::isalpha(c)) hasAlpha = true;
+                                if (std::isdigit(c)) hasDigit = true;
+                            }
+                            if (hasDashOrUnderscore && hasAlpha && hasDigit)
+                            {
+                                looksLikeKey = true;
+                            }
+                        }
+                    }
+
+                    if (looksLikeKey)
+                    {
+                        inlineApiKey = arg;
+                    }
+                    else if (arg.find('_') != std::string::npos && std::all_of(arg.begin(), arg.end(),
                                                                           [](char c)
                                                                           { return std::isupper(c) || std::isdigit(c) || c == '_'; }))
                     {
@@ -1432,6 +1491,79 @@ namespace ak
                         specificServices.push_back(arg);
                     }
                 }
+            }
+
+            // Handle inline API key testing: ak test 'sk-abc...' [--provider=openai]
+            if (!inlineApiKey.empty())
+            {
+                auto result = services::testInlineKey(cfg, inlineApiKey, providerOverride, debugMode);
+
+                if (cfg.json)
+                {
+                    std::cout << "{\"service\":\"" << result.service << "\",\"ok\":"
+                              << (result.ok ? "true" : "false");
+                    if (!result.error_message.empty())
+                    {
+                        // Escape quotes in error message for JSON
+                        std::string escapedMsg = result.error_message;
+                        size_t pos = 0;
+                        while ((pos = escapedMsg.find('"', pos)) != std::string::npos)
+                        {
+                            escapedMsg.replace(pos, 1, "\\\"");
+                            pos += 2;
+                        }
+                        std::cout << ",\"error\":\"" << escapedMsg << "\"";
+                    }
+                    std::cout << "}\n";
+                    return result.ok ? 0 : 1;
+                }
+
+                // Get display name
+                std::string displayName = result.service;
+                auto builtinIt = services::DEFAULT_SERVICES.find(result.service);
+                if (builtinIt != services::DEFAULT_SERVICES.end())
+                {
+                    displayName = builtinIt->second.description;
+                }
+                else if (!result.service.empty())
+                {
+                    displayName[0] = std::toupper(displayName[0]);
+                }
+
+                if (result.service == "unknown")
+                {
+                    std::cerr << ui::colorize("❌ Could not auto-detect provider from key.", ui::Colors::BRIGHT_RED) << "\n";
+                    std::cerr << ui::colorize("   Specify with: ", ui::Colors::DIM) 
+                              << ui::colorize("ak test '<key>' --provider=openai", ui::Colors::BRIGHT_CYAN) << "\n";
+                    return 1;
+                }
+
+                std::string detectedNote = providerOverride.empty()
+                    ? " (auto-detected)"
+                    : "";
+
+                std::cout << ui::colorize("🧪 Testing " + displayName + " API key" + detectedNote + "...", ui::Colors::BRIGHT_YELLOW) << "\n";
+                std::cout << ui::colorize("├── Detecting provider...", ui::Colors::DIM) << " "
+                          << ui::colorize(displayName, ui::Colors::BRIGHT_WHITE) << " "
+                          << ui::colorize("✓", ui::Colors::BRIGHT_GREEN) << "\n";
+                std::cout << ui::colorize("├── Connecting to API endpoint...", ui::Colors::DIM) << " ";
+
+                if (result.ok)
+                {
+                    std::cout << ui::colorize("✓", ui::Colors::BRIGHT_GREEN) << "\n";
+                    std::cout << ui::colorize("└── Verifying authentication...", ui::Colors::DIM) << " ";
+                    std::cout << ui::colorize("✓", ui::Colors::BRIGHT_GREEN) << "\n\n";
+                    std::cout << ui::colorize("✅ " + displayName + " API key is valid!", ui::Colors::BRIGHT_GREEN) << "\n";
+                }
+                else
+                {
+                    std::cout << ui::colorize("❌", ui::Colors::BRIGHT_RED) << "\n";
+                    std::cout << ui::colorize("└── Verifying authentication...", ui::Colors::DIM) << " ";
+                    std::cout << ui::colorize("❌", ui::Colors::BRIGHT_RED) << "\n\n";
+                    std::cout << ui::colorize("❌ " + displayName + " API key: " + (result.error_message.empty() ? "Test failed" : result.error_message), ui::Colors::BRIGHT_RED) << "\n";
+                }
+
+                return result.ok ? 0 : 1;
             }
 
             // Determine what to test based on arguments
@@ -1859,6 +1991,310 @@ namespace ak
                 }
             }
 
+            return 0;
+        }
+
+        int cmd_refresh(const core::Config &cfg, const std::vector<std::string> &args)
+        {
+            std::string profileName;
+            bool jsonOutput = cfg.json;
+            
+            // Parse arguments
+            for (size_t i = 1; i < args.size(); ++i)
+            {
+                if (args[i] == "-p" || args[i] == "--profile")
+                {
+                    if (i + 1 < args.size())
+                    {
+                        profileName = args[i + 1];
+                        i++;
+                    }
+                }
+            }
+            
+            if (profileName.empty())
+            {
+                profileName = storage::getDefaultProfileName();
+            }
+            
+            // Map of service names to CLI tools and their refresh commands
+            struct CliProvider {
+                std::string cliTool;
+                std::string checkCmd;
+                std::string refreshCmd;
+                std::string keyName;
+                std::string extractPattern; // Pattern to extract token from output
+            };
+            
+            std::map<std::string, CliProvider> cliProviders = {
+                {"gcp", {"gcloud", "gcloud auth list --filter=status:ACTIVE --format=value(account)", 
+                         "gcloud auth print-access-token", "GOOGLE_APPLICATION_CREDENTIALS", ""}},
+                {"aws", {"aws", "aws sts get-caller-identity", 
+                         "aws configure get aws_access_key_id 2>/dev/null", 
+                         "AWS_ACCESS_KEY_ID", ""}},
+                {"azure", {"az", "az account show", 
+                          "az account get-access-token --query accessToken -o tsv", 
+                          "AZURE_CLIENT_ID", ""}},
+            };
+            
+            // Map of service names to token management URLs
+            std::map<std::string, std::string> tokenUrls = {
+                {"openai", "https://platform.openai.com/api-keys"},
+                {"anthropic", "https://console.anthropic.com/settings/keys"},
+                {"brave", "https://api.search.brave.com/app/keys"},
+                {"cohere", "https://dashboard.cohere.com/api-keys"},
+                {"deepseek", "https://platform.deepseek.com/api_keys"},
+                {"exa", "https://dashboard.exa.ai/api-keys"},
+                {"fireworks", "https://fireworks.ai/settings/api-keys"},
+                {"gemini", "https://aistudio.google.com/app/apikey"},
+                {"groq", "https://console.groq.com/keys"},
+                {"huggingface", "https://huggingface.co/settings/tokens"},
+                {"inference", "https://huggingface.co/settings/tokens"},
+                {"langchain", "https://smith.langchain.com/settings"},
+                {"continue", "https://continue.dev/settings"},
+                {"composio", "https://app.composio.dev/settings/api-keys"},
+                {"hyperbolic", "https://hyperbolic.xyz/settings/api-keys"},
+                {"logfire", "https://logfire.pydantic.dev/settings"},
+                {"mistral", "https://console.mistral.ai/api-keys"},
+                {"openrouter", "https://openrouter.ai/keys"},
+                {"perplexity", "https://www.perplexity.ai/settings/api"},
+                {"sambanova", "https://console.sambanova.ai/api-keys"},
+                {"tavily", "https://app.tavily.com/settings/api-keys"},
+                {"together", "https://api.together.xyz/settings/api-keys"},
+                {"xai", "https://x.ai/api-keys"},
+                {"github", "https://github.com/settings/tokens"},
+                {"docker", "https://hub.docker.com/settings/security"},
+                {"stripe", "https://dashboard.stripe.com/apikeys"},
+                {"sendgrid", "https://app.sendgrid.com/settings/api_keys"},
+                {"twilio", "https://console.twilio.com/us1/develop/api-keys"},
+                {"slack", "https://api.slack.com/apps"},
+                {"discord", "https://discord.com/developers/applications"},
+                {"vercel", "https://vercel.com/account/tokens"},
+                {"netlify", "https://app.netlify.com/user/applications"},
+            };
+            
+            // Get all services in the profile
+            auto profileKeys = storage::loadProfileKeys(cfg, profileName);
+            auto allServices = services::loadAllServices(cfg);
+            
+            std::vector<std::string> cliRefreshed;
+            std::vector<std::string> needsManual;
+            std::vector<std::string> notFound;
+            
+            if (!jsonOutput)
+            {
+                std::cout << ui::colorize("🔄 Refreshing access tokens for profile: ", ui::Colors::BRIGHT_CYAN) 
+                          << ui::colorize(profileName, ui::Colors::BRIGHT_WHITE) << "\n\n";
+            }
+            
+            // Check each service
+            for (const auto &[serviceName, service] : allServices)
+            {
+                // Check if this service has a key in the profile
+                bool hasKey = false;
+                std::string keyName = service.keyName;
+                
+                if (profileKeys.find(keyName) != profileKeys.end() && !profileKeys[keyName].empty())
+                {
+                    hasKey = true;
+                }
+                else
+                {
+                    // Check environment as fallback
+                    const char *envValue = getenv(keyName.c_str());
+                    if (envValue && *envValue)
+                    {
+                        hasKey = true;
+                    }
+                }
+                
+                if (!hasKey)
+                {
+                    continue; // Skip services without keys
+                }
+                
+                // Check if it's a CLI-authenticated provider
+                auto cliIt = cliProviders.find(serviceName);
+                if (cliIt != cliProviders.end())
+                {
+                    const auto &cliProvider = cliIt->second;
+                    
+                    // Check if CLI tool is available
+                    int exitCode = 0;
+                    std::string checkResult = system::runCmdCapture("which " + cliProvider.cliTool + " 2>/dev/null", &exitCode);
+                    
+                    if (exitCode == 0 && !checkResult.empty())
+                    {
+                        // Check if user is authenticated
+                        int authExitCode = 0;
+                        std::string authCheck = system::runCmdCapture(cliProvider.checkCmd + " 2>&1", &authExitCode);
+                        
+                        if (authExitCode == 0 && !authCheck.empty())
+                        {
+                            // Try to refresh token
+                            int refreshExitCode = 0;
+                            std::string tokenOutput = system::runCmdCapture(cliProvider.refreshCmd + " 2>&1", &refreshExitCode);
+                            
+                            if (refreshExitCode == 0 && !tokenOutput.empty())
+                            {
+                                // Extract token (trim whitespace)
+                                std::string token = tokenOutput;
+                                token.erase(0, token.find_first_not_of(" \t\n\r"));
+                                token.erase(token.find_last_not_of(" \t\n\r") + 1);
+                                            
+                                if (!token.empty())
+                                {
+                                    // Save the token to the profile
+                                    try
+                                    {
+                                        // Load existing profile keys
+                                        auto existingKeys = storage::loadProfileKeys(cfg, profileName);
+                                        existingKeys[cliProvider.keyName] = token;
+                                        storage::saveProfileKeys(cfg, profileName, existingKeys);
+                                        
+                                        // Also ensure the key is in the profile list
+                                        auto profileKeys = storage::readProfile(cfg, profileName);
+                                        if (std::find(profileKeys.begin(), profileKeys.end(), cliProvider.keyName) == profileKeys.end())
+                                        {
+                                            profileKeys.push_back(cliProvider.keyName);
+                                            storage::writeProfile(cfg, profileName, profileKeys);
+                                        }
+                                        
+                                        cliRefreshed.push_back(serviceName);
+                                        
+                                        if (!jsonOutput)
+                                        {
+                                            std::cout << ui::colorize("✅ ", ui::Colors::BRIGHT_GREEN) 
+                                                      << ui::colorize(service.description, ui::Colors::WHITE)
+                                                      << " - Token refreshed via " << cliProvider.cliTool << "\n";
+                                        }
+                                    }
+                                    catch (const std::exception &e)
+                                    {
+                                        if (!jsonOutput)
+                                        {
+                                            std::cout << ui::colorize("⚠️  ", ui::Colors::BRIGHT_YELLOW) 
+                                                      << ui::colorize(service.description, ui::Colors::WHITE)
+                                                      << " - Failed to save token: " << e.what() << "\n";
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                needsManual.push_back(serviceName);
+                            }
+                        }
+                        else
+                        {
+                            needsManual.push_back(serviceName);
+                        }
+                    }
+                    else
+                    {
+                        needsManual.push_back(serviceName);
+                    }
+                }
+                else
+                {
+                    // Not a CLI provider, check if we have a URL
+                    auto urlIt = tokenUrls.find(serviceName);
+                    if (urlIt != tokenUrls.end())
+                    {
+                        needsManual.push_back(serviceName);
+                    }
+                    else
+                    {
+                        notFound.push_back(serviceName);
+                    }
+                }
+            }
+            
+            // Output results
+            if (jsonOutput)
+            {
+                std::cout << "{\n";
+                std::cout << "  \"cli_refreshed\": [";
+                bool first = true;
+                for (const auto &s : cliRefreshed)
+                {
+                    if (!first) std::cout << ",";
+                    std::cout << "\"" << s << "\"";
+                    first = false;
+                }
+                std::cout << "],\n";
+                std::cout << "  \"needs_manual\": [";
+                first = true;
+                for (const auto &s : needsManual)
+                {
+                    if (!first) std::cout << ",";
+                    std::cout << "\"" << s << "\"";
+                    first = false;
+                }
+                std::cout << "],\n";
+                std::cout << "  \"not_found\": [";
+                first = true;
+                for (const auto &s : notFound)
+                {
+                    if (!first) std::cout << ",";
+                    std::cout << "\"" << s << "\"";
+                    first = false;
+                }
+                std::cout << "]\n";
+                std::cout << "}\n";
+            }
+            else
+            {
+                if (!needsManual.empty())
+                {
+                    std::cout << "\n" << ui::colorize("📋 Manual Token Refresh Required:", ui::Colors::BRIGHT_YELLOW) << "\n\n";
+                    
+                    for (const auto &serviceName : needsManual)
+                    {
+                        auto serviceIt = allServices.find(serviceName);
+                        if (serviceIt != allServices.end())
+                        {
+                            const auto &service = serviceIt->second;
+                            auto urlIt = tokenUrls.find(serviceName);
+                            
+                            std::cout << "  " << ui::colorize("• ", ui::Colors::DIM) 
+                                      << ui::colorize(service.description, ui::Colors::WHITE);
+                            
+                            if (urlIt != tokenUrls.end())
+                            {
+                                std::cout << "\n    " << ui::colorize("🔗 ", ui::Colors::BRIGHT_CYAN)
+                                          << ui::colorize(urlIt->second, ui::Colors::BRIGHT_BLUE) << "\n";
+                            }
+                            else
+                            {
+                                // Check if it's a CLI provider that's not authenticated
+                                auto cliIt = cliProviders.find(serviceName);
+                                if (cliIt != cliProviders.end())
+                                {
+                                    std::cout << "\n    " << ui::colorize("💡 ", ui::Colors::BRIGHT_YELLOW)
+                                              << "Install and authenticate: " << cliIt->second.cliTool << "\n";
+                                }
+                            }
+                            std::cout << "\n";
+                        }
+                    }
+                }
+                
+                if (!cliRefreshed.empty())
+                {
+                    std::cout << "\n" << ui::colorize("✅ Successfully refreshed ", ui::Colors::BRIGHT_GREEN) 
+                              << std::to_string(cliRefreshed.size()) 
+                              << ui::colorize(" token(s) via CLI", ui::Colors::BRIGHT_GREEN) << "\n";
+                }
+                
+                if (!notFound.empty() && !jsonOutput)
+                {
+                    std::cout << "\n" << ui::colorize("ℹ️  ", ui::Colors::DIM) 
+                              << std::to_string(notFound.size()) 
+                              << " service(s) without token management URLs\n";
+                }
+            }
+            
             return 0;
         }
 
@@ -2637,6 +3073,69 @@ namespace ak
             }
 
             return 1;
+        }
+
+        int cmd_generate(const core::Config& cfg, const std::vector<std::string>& args)
+        {
+            auto allServices = services::loadAllServices(cfg);
+
+            if (args.size() < 2)
+            {
+                // List all services that have a generate URL
+                std::vector<std::pair<std::string, services::Service>> withUrls;
+                for (const auto& [name, service] : allServices)
+                {
+                    if (!service.generateUrl.empty())
+                        withUrls.emplace_back(name, service);
+                }
+
+                if (withUrls.empty())
+                {
+                    core::info(cfg, "No API key pages configured.");
+                    return 0;
+                }
+
+                std::cout << ui::colorize("Available API key pages:", ui::Colors::BRIGHT_CYAN) << "\n\n";
+                for (const auto& [name, service] : withUrls)
+                {
+                    std::string label = ui::colorize(name, ui::Colors::BRIGHT_WHITE);
+                    std::string desc  = ui::colorize(service.description, ui::Colors::DIM);
+                    std::cout << "  " << std::left << std::setw(20) << label
+                              << "  " << std::left << std::setw(26) << desc
+                              << "  " << ui::colorize(service.generateUrl, ui::Colors::BRIGHT_BLUE) << "\n";
+                }
+                std::cout << "\n" << ui::colorize("Usage: ak generate <service>", ui::Colors::DIM) << "\n";
+                return 0;
+            }
+
+            std::string serviceName = args[1];
+            auto it = allServices.find(serviceName);
+            if (it == allServices.end())
+            {
+                core::error(cfg, "Unknown service '" + serviceName + "' — run ak generate to list all");
+                return 1;
+            }
+
+            const auto& service = it->second;
+            if (service.generateUrl.empty())
+            {
+                core::error(cfg, "No API key page URL known for '" + serviceName + "'");
+                return 1;
+            }
+
+            std::cout << ui::colorize("Opening " + service.description + " API key page...", ui::Colors::BRIGHT_YELLOW) << "\n";
+            std::cout << ui::colorize(service.generateUrl, ui::Colors::BRIGHT_BLUE) << "\n";
+
+#if defined(__APPLE__)
+            std::string openCmd = "open";
+#elif defined(_WIN32)
+            std::string openCmd = "start";
+#else
+            std::string openCmd = "xdg-open";
+#endif
+            int sysRet = ::system((openCmd + " '" + service.generateUrl + "' >/dev/null 2>&1 &").c_str());
+            (void)sysRet;
+            return 0;
         }
 
     } // namespace commands

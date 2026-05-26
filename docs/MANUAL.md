@@ -92,6 +92,9 @@
 - `ak test [<SERVICE> ... | --all] [--json] [--fail-fast] [--profile|-p <NAME>]`  
   Test connectivity for configured providers or specific services/keys.
 
+- `ak test '<API_KEY>' [--provider=<NAME>]`  
+  Test an API key directly. Provider is auto-detected from the key prefix (e.g. `sk-` → OpenAI, `gsk_` → Groq). Use `--provider` to override.
+
 - `ak guard enable|disable`  
   Enable or disable shell guard for secret protection.
 
@@ -169,6 +172,9 @@ ak import -p dev -f env -i .env --keys
 ```bash
 ak test --all
 ak test openai --fail-fast
+ak test 'sk-abc123...'                    # Auto-detects OpenAI
+ak test 'gsk_abc123...'                   # Auto-detects Groq
+ak test 'my-custom-key' --provider=openai # Explicit provider
 ```
 
 ### Completions

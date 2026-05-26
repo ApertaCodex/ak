@@ -23,10 +23,11 @@ struct Service {
     std::string authParameter; // header or parameter name
     std::string authPrefix; // prefix applied before token value
     std::string testBody; // Optional JSON/form body payload
+    std::string generateUrl; // URL to open for creating a new API key
     bool testable;
     bool isBuiltIn; // true for predefined services, false for user-created
 
-    Service() : authMethod("Bearer"), authLocation("header"), authParameter("Authorization"), authPrefix(""), testBody(""), testable(false), isBuiltIn(false) {}
+    Service() : authMethod("Bearer"), authLocation("header"), authParameter("Authorization"), authPrefix(""), testBody(""), generateUrl(""), testable(false), isBuiltIn(false) {}
     Service(const std::string& n, const std::string& k, const std::string& d = "",
             const std::string& e = "", const std::string& m = "GET",
             const std::string& h = "", const std::string& a = "Bearer",
@@ -108,6 +109,12 @@ std::vector<TestResult> run_tests_parallel(
     bool debug = false
 );
 TestResult testServiceWithKey(const Service& service, const std::string& apiKey);
+
+// Auto-detect provider from API key prefix/pattern
+std::string detectProviderFromKey(const std::string& apiKey);
+
+// Test an inline API key against a provider (auto-detected or specified)
+TestResult testInlineKey(const core::Config& cfg, const std::string& apiKey, const std::string& provider = "", bool debug = false);
 
 } // namespace services
 } // namespace ak

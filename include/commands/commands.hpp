@@ -33,6 +33,8 @@ int cmd_migrate(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_run(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_guard(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_test(const core::Config& cfg, const std::vector<std::string>& args);
+int cmd_generate(const core::Config& cfg, const std::vector<std::string>& args);
+int cmd_refresh(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_doctor(const core::Config& cfg, const std::vector<std::string>& args);
 int cmd_audit(const core::Config& cfg, const std::vector<std::string>& args);
 

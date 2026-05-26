@@ -119,6 +119,8 @@ void cmd_help() {
     std::cout << ui::colorize("UTILITIES:", ui::Colors::BRIGHT_YELLOW + ui::Colors::BOLD) << "\n";
     std::cout << "  " << ui::colorize("ak run -p <profile> -- <cmd>", ui::Colors::BRIGHT_CYAN) << "       Run command with profile loaded\n";
     std::cout << "  " << ui::colorize("ak test [<service>|--all] [--json] [--quiet]", ui::Colors::BRIGHT_CYAN) << " Test API connectivity\n";
+    std::cout << "  " << ui::colorize("ak test '<api-key>' [--provider=<name>]", ui::Colors::BRIGHT_CYAN) << "  Test an API key directly\n";
+    std::cout << "  " << ui::colorize("ak refresh [-p <profile>]", ui::Colors::BRIGHT_CYAN) << "        Refresh access tokens (CLI or manual links)\n";
     std::cout << "  " << ui::colorize("ak guard enable|disable|status", ui::Colors::BRIGHT_CYAN) << "    Shell guard for secret protection\n";
     std::cout << "  " << ui::colorize("ak doctor", ui::Colors::BRIGHT_CYAN) << "                         Check system configuration\n";
     std::cout << "  " << ui::colorize("ak audit [N]", ui::Colors::BRIGHT_CYAN) << "                      Show audit log (last N entries)\n";
@@ -160,7 +162,7 @@ _ak_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Main commands (namespaced + legacy)
-    local commands="secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome"
+    local commands="secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test refresh doctor audit install-shell uninstall completion version backend help welcome"
 
     # Handle multi-level completions
     case "${COMP_WORDS[1]}" in
@@ -254,7 +256,16 @@ _ak_completion() {
             ;;
         test)
             local services="anthropic azure_openai brave cohere deepseek exa fireworks gemini groq huggingface inference langchain continue composio hyperbolic logfire mistral openai openrouter perplexity sambanova tavily together xai"
-            COMPREPLY=($(compgen -W "${services} --all --json --fail-fast --quiet" -- ${cur}))
+            COMPREPLY=($(compgen -W "${services} --all --json --fail-fast --quiet --provider --debug" -- ${cur}))
+            return 0
+            ;;
+        --provider)
+            local providers="anthropic azure_openai brave cohere deepseek exa fireworks gemini groq huggingface inference langchain continue composio hyperbolic logfire mistral openai openrouter perplexity sambanova tavily together xai"
+            COMPREPLY=($(compgen -W "${providers}" -- ${cur}))
+            return 0
+            ;;
+        refresh)
+            COMPREPLY=($(compgen -W "--profile -p --json" -- ${cur}))
             return 0
             ;;
         purge)
@@ -281,7 +292,7 @@ _arguments -C \
   '(-v --version)'{-v,--version}'[Show version information]' \
   '--json[Enable JSON output]' \
   '--quiet[Minimal output for scripting]' \
-  '1:command:(secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome gui)' \
+  '1:command:(secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test refresh doctor audit install-shell uninstall completion version backend help welcome gui)' \
   '*::arg:->args'
 
 case $state in
@@ -364,7 +375,9 @@ case $state in
           '--json[JSON output]' \
           '--quiet[Minimal output]' \
           '--fail-fast[Stop on first failure]' \
-          '*:service name:'
+          '--debug[Show debug information]' \
+          '--provider=[Specify provider for inline key]:provider:(anthropic azure_openai brave cohere deepseek exa fireworks gemini groq huggingface inference langchain continue composio hyperbolic logfire mistral openai openrouter perplexity sambanova tavily together xai)' \
+          '*:service name or API key:'
         ;;
       purge)
         _arguments \
@@ -410,7 +423,7 @@ complete -c ak -l json -d "Enable JSON output"
 complete -c ak -l quiet -d "Minimal output for scripting"
 
 # Main commands (namespaced + legacy)
-complete -c ak -n "__fish_use_subcommand" -a "secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome gui"
+complete -c ak -n "__fish_use_subcommand" -a "secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test refresh doctor audit install-shell uninstall completion version backend help welcome gui"
 
 # Secret namespace
 complete -c ak -n "__fish_seen_subcommand_from secret; and not __fish_seen_subcommand_from add set get ls rm search cp" -a "add set get ls rm search cp" -d "Secret commands"
@@ -439,6 +452,8 @@ complete -c ak -n "__fish_seen_subcommand_from test" -l all -d "Test all configu
 complete -c ak -n "__fish_seen_subcommand_from test" -l json -d "JSON output"
 complete -c ak -n "__fish_seen_subcommand_from test" -l quiet -d "Minimal output"
 complete -c ak -n "__fish_seen_subcommand_from test" -l fail-fast -d "Stop on first failure"
+complete -c ak -n "__fish_seen_subcommand_from test" -l debug -d "Show debug information"
+complete -c ak -n "__fish_seen_subcommand_from test" -l provider -r -a "anthropic azure_openai brave cohere deepseek exa fireworks gemini groq huggingface inference langchain continue composio hyperbolic logfire mistral openai openrouter perplexity sambanova tavily together xai" -d "Specify provider for inline key"
 
 # purge options
 complete -c ak -n "__fish_seen_subcommand_from purge" -l no-backup -d "Skip backup creation"
@@ -477,7 +492,7 @@ _ak_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Main commands (namespaced + legacy)
-    local commands="secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome"
+    local commands="secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test refresh doctor audit install-shell uninstall completion version backend help welcome"
 
     # Handle multi-level completions
     case "${COMP_WORDS[1]}" in
@@ -571,7 +586,12 @@ _ak_completion() {
             ;;
         test)
             local services="anthropic azure_openai brave cohere deepseek exa fireworks gemini groq huggingface inference langchain continue composio hyperbolic logfire mistral openai openrouter perplexity sambanova tavily together xai"
-            COMPREPLY=($(compgen -W "${services} --all --json --fail-fast --quiet" -- ${cur}))
+            COMPREPLY=($(compgen -W "${services} --all --json --fail-fast --quiet --provider --debug" -- ${cur}))
+            return 0
+            ;;
+        --provider)
+            local providers="anthropic azure_openai brave cohere deepseek exa fireworks gemini groq huggingface inference langchain continue composio hyperbolic logfire mistral openai openrouter perplexity sambanova tavily together xai"
+            COMPREPLY=($(compgen -W "${providers}" -- ${cur}))
             return 0
             ;;
         env)
@@ -607,7 +627,7 @@ _arguments -C \
   '(-v --version)'{-v,--version}'[Show version information]' \
   '--json[Enable JSON output]' \
   '--quiet[Minimal output for scripting]' \
-  '1:command:(secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome gui)' \
+  '1:command:(secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test refresh doctor audit install-shell uninstall completion version backend help welcome gui)' \
   '*::arg:->args'
 
 case $state in
@@ -690,7 +710,9 @@ case $state in
           '--json[JSON output]' \
           '--quiet[Minimal output]' \
           '--fail-fast[Stop on first failure]' \
-          '*:service name:'
+          '--debug[Show debug information]' \
+          '--provider=[Specify provider for inline key]:provider:(anthropic azure_openai brave cohere deepseek exa fireworks gemini groq huggingface inference langchain continue composio hyperbolic logfire mistral openai openrouter perplexity sambanova tavily together xai)' \
+          '*:service name or API key:'
         ;;
       purge)
         _arguments \
@@ -737,7 +759,7 @@ complete -c ak -l json -d "Enable JSON output"
 complete -c ak -l quiet -d "Minimal output for scripting"
 
 # Main commands (namespaced + legacy)
-complete -c ak -n "__fish_use_subcommand" -a "secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test doctor audit install-shell uninstall completion version backend help welcome gui"
+complete -c ak -n "__fish_use_subcommand" -a "secret profile service add set get ls rm search cp purge save load unload profiles duplicate env export import migrate run guard test refresh doctor audit install-shell uninstall completion version backend help welcome gui"
 
 # Secret namespace
 complete -c ak -n "__fish_seen_subcommand_from secret; and not __fish_seen_subcommand_from add set get ls rm search cp" -a "add set get ls rm search cp" -d "Secret commands"
@@ -766,6 +788,8 @@ complete -c ak -n "__fish_seen_subcommand_from test" -l all -d "Test all configu
 complete -c ak -n "__fish_seen_subcommand_from test" -l json -d "JSON output"
 complete -c ak -n "__fish_seen_subcommand_from test" -l quiet -d "Minimal output"
 complete -c ak -n "__fish_seen_subcommand_from test" -l fail-fast -d "Stop on first failure"
+complete -c ak -n "__fish_seen_subcommand_from test" -l debug -d "Show debug information"
+complete -c ak -n "__fish_seen_subcommand_from test" -l provider -r -a "anthropic azure_openai brave cohere deepseek exa fireworks gemini groq huggingface inference langchain continue composio hyperbolic logfire mistral openai openrouter perplexity sambanova tavily together xai" -d "Specify provider for inline key"
 
 # purge options
 complete -c ak -n "__fish_seen_subcommand_from purge" -l no-backup -d "Skip backup creation"
