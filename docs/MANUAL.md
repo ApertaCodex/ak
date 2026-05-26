@@ -204,4 +204,4 @@ License: MIT with Attribution (see LICENSE).
 `gpg(1)`, `pass(1)`
 
 ## VERSION
-This manual corresponds to AK version 4.10.6.
+This manual corresponds to AK version 4.11.0.
