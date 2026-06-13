@@ -139,14 +139,16 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential qt6-base-dev qt6-base-dev-tools
+          sudo apt-get install -y cmake build-essential
 
       - name: Bump version
         run: |
           BUMP_TYPE="${{ needs.detect_version_bump.outputs.bump_type }}"
           mkdir -p build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release
+          # Version bumping does not need the Qt6 GUI; disabling it avoids the
+          # runner's Qt6 (6.2.4) failing the project's 6.4.0 requirement.
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_GUI=OFF
           cmake --build . --target "bump-$BUMP_TYPE"
 
       - name: Get new version
