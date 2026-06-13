@@ -9,6 +9,20 @@ This document explains which secrets need to be configured in GitHub Actions for
 **Required:** No action needed - GitHub provides this automatically  
 **Purpose:** Used for creating releases, downloading artifacts, and pushing commits
 
+## Launchpad PPA publishing (`publish_ppa` job)
+
+The `publish_ppa` job in `release.yml` builds a signed Debian **source** package
+for each Ubuntu series (`noble jammy focal plucky resolute`) and uploads it to
+`ppa:apertacodex/ak` with `dput`. It runs only when **both** of these are set:
+
+- `GPG_PRIVATE_KEY` - ASCII-armored or base64-encoded private key (see below)
+- `DEBSIGN_KEYID` - the signing key's fingerprint/ID
+
+`AK_REPO_GPG_PASSPHRASE` is also used to unlock the key if it has a passphrase.
+The signing key's user ID must be registered on your Launchpad account
+(https://launchpad.net/~apertacodex/+editpgpkeys), otherwise Launchpad rejects
+the upload. If the secrets are missing the job is skipped with a warning.
+
 ## Optional Secrets (for GPG signing)
 
 The following secrets are **optional** but recommended for proper package signing:

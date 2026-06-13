@@ -11,3 +11,7 @@ tar-ignore = *.gpg
 tar-ignore = *.asc
 tar-ignore = InRelease
 tar-ignore = Release.gpg
+tar-ignore = build
+tar-ignore = obj
+tar-ignore = pkg
+tar-ignore = dist

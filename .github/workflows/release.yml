@@ -27,7 +27,8 @@ permissions:
 env:
   BUILD_TYPE: Release
   ARTIFACT_NAME: ak
-  DISTRIBUTIONS: "noble jammy focal plucky"
+  DISTRIBUTIONS: "noble jammy focal plucky resolute"
+  PPA_TARGET: "ppa:apertacodex/ak"
 
 jobs:
   detect_version_bump:
@@ -347,6 +348,119 @@ jobs:
           name: macos
           path: dist/*
           retention-days: 30
+
+  publish_ppa:
+    name: Publish to Launchpad PPA (${{ matrix.distribution }})
+    runs-on: ubuntu-22.04
+    needs: [detect_version_bump, bump_version]
+    if: always() && (needs.bump_version.result == 'success' || needs.bump_version.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        distribution: [noble, jammy, focal, plucky, resolute]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PPA signing secrets
+        id: guard
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          DEBSIGN_KEYID: ${{ secrets.DEBSIGN_KEYID }}
+        run: |
+          if [ -n "$GPG_PRIVATE_KEY" ] && [ -n "$DEBSIGN_KEYID" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping PPA publish for ${{ matrix.distribution }}: GPG_PRIVATE_KEY and/or DEBSIGN_KEYID secret not set."
+          fi
+
+      - name: Install packaging tools
+        if: steps.guard.outputs.ok == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            devscripts debhelper dput gnupg lintian
+
+      - name: Import GPG signing key
+        if: steps.guard.outputs.ok == 'true'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.AK_REPO_GPG_PASSPHRASE }}
+        run: |
+          mkdir -p ~/.gnupg && chmod 700 ~/.gnupg
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          gpgconf --kill gpg-agent || true
+          # Key may be stored base64-encoded or as a raw ASCII-armored block.
+          if echo "$GPG_PRIVATE_KEY" | base64 -d > /tmp/ak_ppa_key.asc 2>/dev/null; then
+            :
+          else
+            printf '%s' "$GPG_PRIVATE_KEY" > /tmp/ak_ppa_key.asc
+          fi
+          gpg --batch --import /tmp/ak_ppa_key.asc
+          rm -f /tmp/ak_ppa_key.asc
+          # Persist passphrase to a file for non-interactive debsign.
+          printf '%s' "$GPG_PASSPHRASE" > /tmp/ak_ppa_pass
+          chmod 600 /tmp/ak_ppa_pass
+
+      - name: Build signed source package
+        if: steps.guard.outputs.ok == 'true'
+        env:
+          DEBSIGN_KEYID: ${{ secrets.DEBSIGN_KEYID }}
+          DEBEMAIL: developers@apertacodex.ai
+          DEBFULLNAME: ApertaCodex
+        run: |
+          SERIES="${{ matrix.distribution }}"
+          VERSION=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          UPLOAD_VERSION="${VERSION}~${SERIES}1"
+          echo "Building source package ${UPLOAD_VERSION} for ${SERIES}"
+
+          # Drop committed build artifacts so they don't leak into the source upload.
+          rm -f ak ak_tests
+          rm -rf build obj pkg dist
+
+          # Single, clean changelog entry targeting this series. The ~series
+          # suffix keeps each series' version unique and ordered below the
+          # plain upstream version, as Launchpad requires for re-uploads.
+          cat > debian/changelog <<EOF
+          ak (${UPLOAD_VERSION}) ${SERIES}; urgency=medium
+
+            * Automated PPA build for ${SERIES} (AK ${VERSION}).
+
+           -- ${DEBFULLNAME} <${DEBEMAIL}>  $(date -R)
+          EOF
+
+          # gpg wrapper so debsign can sign non-interactively.
+          cat > /tmp/gpg-loopback <<'WRAP'
+          #!/bin/bash
+          exec gpg --batch --pinentry-mode loopback --passphrase-file /tmp/ak_ppa_pass "$@"
+          WRAP
+          chmod +x /tmp/gpg-loopback
+
+          # Source-only build (-S), skip build-dep check (-d) since Qt6 is not
+          # installed on the runner; Launchpad does the actual binary build.
+          dpkg-buildpackage -S -us -uc -d
+          CHANGES="../ak_${UPLOAD_VERSION}_source.changes"
+          debsign -p/tmp/gpg-loopback -k"${DEBSIGN_KEYID}" "${CHANGES}"
+          ls -lah ../ak_${UPLOAD_VERSION}* 
+
+      - name: Upload to Launchpad PPA
+        if: steps.guard.outputs.ok == 'true'
+        run: |
+          SERIES="${{ matrix.distribution }}"
+          VERSION=$(grep -oP 'set\(AK_VERSION "\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          UPLOAD_VERSION="${VERSION}~${SERIES}1"
+          CHANGES="../ak_${UPLOAD_VERSION}_source.changes"
+          # -f forces re-upload attempt; Launchpad still rejects duplicate
+          # versions, which is harmless and reported in the build log.
+          dput -f "${{ env.PPA_TARGET }}" "${CHANGES}"
+
+      - name: Clean up secrets
+        if: always()
+        run: rm -f /tmp/ak_ppa_pass /tmp/gpg-loopback
 
   create_release:
     name: Create GitHub Release

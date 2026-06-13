@@ -15,8 +15,6 @@ A cross-platform C++17 command-line tool for managing API keys securely across d
 
 ### APT Repository (Ubuntu/Debian) - Recommended ✅
 
-> **Note:** Use the GitHub Pages repository below. The Launchpad PPA is currently experiencing access issues.
-
 #### Quick Install (Recommended)
 ```bash
 curl -fsSL https://apertacodex.github.io/ak/setup-repository.sh | bash
@@ -46,11 +44,11 @@ sudo dpkg -i ak_4.10.6_amd64.deb
 sudo apt-get install -f
 ```
 
-#### ⚠️ PPA Alternative (Currently Unavailable)
+#### Launchpad PPA
 ```bash
-# NOTE: Launchpad PPA currently returns 403 errors
-# Use GitHub Pages repository above instead
-# sudo add-apt-repository ppa:apertacodex/ak  # ← Don't use this
+# Builds are published per Ubuntu series (focal, jammy, noble, plucky, resolute)
+sudo add-apt-repository ppa:apertacodex/ak
+sudo apt update && sudo apt install ak
 ```
 
 #### Verification
