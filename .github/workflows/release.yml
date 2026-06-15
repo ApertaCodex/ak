@@ -166,7 +166,7 @@ jobs:
 
   build_linux:
     name: Build Linux (${{ matrix.distribution }})
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: [detect_version_bump, bump_version]
     if: always() && (needs.bump_version.result == 'success' || needs.bump_version.result == 'skipped')
     strategy:
